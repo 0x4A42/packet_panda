@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="PacketPanda.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="PacketPanda"
+        Width="1200" Height="800">
+    <Grid ColumnDefinitions="250,4,*,4,400">
+        <Border Grid.Column="0" Padding="12">
+            <TextBlock Text="Collections" FontWeight="SemiBold" />
+        </Border>
+        <GridSplitter Grid.Column="1" Background="#222" ResizeDirection="Columns" />
+        <Border Grid.Column="2" Padding="12">
+            <TextBlock Text="Request" FontWeight="SemiBold" />
+        </Border>
+        <GridSplitter Grid.Column="3" Background="#222" ResizeDirection="Columns" />
+        <Border Grid.Column="4" Padding="12">
+            <TextBlock Text="Response" FontWeight="SemiBold" />
+        </Border>
+    </Grid>
+</Window>

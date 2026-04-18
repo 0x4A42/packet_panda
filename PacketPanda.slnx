@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PacketPanda.Core/PacketPanda.Core.csproj" />
+    <Project Path="src/PacketPanda.Desktop/PacketPanda.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PacketPanda.Tests/PacketPanda.Tests.csproj" />
+  </Folder>
+</Solution>
