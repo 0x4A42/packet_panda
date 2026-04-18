@@ -12,13 +12,64 @@
         <Border Grid.Column="0" Padding="12">
             <TextBlock Text="Collections" FontWeight="SemiBold" />
         </Border>
+
         <GridSplitter Grid.Column="1" Background="#222" ResizeDirection="Columns" />
+
         <Border Grid.Column="2" Padding="12">
-            <TextBlock Text="Request" FontWeight="SemiBold" />
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <ComboBox Grid.Column="0"
+                              ItemsSource="{Binding AvailableMethods}"
+                              SelectedItem="{Binding SelectedMethod}"
+                              MinWidth="100" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Url}"
+                             Watermark="https://example.com/endpoint" />
+                    <Button Grid.Column="2"
+                            Content="Send"
+                            Command="{Binding SendCommand}" />
+                </Grid>
+
+                <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
+
+                <TextBox Grid.Row="2"
+                         Text="{Binding RequestBody}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         FontFamily="Consolas,Menlo,monospace"
+                         Watermark="{}{ &quot;key&quot;: &quot;value&quot; }" />
+            </Grid>
         </Border>
+
         <GridSplitter Grid.Column="3" Background="#222" ResizeDirection="Columns" />
+
         <Border Grid.Column="4" Padding="12">
-            <TextBlock Text="Response" FontWeight="SemiBold" />
+            <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+                <TextBlock Grid.Row="0"
+                           Text="{Binding ErrorMessage}"
+                           Foreground="IndianRed"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                <StackPanel Grid.Row="1"
+                            Orientation="Horizontal"
+                            Spacing="12"
+                            IsVisible="{Binding StatusCode, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="Status:" Opacity="0.7" />
+                    <TextBlock Text="{Binding StatusCode}" FontWeight="SemiBold" />
+                    <TextBlock Text="Elapsed:" Opacity="0.7" />
+                    <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat='{}{0} ms'}" />
+                </StackPanel>
+
+                <TextBlock Grid.Row="2" Text="Response body" Opacity="0.7" />
+
+                <TextBox Grid.Row="3"
+                         Text="{Binding ResponseBody}"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         FontFamily="Consolas,Menlo,monospace" />
+            </Grid>
         </Border>
     </Grid>
 </Window>
