@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+        xmlns:conv="using:PacketPanda.Desktop.Converters"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="PacketPanda.Desktop.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -21,7 +22,13 @@
                     <ComboBox Grid.Column="0"
                               ItemsSource="{Binding AvailableMethods}"
                               SelectedItem="{Binding SelectedMethod}"
-                              MinWidth="100" />
+                              MinWidth="100">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={x:Static conv:UpperCaseConverter.Instance}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                     <TextBox Grid.Column="1"
                              Text="{Binding Url}"
                              Watermark="https://example.com/endpoint" />
