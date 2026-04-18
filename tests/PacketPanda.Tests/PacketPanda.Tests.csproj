@@ -7,6 +7,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NuGetAuditMode>direct</NuGetAuditMode>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PacketPanda.Core\PacketPanda.Core.csproj" />
+    <ProjectReference Include="..\..\src\PacketPanda.Desktop\PacketPanda.Desktop.csproj" />
   </ItemGroup>
 
 </Project>
