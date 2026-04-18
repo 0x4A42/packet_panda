@@ -18,7 +18,12 @@ A free, lightweight, cross-platform desktop API client for exploring, testing, a
 
 ## Commands
 
-> Commands will be added once the project is scaffolded.
+```bash
+dotnet build          # build the solution
+dotnet run --project src/PacketPanda.Desktop  # run the desktop app
+dotnet test           # run all tests
+dotnet test --watch   # run tests in watch mode
+```
 
 ## Architecture
 
@@ -49,6 +54,8 @@ A free, lightweight, cross-platform desktop API client for exploring, testing, a
 - Each functional piece gets its own branch, named `task/<feature-name>` (e.g., `task/add-environments`). Create and checkout the branch before starting work on that piece.
 - Commit early and often — commit each completed piece of work, not just at feature completion.
 - Run `dotnet test` before every commit and only commit if all tests pass.
+- All PR titles must use semantic commit format: `type(scope): description` — e.g., `feat(auth): add bearer token support`, `fix(env): resolve variable substitution order`. Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
+- Keep documentation in sync with code. When a change affects CLAUDE.md, a design spec under `docs/superpowers/specs/`, or the README, update those docs in the same unit of work — don't let them drift.
 
 ## Design Spec
 
