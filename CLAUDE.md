@@ -22,6 +22,10 @@ A free, lightweight, cross-platform desktop API client for exploring, testing, a
 
 ## Architecture
 
+### Current state (vertical slice)
+
+Only the request-editor + response-viewer flow is implemented. The left "Collections" panel is a placeholder. There is no persistence, no environments, no auth, no scripting, no in-client tests yet — those are separate future tasks per the parent design spec. The one architectural seam that exists is `PacketPanda.Core.Http.IHttpRequestSender`; the ViewModel depends on it and tests mock it with Moq.
+
 3-panel Avalonia desktop app following ReactiveUI MVVM conventions:
 
 - **Left panel** — Collections sidebar: folders and saved requests loaded from disk
