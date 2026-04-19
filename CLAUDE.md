@@ -52,6 +52,7 @@ Only the request-editor + response-viewer flow is implemented. The left "Collect
 - Tests use **FluentAssertions** for all assertions — `value.Should().Be(...)`, never `Assert.Equal(...)`. Consistency across the suite beats xUnit's default style.
 - FluentAssertions is pinned to **7.2.0** (the last Apache-2.0 licensed version). Do not upgrade to 8.x without discussion — 8.x switched to a commercial licence.
 - Mocks use **Moq** — `new Mock<IFoo>()`, `.Setup(...)`, `.Verify(...)`. Do not introduce NSubstitute or other mocking libraries.
+- Test method names follow the `Subject_Scenario_ExpectedOutcome` pattern with PascalCase within each segment — e.g. `Save_Failure_SetsErrorMessageAndLeavesCurrentFilePathUnchanged`. No lowercase words between underscores.
 
 ## Workflow Constraints
 

@@ -18,7 +18,7 @@ public class MainWindowViewModelTests
     private MainWindowViewModel CreateVm() => new(_sender.Object, _store.Object, _picker.Object);
 
     [Fact]
-    public async Task Send_populates_response_fields_from_Ok_result()
+    public async Task Send_PopulatesResponseFieldsFromOkResult()
     {
         _sender
             .Setup(s => s.SendAsync(
@@ -39,7 +39,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Send_populates_error_and_clears_response_fields_on_Error_result()
+    public async Task Send_PopulatesErrorAndClearsResponseFields_OnErrorResult()
     {
         _sender
             .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
@@ -60,7 +60,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task CanExecute_is_false_when_url_is_empty()
+    public async Task SendCommand_CanExecute_IsFalseWhenUrlIsEmpty()
     {
         var vm = CreateVm();
         vm.Url = "";
@@ -71,7 +71,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task CanExecute_is_true_when_url_is_non_empty()
+    public async Task SendCommand_CanExecute_IsTrueWhenUrlIsNonEmpty()
     {
         var vm = CreateVm();
         vm.Url = "https://example.com";
@@ -82,7 +82,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Send_forwards_non_empty_body_to_sender()
+    public async Task Send_ForwardsNonEmptyBodyToSender()
     {
         HttpRequest? captured = null;
         _sender
@@ -102,7 +102,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Send_forwards_null_body_when_request_body_is_empty()
+    public async Task Send_ForwardsNullBodyWhenRequestBodyIsEmpty()
     {
         HttpRequest? captured = null;
         _sender
@@ -120,7 +120,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Open_populates_editor_fields_and_sets_CurrentFilePath_on_success()
+    public async Task Open_PopulatesEditorFieldsAndSetsCurrentFilePath_OnSuccess()
     {
         _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/req.toml");
         _store.Setup(s => s.LoadAsync("/tmp/req.toml"))
@@ -145,7 +145,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Open_cancelled_does_nothing()
+    public async Task Open_Cancelled_DoesNothing()
     {
         _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync((string?)null);
         var vm = CreateVm();
@@ -159,7 +159,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Open_failure_sets_ErrorMessage_and_leaves_state_unchanged()
+    public async Task Open_Failure_SetsErrorMessageAndLeavesStateUnchanged()
     {
         _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/bad.toml");
         _store.Setup(s => s.LoadAsync("/tmp/bad.toml"))
@@ -176,7 +176,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Save_writes_to_CurrentFilePath_without_picker_when_path_is_set()
+    public async Task Save_WritesToCurrentFilePathWithoutPicker_WhenPathIsSet()
     {
         var vm = CreateVm();
         vm.Url = "https://example.com";
@@ -194,7 +194,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Save_invokes_picker_and_saves_when_CurrentFilePath_is_null()
+    public async Task Save_InvokesPickerAndSaves_WhenCurrentFilePathIsNull()
     {
         _picker.Setup(p => p.PickSaveAsync()).ReturnsAsync("/tmp/new.toml");
         _store.Setup(s => s.SaveAsync("/tmp/new.toml", It.IsAny<HttpRequest>()))
@@ -210,7 +210,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task SaveCommand_CanExecute_is_false_when_url_is_empty()
+    public async Task SaveCommand_CanExecute_IsFalseWhenUrlIsEmpty()
     {
         var vm = CreateVm();
         vm.Url = "";
@@ -221,7 +221,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task SaveAs_always_invokes_picker_and_updates_CurrentFilePath()
+    public async Task SaveAs_AlwaysInvokesPickerAndUpdatesCurrentFilePath()
     {
         _picker.Setup(p => p.PickSaveAsync()).ReturnsAsync("/tmp/saveas.toml");
         _store.Setup(s => s.SaveAsync("/tmp/saveas.toml", It.IsAny<HttpRequest>()))
@@ -238,7 +238,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task SaveAs_cancelled_leaves_CurrentFilePath_unchanged()
+    public async Task SaveAs_Cancelled_LeavesCurrentFilePathUnchanged()
     {
         _picker.Setup(p => p.PickSaveAsync()).ReturnsAsync((string?)null);
 
@@ -253,7 +253,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task SaveAsCommand_CanExecute_is_false_when_url_is_empty()
+    public async Task SaveAsCommand_CanExecute_IsFalseWhenUrlIsEmpty()
     {
         var vm = CreateVm();
         vm.Url = "";
@@ -264,7 +264,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Save_success_clears_ErrorMessage()
+    public async Task Save_Success_ClearsErrorMessage()
     {
         _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
               .Returns(Task.CompletedTask);
@@ -280,7 +280,7 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Save_failure_sets_ErrorMessage_and_leaves_CurrentFilePath_unchanged()
+    public async Task Save_Failure_SetsErrorMessageAndLeavesCurrentFilePathUnchanged()
     {
         _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
               .ThrowsAsync(new RequestFileException("Could not write file: access denied"));

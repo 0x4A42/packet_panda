@@ -17,7 +17,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task RoundTrip_preserves_method_url_and_body()
+    public async Task RoundTrip_PreservesMethodUrlAndBody()
     {
         var request = new HttpRequest(HttpMethod.Post, "https://example.com", """{"a":1}""");
 
@@ -30,7 +30,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Null_body_is_omitted_from_file_and_loaded_as_null()
+    public async Task NullBody_IsOmittedFromFileAndLoadedAsNull()
     {
         var request = new HttpRequest(HttpMethod.Get, "https://example.com", null);
 
@@ -43,7 +43,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Empty_body_is_treated_as_null()
+    public async Task EmptyBody_IsTreatedAsNull()
     {
         var request = new HttpRequest(HttpMethod.Get, "https://example.com", "");
 
@@ -54,7 +54,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Multiline_json_body_round_trips_correctly()
+    public async Task MultilineJsonBody_RoundTripsCorrectly()
     {
         var body = """
                    {
@@ -71,7 +71,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Load_missing_file_throws_RequestFileException()
+    public async Task Load_MissingFile_ThrowsRequestFileException()
     {
         var act = async () => await _store.LoadAsync("/nonexistent/path/request.toml");
 
@@ -79,7 +79,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Load_invalid_toml_throws_RequestFileException()
+    public async Task Load_InvalidToml_ThrowsRequestFileException()
     {
         await File.WriteAllTextAsync(_tempPath, "this is not [ valid toml !!!");
 
@@ -89,7 +89,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Load_missing_method_field_throws_RequestFileException()
+    public async Task Load_MissingMethodField_ThrowsRequestFileException()
     {
         await File.WriteAllTextAsync(_tempPath, """url = "https://example.com" """);
 
@@ -99,7 +99,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Load_missing_url_field_throws_RequestFileException()
+    public async Task Load_MissingUrlField_ThrowsRequestFileException()
     {
         await File.WriteAllTextAsync(_tempPath, """method = "GET" """);
 
@@ -109,7 +109,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Load_unknown_verb_throws_RequestFileException()
+    public async Task Load_UnknownVerb_ThrowsRequestFileException()
     {
         await File.WriteAllTextAsync(_tempPath, """
             method = "PATCH"
@@ -122,7 +122,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Load_lowercase_verb_succeeds()
+    public async Task Load_LowercaseVerb_Succeeds()
     {
         await File.WriteAllTextAsync(_tempPath, """
             method = "get"
@@ -135,7 +135,7 @@ public class TomlRequestFileStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Save_writes_method_as_uppercase()
+    public async Task Save_WritesMethodAsUppercase()
     {
         var request = new HttpRequest(HttpMethod.Get, "https://example.com");
 
