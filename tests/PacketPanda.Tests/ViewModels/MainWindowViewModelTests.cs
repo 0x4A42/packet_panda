@@ -253,6 +253,33 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task SaveAsCommand_CanExecute_is_false_when_url_is_empty()
+    {
+        var vm = CreateVm();
+        vm.Url = "";
+
+        var canExecute = await vm.SaveAsCommand.CanExecute.FirstAsync();
+
+        canExecute.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Save_success_clears_ErrorMessage()
+    {
+        _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
+              .Returns(Task.CompletedTask);
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.CurrentFilePath = "/tmp/req.toml";
+        vm.ErrorMessage = "previous error";
+
+        await vm.SaveCommand.Execute();
+
+        vm.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Save_failure_sets_ErrorMessage_and_leaves_CurrentFilePath_unchanged()
     {
         _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
