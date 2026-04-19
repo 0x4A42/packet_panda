@@ -6,7 +6,7 @@ namespace PacketPanda.Tests.Http;
 public class HttpMethodTests
 {
     [Fact]
-    public void Enum_has_exactly_the_four_v1_methods()
+    public void Enum_HasExactlyTheFourV1Methods()
     {
         Enum.GetNames<HttpMethod>()
             .Should()

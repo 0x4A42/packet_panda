@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using PacketPanda.Core.Http;
+using PacketPanda.Core.Persistence;
+using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
 using PacketPanda.Desktop.Views;
 
@@ -23,11 +25,13 @@ public partial class App : Application
         {
             _httpClient = new HttpClient();
             var sender = new HttpRequestSender(_httpClient);
+            var store = new TomlRequestFileStore();
 
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = new MainWindowViewModel(sender)
-            };
+            var mainWindow = new MainWindow();
+            var picker = new AvaloniaFilePickerService(mainWindow);
+            mainWindow.DataContext = new MainWindowViewModel(sender, store, picker);
+
+            desktop.MainWindow = mainWindow;
 
             desktop.Exit += (_, _) => _httpClient?.Dispose();
         }

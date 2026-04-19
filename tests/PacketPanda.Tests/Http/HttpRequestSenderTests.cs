@@ -29,7 +29,7 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
-    public async Task Get_returning_200_yields_Ok_with_status_body_and_timing()
+    public async Task Get_Returning200_YieldsOkWithStatusBodyAndTiming()
     {
         _server
             .Given(Request.Create().WithPath("/hello").UsingGet())
@@ -46,7 +46,7 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
-    public async Task Non_2xx_response_is_returned_as_Ok_not_Error()
+    public async Task Non2xxResponse_IsReturnedAsOkNotError()
     {
         _server
             .Given(Request.Create().WithPath("/missing").UsingGet())
@@ -62,7 +62,7 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
-    public async Task Unreachable_host_yields_Error()
+    public async Task UnreachableHost_YieldsError()
     {
         // Port 1 is almost always closed; connection attempt will fail fast.
         var result = await _sender.SendAsync(
@@ -73,7 +73,7 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
-    public async Task Post_with_body_sends_json_content_type_and_body()
+    public async Task Post_WithBody_SendsJsonContentTypeAndBody()
     {
         _server
             .Given(Request.Create().WithPath("/echo").UsingPost())
@@ -90,7 +90,7 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
-    public async Task Malformed_url_yields_Error_not_exception()
+    public async Task MalformedUrl_YieldsErrorNotException()
     {
         var result = await _sender.SendAsync(
             new HttpRequest(HttpMethod.Get, "not a url"));

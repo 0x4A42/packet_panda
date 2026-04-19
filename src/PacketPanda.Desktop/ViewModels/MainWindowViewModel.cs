@@ -1,6 +1,7 @@
 using System.Reactive;
-using System.Reactive.Linq;
 using PacketPanda.Core.Http;
+using PacketPanda.Core.Persistence;
+using PacketPanda.Desktop.Services;
 using ReactiveUI;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
@@ -9,6 +10,8 @@ namespace PacketPanda.Desktop.ViewModels;
 public class MainWindowViewModel : ViewModelBase
 {
     private readonly IHttpRequestSender _sender;
+    private readonly IRequestFileStore _store;
+    private readonly IFilePickerService _picker;
 
     private HttpMethod _selectedMethod = HttpMethod.Get;
     private string _url = string.Empty;
@@ -17,13 +20,21 @@ public class MainWindowViewModel : ViewModelBase
     private long? _elapsedMilliseconds;
     private string? _responseBody;
     private string? _errorMessage;
+    private string? _currentFilePath;
 
-    public MainWindowViewModel(IHttpRequestSender sender)
+    public MainWindowViewModel(IHttpRequestSender sender, IRequestFileStore store, IFilePickerService picker)
     {
         _sender = sender;
+        _store = store;
+        _picker = picker;
 
         var canSend = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
+        var canSave = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
+
         SendCommand = ReactiveCommand.CreateFromTask(SendAsync, canSend);
+        OpenCommand = ReactiveCommand.CreateFromTask(OpenAsync);
+        SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
+        SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync, canSave);
     }
 
     public HttpMethod SelectedMethod
@@ -68,7 +79,16 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
     }
 
+    public string? CurrentFilePath
+    {
+        get => _currentFilePath;
+        set => this.RaiseAndSetIfChanged(ref _currentFilePath, value);
+    }
+
     public ReactiveCommand<Unit, Unit> SendCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenCommand { get; }
+    public ReactiveCommand<Unit, Unit> SaveCommand { get; }
+    public ReactiveCommand<Unit, Unit> SaveAsCommand { get; }
 
     public HttpMethod[] AvailableMethods { get; } =
     {
@@ -101,6 +121,67 @@ public class MainWindowViewModel : ViewModelBase
                 ResponseBody = null;
                 ElapsedMilliseconds = null;
                 break;
+        }
+    }
+
+    private async Task OpenAsync()
+    {
+        var path = await _picker.PickOpenAsync();
+        if (path is null) return;
+
+        try
+        {
+            var request = await _store.LoadAsync(path);
+            SelectedMethod = request.Method;
+            Url = request.Url;
+            RequestBody = request.Body;
+            StatusCode = null;
+            ResponseBody = null;
+            ElapsedMilliseconds = null;
+            ErrorMessage = null;
+            CurrentFilePath = path;
+        }
+        catch (RequestFileException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (CurrentFilePath is null)
+        {
+            await SaveAsAsync();
+            return;
+        }
+
+        await SaveToPathAsync(CurrentFilePath);
+    }
+
+    private async Task SaveAsAsync()
+    {
+        var path = await _picker.PickSaveAsync();
+        if (path is null) return;
+
+        var succeeded = await SaveToPathAsync(path);
+        if (succeeded)
+            CurrentFilePath = path;
+    }
+
+    private async Task<bool> SaveToPathAsync(string path)
+    {
+        try
+        {
+            var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
+            var request = new HttpRequest(SelectedMethod, Url, body);
+            await _store.SaveAsync(path, request);
+            ErrorMessage = null;
+            return true;
+        }
+        catch (RequestFileException ex)
+        {
+            ErrorMessage = ex.Message;
+            return false;
         }
     }
 }
