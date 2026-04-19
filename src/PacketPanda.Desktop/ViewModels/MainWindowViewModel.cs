@@ -1,5 +1,4 @@
 using System.Reactive;
-using System.Reactive.Linq;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;

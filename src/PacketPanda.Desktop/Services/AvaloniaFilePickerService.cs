@@ -3,18 +3,11 @@ using Avalonia.Platform.Storage;
 
 namespace PacketPanda.Desktop.Services;
 
-public sealed class AvaloniaFilePickerService : IFilePickerService
+public sealed class AvaloniaFilePickerService(Window window) : IFilePickerService
 {
-    private readonly Window _window;
-
-    public AvaloniaFilePickerService(Window window)
-    {
-        _window = window;
-    }
-
     public async Task<string?> PickOpenAsync()
     {
-        var files = await _window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Open Request",
             AllowMultiple = false,
@@ -26,7 +19,7 @@ public sealed class AvaloniaFilePickerService : IFilePickerService
 
     public async Task<string?> PickSaveAsync()
     {
-        var file = await _window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save Request",
             DefaultExtension = "toml",
