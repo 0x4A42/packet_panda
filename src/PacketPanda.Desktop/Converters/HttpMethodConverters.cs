@@ -16,7 +16,15 @@ public sealed class IsNotNullConverter : IValueConverter
 public sealed class HttpMethodBrushConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is string method ? GetBrush(method) : Brushes.Transparent;
+    {
+        var method = value switch
+        {
+            string s => s,
+            Enum e   => e.ToString(),
+            _        => null
+        };
+        return method is not null ? GetBrush(method.ToUpperInvariant()) : Brushes.Transparent;
+    }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
