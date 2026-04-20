@@ -86,7 +86,8 @@
                                 <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
                                         CornerRadius="2"
                                         Padding="4,1"
-                                        VerticalAlignment="Center">
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding MethodLabel, Converter={StaticResource IsNotNullConverter}}">
                                     <TextBlock Text="{Binding MethodLabel}"
                                                FontSize="9"
                                                FontWeight="Bold"
@@ -130,10 +131,13 @@
             </Grid>
 
             <ContentControl Grid.Row="1"
-                            Content="{Binding ActiveTab.Editor}">
+                            Content="{Binding ActiveTab.Content}">
                 <ContentControl.DataTemplates>
                     <DataTemplate DataType="vm:RequestEditorViewModel">
                         <views:RequestEditorView />
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:EnvironmentEditorViewModel">
+                        <views:EnvironmentEditorView />
                     </DataTemplate>
                 </ContentControl.DataTemplates>
             </ContentControl>

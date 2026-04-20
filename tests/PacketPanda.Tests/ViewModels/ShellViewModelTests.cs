@@ -59,7 +59,7 @@ public class ShellViewModelTests
 
         shell.Tabs.Should().ContainSingle();
         shell.ActiveTab!.FilePath.Should().Be("/tmp/a.toml");
-        shell.ActiveTab.Editor.Url.Should().Be("https://example.com");
+        ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://example.com");
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class ShellViewModelTests
         await shell.OpenFileInTabCommand.Execute("/tmp/bad.toml");
 
         shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.Editor.ErrorMessage.Should().Be("Invalid TOML: bad");
+        ((RequestEditorViewModel)shell.ActiveTab!.Content).ErrorMessage.Should().Be("Invalid TOML: bad");
         shell.ActiveTab.FilePath.Should().Be("/tmp/bad.toml");
     }
 
@@ -144,7 +144,7 @@ public class ShellViewModelTests
 
         var shell = CreateShell();
         await shell.NewTabCommand.Execute();
-        shell.Tabs[0].Editor.Url = "https://dirty.com";
+        ((RequestEditorViewModel)shell.Tabs[0].Content).Url = "https://dirty.com";
 
         await shell.Tabs[0].CloseCommand.Execute();
 
@@ -158,7 +158,7 @@ public class ShellViewModelTests
 
         var shell = CreateShell();
         await shell.NewTabCommand.Execute();
-        shell.Tabs[0].Editor.Url = "https://dirty.com";
+        ((RequestEditorViewModel)shell.Tabs[0].Content).Url = "https://dirty.com";
 
         await shell.Tabs[0].CloseCommand.Execute();
 
@@ -186,7 +186,7 @@ public class ShellViewModelTests
 
         shell.Tabs.Should().ContainSingle();
         shell.ActiveTab!.FilePath.Should().Be(pickedPath);
-        shell.ActiveTab.Editor.Url.Should().Be("https://picked.com");
+        ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://picked.com");
         shell.Sidebar.WorkspacePath.Should().NotBeNull();
     }
 

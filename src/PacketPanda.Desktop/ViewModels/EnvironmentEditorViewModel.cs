@@ -8,7 +8,7 @@ using Environment = PacketPanda.Core.Environments.Environment;
 
 namespace PacketPanda.Desktop.ViewModels;
 
-public class EnvironmentEditorViewModel : ViewModelBase
+public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 {
     private readonly IEnvironmentFileStore _store;
     private string _environmentName = string.Empty;
@@ -48,7 +48,7 @@ public class EnvironmentEditorViewModel : ViewModelBase
     public string? ErrorMessage
     {
         get => _errorMessage;
-        private set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
+        set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
     }
 
     public ObservableCollection<EnvironmentVariableRowViewModel> Rows { get; }
@@ -120,6 +120,13 @@ public class EnvironmentEditorViewModel : ViewModelBase
         _savedSnapshot = Rows.Select(r => (r.Name, r.Value)).ToList();
         IsDirty = false;
     }
+
+    // ITabContent
+    string ITabContent.DisplayTitle => string.IsNullOrEmpty(EnvironmentName)
+        ? Path.GetFileNameWithoutExtension(CurrentFilePath ?? "Untitled")
+        : EnvironmentName;
+
+    string? ITabContent.MethodLabel => null;
 
     private async Task SaveAsync()
     {

@@ -10,7 +10,7 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
 
-public class RequestEditorViewModel : ViewModelBase, IDisposable
+public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 {
     private readonly IHttpRequestSender _sender;
     private readonly IRequestFileStore _store;
@@ -259,4 +259,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable
     {
         CaptureSnapshot();
     }
+
+    // ITabContent
+    string ITabContent.DisplayTitle => CurrentFilePath is null
+        ? "Untitled"
+        : Path.GetFileNameWithoutExtension(CurrentFilePath);
+
+    string? ITabContent.MethodLabel => SelectedMethod.ToString().ToUpperInvariant();
 }

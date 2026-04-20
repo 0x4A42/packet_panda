@@ -129,6 +129,32 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
+    public async Task OpenEnvironmentInTabAsync(string filePath)
+    {
+        var existing = Tabs.FirstOrDefault(t => t.FilePath == filePath);
+        if (existing is not null)
+        {
+            ActiveTab = existing;
+            return;
+        }
+
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore);
+        try
+        {
+            var env = await _environmentStore.LoadAsync(filePath);
+            envEditor.Load(env);
+        }
+        catch (EnvironmentFileException ex)
+        {
+            envEditor.ErrorMessage = ex.Message;
+        }
+
+        var tab = new TabViewModel(envEditor, _dialog);
+        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+        Tabs.Add(tab);
+        ActiveTab = tab;
+    }
+
     private void UpdateAvailableEnvironments(IReadOnlyList<EnvironmentRef> envs)
     {
         AvailableEnvironments.Clear();
