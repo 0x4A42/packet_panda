@@ -15,18 +15,13 @@
                     Content="Open…"
                     Background="White"
                     Margin="8"
-                    HorizontalAlignment="Stretch">
+                    HorizontalAlignment="Stretch"
+                    Command="{Binding OpenFileCommand}">
                 <Button.Styles>
                     <Style Selector="Button:pointerover /template/ ContentPresenter">
                         <Setter Property="Background" Value="#E8E8E8" />
                     </Style>
                 </Button.Styles>
-                <Button.Flyout>
-                    <MenuFlyout>
-                        <MenuItem Header="Open Folder…" Command="{Binding Sidebar.OpenWorkspaceCommand}" />
-                        <MenuItem Header="Open File…" Command="{Binding OpenFileCommand}" />
-                    </MenuFlyout>
-                </Button.Flyout>
             </Button>
 
             <TreeView Grid.Row="1"

@@ -32,10 +32,9 @@ public partial class App : Application
             var mainWindow = new MainWindow();
 
             var filePicker = new AvaloniaFilePickerService(mainWindow);
-            var folderPicker = new AvaloniaFolderPickerService(mainWindow);
             var dialog = new AvaloniaDialogService(mainWindow);
 
-            var sidebar = new CollectionSidebarViewModel(folderPicker, scanner, settingsStore);
+            var sidebar = new CollectionSidebarViewModel(scanner, settingsStore);
 
             RequestEditorViewModel EditorFactory() => new(sender, store, filePicker);
 

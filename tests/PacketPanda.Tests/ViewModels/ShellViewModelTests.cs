@@ -16,12 +16,11 @@ public class ShellViewModelTests
     private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
     private readonly Mock<IDialogService> _dialog = new(MockBehavior.Strict);
 
-    private readonly Mock<IFolderPickerService> _folderPicker = new(MockBehavior.Strict);
     private readonly Mock<IWorkspaceScanner> _scanner = new(MockBehavior.Strict);
     private readonly Mock<ISettingsStore> _settings = new(MockBehavior.Strict);
 
     private CollectionSidebarViewModel NewSidebar() =>
-        new(_folderPicker.Object, _scanner.Object, _settings.Object);
+        new(_scanner.Object, _settings.Object);
 
     private RequestEditorViewModel NewEditor() =>
         new(_sender.Object, _store.Object, _picker.Object);
@@ -160,19 +159,26 @@ public class ShellViewModelTests
     }
 
     [Fact]
-    public async Task OpenFileCommand_PickerReturnsPath_OpensFileInTab()
+    public async Task OpenFileCommand_PickerReturnsPath_OpensFileInTabAndLoadsWorkspace()
     {
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/picked.toml");
-        _store.Setup(s => s.LoadAsync("/tmp/picked.toml"))
+        const string pickedPath = "/tmp/picked.toml";
+
+        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync(pickedPath);
+        _store.Setup(s => s.LoadAsync(pickedPath))
               .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://picked.com", null));
+        _scanner.Setup(s => s.ScanAsync(It.IsAny<string>()))
+                .ReturnsAsync(new FolderNode("dir", "dir", Array.Empty<CollectionNode>()));
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>()))
+                 .Returns(Task.CompletedTask);
 
         var shell = CreateShell();
 
         await shell.OpenFileCommand.Execute();
 
         shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.FilePath.Should().Be("/tmp/picked.toml");
+        shell.ActiveTab!.FilePath.Should().Be(pickedPath);
         shell.ActiveTab.Editor.Url.Should().Be("https://picked.com");
+        shell.Sidebar.WorkspacePath.Should().NotBeNull();
     }
 
     [Fact]

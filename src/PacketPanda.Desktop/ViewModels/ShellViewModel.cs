@@ -55,6 +55,11 @@ public class ShellViewModel : ViewModelBase, IDisposable
     {
         var path = await _filePicker.PickOpenAsync();
         if (path is null) return;
+
+        var dir = Path.GetDirectoryName(path);
+        if (dir is not null)
+            await Sidebar.LoadWorkspaceAsync(dir);
+
         await OpenFileInTabAsync(path);
     }
 
