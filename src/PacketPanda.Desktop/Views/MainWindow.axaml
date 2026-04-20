@@ -12,6 +12,10 @@
         Title="PacketPanda"
         Width="1200" Height="800">
 
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseActiveTabCommand}" />
+    </Window.KeyBindings>
+
     <Window.Resources>
         <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
@@ -89,7 +93,8 @@
                           SelectedItem="{Binding ActiveTab}">
                     <TabStrip.ItemTemplate>
                         <DataTemplate DataType="vm:TabViewModel">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="4"
+                                        PointerPressed="TabItem_PointerPressed">
                                 <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
                                         CornerRadius="2"
                                         Padding="4,1"

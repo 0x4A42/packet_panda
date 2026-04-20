@@ -48,6 +48,12 @@ public class ShellViewModel : ViewModelBase, IDisposable
         NewTabCommand = ReactiveCommand.Create(AddBlankTab);
         OpenFileInTabCommand = ReactiveCommand.CreateFromTask<string>(OpenFileInTabAsync);
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
+        CloseActiveTabCommand = ReactiveCommand.Create(
+            () =>
+            {
+                if (ActiveTab is not null)
+                    ActiveTab.CloseCommand.Execute().Subscribe();
+            });
 
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
@@ -97,6 +103,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> NewTabCommand { get; }
     public ReactiveCommand<string, Unit> OpenFileInTabCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseActiveTabCommand { get; }
 
     private async Task OpenFileAsync()
     {
