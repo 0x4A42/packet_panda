@@ -11,6 +11,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly Func<RequestEditorViewModel> _editorFactory;
     private readonly IDialogService _dialog;
     private readonly IRequestFileStore _store;
+    private readonly IFilePickerService _filePicker;
     private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
 
     private TabViewModel? _activeTab;
@@ -19,17 +20,20 @@ public class ShellViewModel : ViewModelBase, IDisposable
         CollectionSidebarViewModel sidebar,
         Func<RequestEditorViewModel> editorFactory,
         IDialogService dialog,
-        IRequestFileStore store)
+        IRequestFileStore store,
+        IFilePickerService filePicker)
     {
         Sidebar = sidebar;
         _editorFactory = editorFactory;
         _dialog = dialog;
         _store = store;
+        _filePicker = filePicker;
 
         Tabs = new ObservableCollection<TabViewModel>();
 
         NewTabCommand = ReactiveCommand.Create(AddBlankTab);
         OpenFileInTabCommand = ReactiveCommand.CreateFromTask<string>(OpenFileInTabAsync);
+        OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
 
         Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
     }
@@ -45,6 +49,14 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     public ReactiveCommand<Unit, Unit> NewTabCommand { get; }
     public ReactiveCommand<string, Unit> OpenFileInTabCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
+
+    private async Task OpenFileAsync()
+    {
+        var path = await _filePicker.PickOpenAsync();
+        if (path is null) return;
+        await OpenFileInTabAsync(path);
+    }
 
     private void AddBlankTab()
     {

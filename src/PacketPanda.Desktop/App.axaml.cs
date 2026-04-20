@@ -39,7 +39,7 @@ public partial class App : Application
 
             RequestEditorViewModel EditorFactory() => new(sender, store, filePicker);
 
-            var shell = new ShellViewModel(sidebar, EditorFactory, dialog, store);
+            var shell = new ShellViewModel(sidebar, EditorFactory, dialog, store, filePicker);
             mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;

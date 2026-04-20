@@ -27,7 +27,7 @@ public class ShellViewModelTests
         new(_sender.Object, _store.Object, _picker.Object);
 
     private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null) =>
-        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object);
+        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object, _picker.Object);
 
     [Fact]
     public async Task NewTabCommand_AddsUntitledTabAndSetsItActive()
@@ -157,5 +157,33 @@ public class ShellViewModelTests
         await shell.Tabs[0].CloseCommand.Execute();
 
         shell.Tabs.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task OpenFileCommand_PickerReturnsPath_OpensFileInTab()
+    {
+        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/picked.toml");
+        _store.Setup(s => s.LoadAsync("/tmp/picked.toml"))
+              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://picked.com", null));
+
+        var shell = CreateShell();
+
+        await shell.OpenFileCommand.Execute();
+
+        shell.Tabs.Should().ContainSingle();
+        shell.ActiveTab!.FilePath.Should().Be("/tmp/picked.toml");
+        shell.ActiveTab.Editor.Url.Should().Be("https://picked.com");
+    }
+
+    [Fact]
+    public async Task OpenFileCommand_PickerCancelled_DoesNotAddTab()
+    {
+        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync((string?)null);
+
+        var shell = CreateShell();
+
+        await shell.OpenFileCommand.Execute();
+
+        shell.Tabs.Should().BeEmpty();
     }
 }
