@@ -1,4 +1,4 @@
-![Project logo - a pixelated Panda face](PacketPanda.Desktop/app.ico)
+![Project logo - a pixelated Panda face](src/PacketPanda.Desktop/app.ico)
 
 # PacketPanda
 
