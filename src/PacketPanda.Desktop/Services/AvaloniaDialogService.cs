@@ -26,7 +26,7 @@ public sealed class AvaloniaDialogService(Window owner) : IDialogService
         };
 
         var discard = new Button { Content = "Discard", Margin = new Avalonia.Thickness(4) };
-        var cancel = new Button { Content = "Cancel", Margin = new Avalonia.Thickness(4), IsDefault = true };
+        var cancel = new Button { Content = "Cancel", Margin = new Avalonia.Thickness(4), IsDefault = true, IsCancel = true };
 
         discard.Click += (_, _) => { result = true; dialog.Close(); };
         cancel.Click += (_, _) => { result = false; dialog.Close(); };
