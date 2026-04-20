@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Subjects;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Persistence;
+using Environment = PacketPanda.Core.Environments.Environment;
 using PacketPanda.Desktop.Services;
 using ReactiveUI;
 
@@ -12,22 +15,31 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDialogService _dialog;
     private readonly IRequestFileStore _store;
     private readonly IFilePickerService _filePicker;
+    private readonly IEnvironmentFileStore _environmentStore;
+    private readonly ISettingsStore _settings;
     private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
+    private readonly BehaviorSubject<Environment?> _activeEnvSubject = new(null);
+    private readonly IDisposable _envScannedSub;
 
     private TabViewModel? _activeTab;
+    private EnvironmentRef? _selectedEnvironment;
 
     public ShellViewModel(
         CollectionSidebarViewModel sidebar,
         Func<RequestEditorViewModel> editorFactory,
         IDialogService dialog,
         IRequestFileStore store,
-        IFilePickerService filePicker)
+        IFilePickerService filePicker,
+        IEnvironmentFileStore environmentStore,
+        ISettingsStore settings)
     {
         Sidebar = sidebar;
         _editorFactory = editorFactory;
         _dialog = dialog;
         _store = store;
         _filePicker = filePicker;
+        _environmentStore = environmentStore;
+        _settings = settings;
 
         Tabs = new ObservableCollection<TabViewModel>();
 
@@ -36,15 +48,29 @@ public class ShellViewModel : ViewModelBase, IDisposable
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
 
         Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
+
+        _envScannedSub = sidebar.EnvironmentsScanned.Subscribe(envs => UpdateAvailableEnvironments(envs));
     }
 
     public CollectionSidebarViewModel Sidebar { get; }
     public ObservableCollection<TabViewModel> Tabs { get; }
+    public ObservableCollection<EnvironmentRef> AvailableEnvironments { get; } = new();
+    public IObservable<Environment?> ActiveEnvironmentObservable => _activeEnvSubject;
 
     public TabViewModel? ActiveTab
     {
         get => _activeTab;
         set => this.RaiseAndSetIfChanged(ref _activeTab, value);
+    }
+
+    public EnvironmentRef? SelectedEnvironment
+    {
+        get => _selectedEnvironment;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedEnvironment, value);
+            _ = OnSelectedEnvironmentChangedAsync(value);
+        }
     }
 
     public ReactiveCommand<Unit, Unit> NewTabCommand { get; }
@@ -103,11 +129,58 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
+    private void UpdateAvailableEnvironments(IReadOnlyList<EnvironmentRef> envs)
+    {
+        AvailableEnvironments.Clear();
+        foreach (var e in envs)
+            AvailableEnvironments.Add(e);
+
+        // Re-select previously active env by name if it still exists;
+        // update the backing field directly to avoid reloading the file.
+        var currentName = _selectedEnvironment?.Name;
+        var match = AvailableEnvironments.FirstOrDefault(e => e.Name == currentName);
+        _selectedEnvironment = match;
+        this.RaisePropertyChanged(nameof(SelectedEnvironment));
+    }
+
+    private async Task OnSelectedEnvironmentChangedAsync(EnvironmentRef? envRef)
+    {
+        if (envRef is null)
+        {
+            _activeEnvSubject.OnNext(null);
+            await PersistActiveEnvNameAsync(null);
+            return;
+        }
+
+        try
+        {
+            var env = await _environmentStore.LoadAsync(envRef.FilePath);
+            _activeEnvSubject.OnNext(env);
+            await PersistActiveEnvNameAsync(envRef.Name);
+        }
+        catch (EnvironmentFileException)
+        {
+            _activeEnvSubject.OnNext(null);
+        }
+    }
+
+    private async Task PersistActiveEnvNameAsync(string? name)
+    {
+        try
+        {
+            var current = await _settings.LoadAsync();
+            await _settings.SaveAsync(current with { ActiveEnvironmentName = name });
+        }
+        catch (SettingsException) { }
+    }
+
     public void Dispose()
     {
+        _envScannedSub.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();
+        _activeEnvSubject.Dispose();
     }
 
     private void CloseTab(TabViewModel tab)

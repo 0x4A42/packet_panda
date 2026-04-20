@@ -36,16 +36,19 @@ public partial class App : Application
             var filePicker = new AvaloniaFilePickerService(mainWindow);
             var dialog = new AvaloniaDialogService(mainWindow);
 
+            var environmentStore = new TomlEnvironmentFileStore();
+
             var sidebar = new CollectionSidebarViewModel(scanner, settingsStore);
 
+            ShellViewModel? shell = null;
             RequestEditorViewModel EditorFactory() => new(
                 sender,
                 store,
                 filePicker,
                 new VariableResolver(),
-                Observable.Return<PacketPanda.Core.Environments.Environment?>(null));
+                shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<PacketPanda.Core.Environments.Environment?>(null));
 
-            var shell = new ShellViewModel(sidebar, EditorFactory, dialog, store, filePicker);
+            shell = new ShellViewModel(sidebar, EditorFactory, dialog, store, filePicker, environmentStore, settingsStore);
             mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;

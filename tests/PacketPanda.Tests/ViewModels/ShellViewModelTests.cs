@@ -21,6 +21,7 @@ public class ShellViewModelTests
 
     private readonly Mock<IWorkspaceScanner> _scanner = new(MockBehavior.Strict);
     private readonly Mock<ISettingsStore> _settings = new(MockBehavior.Strict);
+    private readonly Mock<IEnvironmentFileStore> _environmentStore = new(MockBehavior.Strict);
 
     private CollectionSidebarViewModel NewSidebar() =>
         new(_scanner.Object, _settings.Object);
@@ -31,7 +32,8 @@ public class ShellViewModelTests
             new BehaviorSubject<Environment?>(null));
 
     private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null) =>
-        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object, _picker.Object);
+        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object, _picker.Object,
+            _environmentStore.Object, _settings.Object);
 
     [Fact]
     public async Task NewTabCommand_AddsUntitledTabAndSetsItActive()

@@ -13,6 +13,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private readonly IWorkspaceScanner _scanner;
     private readonly ISettingsStore _settings;
     private readonly Subject<string> _requestOpened = new();
+    private readonly Subject<IReadOnlyList<EnvironmentRef>> _environmentsScanned = new();
 
     private string? _workspacePath;
     private string? _errorMessage;
@@ -55,6 +56,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> CloseWorkspaceCommand { get; }
 
     public IObservable<string> RequestOpened => _requestOpened;
+    public IObservable<IReadOnlyList<EnvironmentRef>> EnvironmentsScanned => _environmentsScanned;
 
     public IReadOnlyList<EnvironmentRef> LastScannedEnvironments { get; private set; } = Array.Empty<EnvironmentRef>();
 
@@ -73,6 +75,7 @@ public class CollectionSidebarViewModel : ReactiveObject
             ReplaceRoots(scan.Collections);
             LastScannedEnvironments = scan.Environments;
             WorkspacePath = path;
+            _environmentsScanned.OnNext(scan.Environments);
         }
         catch (Exception ex)
         {
