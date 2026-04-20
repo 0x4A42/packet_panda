@@ -1,5 +1,6 @@
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Text.RegularExpressions;
 using PacketPanda.Core.Environments;
 using Environment = PacketPanda.Core.Environments.Environment;
 using PacketPanda.Core.Http;
@@ -44,6 +45,14 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _picker = picker;
         _resolver = resolver;
         _activeEnvSub = activeEnvironment.Subscribe(env => _activeEnv = env);
+
+        var activeEnvObs = activeEnvironment.StartWith(_activeEnv);
+
+        UrlTokensChanged = this.WhenAnyValue(vm => vm.Url)
+            .CombineLatest(activeEnvObs, (url, env) => Tokenise(url, env));
+
+        BodyTokensChanged = this.WhenAnyValue(vm => vm.RequestBody)
+            .CombineLatest(activeEnvObs, (body, env) => Tokenise(body ?? string.Empty, env));
 
         var canSend = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
         var canSave = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
@@ -120,6 +129,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ReactiveCommand<Unit, Unit> OpenCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveAsCommand { get; }
+
+    public IObservable<IReadOnlyList<TemplateToken>> UrlTokensChanged { get; }
+    public IObservable<IReadOnlyList<TemplateToken>> BodyTokensChanged { get; }
 
     public HttpMethod[] AvailableMethods { get; } =
     {
@@ -266,4 +278,28 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         : Path.GetFileNameWithoutExtension(CurrentFilePath);
 
     string? ITabContent.MethodLabel => SelectedMethod.ToString().ToUpperInvariant();
+
+    private static readonly Regex TokenPattern =
+        new(@"\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}", RegexOptions.Compiled);
+
+    private static IReadOnlyList<TemplateToken> Tokenise(string text, Environment? env)
+    {
+        var tokens = new List<TemplateToken>();
+        int last = 0;
+        foreach (Match m in TokenPattern.Matches(text))
+        {
+            if (m.Index > last)
+                tokens.Add(new TemplateToken(text.Substring(last, m.Index - last), false, false));
+
+            var name = m.Groups[1].Value;
+            var defined = env is not null && env.Variables.ContainsKey(name);
+            tokens.Add(new TemplateToken(m.Value, true, defined));
+            last = m.Index + m.Length;
+        }
+        if (last < text.Length)
+            tokens.Add(new TemplateToken(text.Substring(last), false, false));
+        return tokens;
+    }
 }
+
+public sealed record TemplateToken(string Text, bool IsVariable, bool IsDefined);
