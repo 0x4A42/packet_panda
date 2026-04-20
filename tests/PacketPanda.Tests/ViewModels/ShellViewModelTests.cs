@@ -167,7 +167,9 @@ public class ShellViewModelTests
         _store.Setup(s => s.LoadAsync(pickedPath))
               .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://picked.com", null));
         _scanner.Setup(s => s.ScanAsync(It.IsAny<string>()))
-                .ReturnsAsync(new FolderNode("dir", "dir", Array.Empty<CollectionNode>()));
+                .ReturnsAsync(new WorkspaceScan(
+                    new FolderNode("dir", "dir", Array.Empty<CollectionNode>()),
+                    Array.Empty<PacketPanda.Core.Environments.EnvironmentRef>()));
         _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>()))
                  .Returns(Task.CompletedTask);
 

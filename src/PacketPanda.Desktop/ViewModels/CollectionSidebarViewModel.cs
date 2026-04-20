@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Persistence;
 using ReactiveUI;
 
@@ -55,6 +56,8 @@ public class CollectionSidebarViewModel : ReactiveObject
 
     public IObservable<string> RequestOpened => _requestOpened;
 
+    public IReadOnlyList<EnvironmentRef> LastScannedEnvironments { get; private set; } = Array.Empty<EnvironmentRef>();
+
     public CollectionNodeViewModel? SelectedNode
     {
         get => _selectedNode;
@@ -66,8 +69,9 @@ public class CollectionSidebarViewModel : ReactiveObject
         ErrorMessage = null;
         try
         {
-            var tree = await _scanner.ScanAsync(path);
-            ReplaceRoots(tree);
+            var scan = await _scanner.ScanAsync(path);
+            ReplaceRoots(scan.Collections);
+            LastScannedEnvironments = scan.Environments;
             WorkspacePath = path;
         }
         catch (Exception ex)
