@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             xmlns:conv="using:PacketPanda.Desktop.Converters"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
+             x:Class="PacketPanda.Desktop.Views.RequestEditorView"
+             x:DataType="vm:RequestEditorViewModel">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8" Margin="12">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
+            <Button Content="Open…" Command="{Binding OpenCommand}" />
+            <Button Content="Save" Command="{Binding SaveCommand}" />
+            <Button Content="Save As…" Command="{Binding SaveAsCommand}" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <ComboBox Grid.Column="0"
+                      ItemsSource="{Binding AvailableMethods}"
+                      SelectedItem="{Binding SelectedMethod}"
+                      MinWidth="100">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Converter={x:Static conv:UpperCaseConverter.Instance}}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBox Grid.Column="1"
+                     Text="{Binding Url}"
+                     Watermark="https://example.com/endpoint" />
+            <Button Grid.Column="2"
+                    Content="Send"
+                    Command="{Binding SendCommand}" />
+        </Grid>
+
+        <TextBlock Grid.Row="2" Text="Body (JSON, optional)" Opacity="0.7" />
+
+        <TextBox Grid.Row="3"
+                 Text="{Binding RequestBody}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 FontFamily="Consolas,Menlo,monospace"
+                 Height="120"
+                 Watermark="{}{ &quot;key&quot;: &quot;value&quot; }" />
+
+        <Grid Grid.Row="4" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+            <TextBlock Grid.Row="0"
+                       Text="{Binding ErrorMessage}"
+                       Foreground="IndianRed"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+            <StackPanel Grid.Row="1"
+                        Orientation="Horizontal"
+                        Spacing="12"
+                        IsVisible="{Binding StatusCode, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Text="Status:" Opacity="0.7" />
+                <TextBlock Text="{Binding StatusCode}" FontWeight="SemiBold" />
+                <TextBlock Text="Elapsed:" Opacity="0.7" />
+                <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat='{}{0} ms'}" />
+            </StackPanel>
+
+            <TextBlock Grid.Row="2" Text="Response body" Opacity="0.7" />
+
+            <TextBox Grid.Row="3"
+                     Text="{Binding ResponseBody}"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     FontFamily="Consolas,Menlo,monospace" />
+        </Grid>
+    </Grid>
+</UserControl>
