@@ -51,7 +51,7 @@ public class CollectionSidebarViewModelTests
     public async Task RequestOpened_FiresWhenRequestNodeActivated()
     {
         var vm = CreateVm();
-        var node = new CollectionNodeViewModel("a.toml", "/ws/a.toml", isFolder: false, []);
+        var node = new CollectionNodeViewModel("a.toml", "/ws/a.toml", isFolder: false, method: null, []);
 
         string? received = null;
         using var _ = vm.RequestOpened.Subscribe(p => received = p);
@@ -65,7 +65,7 @@ public class CollectionSidebarViewModelTests
     public async Task RequestOpened_DoesNotFireForFolderNodes()
     {
         var vm = CreateVm();
-        var folder = new CollectionNodeViewModel("api", "/ws/api", isFolder: true, []);
+        var folder = new CollectionNodeViewModel("api", "/ws/api", isFolder: true, method: null, []);
 
         string? received = null;
         using var _ = vm.RequestOpened.Subscribe(p => received = p);

@@ -66,6 +66,28 @@ public class WorkspaceScannerTests : IDisposable
     }
 
     [Fact]
+    public async Task Scan_TomlFileWithMethod_PopulatesMethodOnNode()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_root, "req.toml"), "method = \"GET\"\nurl = \"https://example.com\"");
+
+        var result = await _scanner.ScanAsync(_root);
+
+        var node = result.Children.Should().ContainSingle().Which.Should().BeOfType<RequestNode>().Subject;
+        node.Method.Should().Be("GET");
+    }
+
+    [Fact]
+    public async Task Scan_TomlFileWithoutMethod_LeavesMethodNull()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_root, "req.toml"), "");
+
+        var result = await _scanner.ScanAsync(_root);
+
+        result.Children.Should().ContainSingle().Which.Should().BeOfType<RequestNode>()
+            .Which.Method.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Scan_FoldersListedBeforeFiles_AtEachLevel()
     {
         await File.WriteAllTextAsync(Path.Combine(_root, "z.toml"), "");

@@ -10,7 +10,7 @@
         Title="PacketPanda"
         Width="1200" Height="800">
     <Grid ColumnDefinitions="280,4,*">
-        <Grid Grid.Column="0" RowDefinitions="Auto,*" Background="#111">
+        <Grid Grid.Column="0" RowDefinitions="Auto,*" Background="#F5F5F5">
             <Button Grid.Row="0"
                     Content="Open…"
                     Background="White"
@@ -29,14 +29,15 @@
                 <TreeView.ItemTemplate>
                     <TreeDataTemplate ItemsSource="{Binding Children}"
                                       DataType="vm:CollectionNodeViewModel">
-                        <TextBlock Text="{Binding Name}"
+                        <TextBlock Text="{Binding DisplayName}"
+                                   Foreground="#1E1E1E"
                                    DoubleTapped="OnNodeDoubleTapped" />
                     </TreeDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
         </Grid>
 
-        <GridSplitter Grid.Column="1" Background="#222" ResizeDirection="Columns" />
+        <GridSplitter Grid.Column="1" Background="#CCCCCC" ResizeDirection="Columns" />
 
         <Grid Grid.Column="2" RowDefinitions="Auto,*">
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="4">

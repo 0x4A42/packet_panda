@@ -95,7 +95,7 @@ public class ShellViewModelTests
 
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
-        var node = new CollectionNodeViewModel("x.toml", "/ws/x.toml", isFolder: false, []);
+        var node = new CollectionNodeViewModel("x.toml", "/ws/x.toml", isFolder: false, method: null, []);
 
         await sidebar.OpenRequestCommand.Execute(node);
 
