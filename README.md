@@ -1,3 +1,5 @@
+![Project logo - a pixelated Panda face](PacketPanda.Desktop/app.ico)
+
 # PacketPanda
 
 A free, lightweight, cross-platform desktop API client for exploring, testing, and debugging HTTP APIs.
