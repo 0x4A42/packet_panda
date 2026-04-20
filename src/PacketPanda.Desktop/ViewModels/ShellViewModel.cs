@@ -65,8 +65,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         _envScannedSub = sidebar.EnvironmentsScanned.Subscribe(envs =>
         {
-            UpdateAvailableEnvironments(envs);
             EnvironmentSidebar.SetEnvironments(envs);
+            RestoreSelectedEnvironment();
         });
 
         _envOpenSub = EnvironmentSidebar.EnvironmentOpenRequested
@@ -82,7 +82,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public CollectionSidebarViewModel Sidebar { get; }
     public EnvironmentSidebarViewModel EnvironmentSidebar { get; }
     public ObservableCollection<TabViewModel> Tabs { get; }
-    public ObservableCollection<EnvironmentRef> AvailableEnvironments { get; } = new();
+    public ObservableCollection<EnvironmentRef> AvailableEnvironments => EnvironmentSidebar.Items;
     public IObservable<Environment?> ActiveEnvironmentObservable => _activeEnvSubject;
 
     public TabViewModel? ActiveTab
@@ -184,14 +184,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
-    private void UpdateAvailableEnvironments(IReadOnlyList<EnvironmentRef> envs)
+    private void RestoreSelectedEnvironment()
     {
-        AvailableEnvironments.Clear();
-        foreach (var e in envs)
-            AvailableEnvironments.Add(e);
-
-        // Re-select previously active env by name if it still exists;
-        // update the backing field directly to avoid reloading the file.
         var currentName = _selectedEnvironment?.Name;
         var match = AvailableEnvironments.FirstOrDefault(e => e.Name == currentName);
         _selectedEnvironment = match;
