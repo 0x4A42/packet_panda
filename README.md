@@ -1,3 +1,7 @@
+<p align="center" width="100%">
+    <img width="33%" src="src/PacketPanda.Desktop/app.ico"> 
+</p>
+
 # PacketPanda
 
 A free, lightweight, cross-platform desktop API client for exploring, testing, and debugging HTTP APIs.
@@ -5,10 +9,6 @@ A free, lightweight, cross-platform desktop API client for exploring, testing, a
 ## What is PacketPanda?
 
 PacketPanda is a developer tool for hitting HTTP endpoints — think Postman or Bruno, but built to be fast, minimal, and file-first. Requests are stored as plain TOML files on disk, making them version-controllable and shareable without any import/export ceremony.
-
-## Status
-
-Vertical slice: a single-window request editor that sends `GET`/`POST`/`PUT`/`DELETE` to a user-entered URL (with optional JSON body) and displays status, timing, and response body. No persistence, collections, environments, auth, or scripting yet — see `docs/superpowers/specs/` for the full design.
 
 ## Features
 
@@ -27,6 +27,6 @@ Vertical slice: a single-window request editor that sends `GET`/`POST`/`PUT`/`DE
 - Tomlyn (TOML parsing)
 - AvaloniaEdit (syntax highlighting)
 
-## Status
+## Future improvements
 
-Early development. Design phase in progress.
+Currently in development, will update later.
