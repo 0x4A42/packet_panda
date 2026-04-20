@@ -5,6 +5,7 @@
         xmlns:vm="using:PacketPanda.Desktop.ViewModels"
         xmlns:views="using:PacketPanda.Desktop.Views"
         xmlns:conv="using:PacketPanda.Desktop.Converters"
+        xmlns:envs="using:PacketPanda.Core.Environments"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="PacketPanda.Desktop.Views.MainWindow"
         x:DataType="vm:ShellViewModel"
@@ -76,7 +77,7 @@
         <GridSplitter Grid.Column="1" Background="#CCCCCC" ResizeDirection="Columns" />
 
         <Grid Grid.Column="2" RowDefinitions="Auto,*">
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="4">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="4">
                 <TabStrip ItemsSource="{Binding Tabs}"
                           SelectedItem="{Binding ActiveTab}">
                     <TabStrip.ItemTemplate>
@@ -112,6 +113,20 @@
                         Command="{Binding NewTabCommand}"
                         Margin="4,0,0,0"
                         Padding="8,2" />
+
+                <ComboBox Grid.Column="2"
+                          ItemsSource="{Binding AvailableEnvironments}"
+                          SelectedItem="{Binding SelectedEnvironment}"
+                          PlaceholderText="No environment"
+                          Width="160"
+                          Margin="4,0,4,0"
+                          VerticalAlignment="Center">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate DataType="envs:EnvironmentRef">
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
             </Grid>
 
             <ContentControl Grid.Row="1"
