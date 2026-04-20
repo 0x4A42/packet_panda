@@ -58,3 +58,7 @@ publish/
 
 ## Git worktrees
 .worktrees/
+
+## Claude / superpowers (working-tree only)
+.claude/
+docs/superpowers/

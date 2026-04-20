@@ -1,4 +1,5 @@
 using System.Reactive;
+using System.Reactive.Linq;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -7,7 +8,7 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
 
-public class MainWindowViewModel : ViewModelBase
+public class RequestEditorViewModel : ViewModelBase
 {
     private readonly IHttpRequestSender _sender;
     private readonly IRequestFileStore _store;
@@ -21,8 +22,12 @@ public class MainWindowViewModel : ViewModelBase
     private string? _responseBody;
     private string? _errorMessage;
     private string? _currentFilePath;
+    private bool _isDirty;
+    private RequestSnapshot? _savedSnapshot;
 
-    public MainWindowViewModel(IHttpRequestSender sender, IRequestFileStore store, IFilePickerService picker)
+    private sealed record RequestSnapshot(HttpMethod Method, string Url, string? Body);
+
+    public RequestEditorViewModel(IHttpRequestSender sender, IRequestFileStore store, IFilePickerService picker)
     {
         _sender = sender;
         _store = store;
@@ -35,6 +40,14 @@ public class MainWindowViewModel : ViewModelBase
         OpenCommand = ReactiveCommand.CreateFromTask(OpenAsync);
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
         SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync, canSave);
+
+        this.WhenAnyValue(
+                vm => vm.SelectedMethod,
+                vm => vm.Url,
+                vm => vm.RequestBody)
+            .Subscribe(_ => RecomputeDirty());
+
+        CaptureSnapshot();
     }
 
     public HttpMethod SelectedMethod
@@ -83,6 +96,12 @@ public class MainWindowViewModel : ViewModelBase
     {
         get => _currentFilePath;
         set => this.RaiseAndSetIfChanged(ref _currentFilePath, value);
+    }
+
+    public bool IsDirty
+    {
+        get => _isDirty;
+        private set => this.RaiseAndSetIfChanged(ref _isDirty, value);
     }
 
     public ReactiveCommand<Unit, Unit> SendCommand { get; }
@@ -140,6 +159,7 @@ public class MainWindowViewModel : ViewModelBase
             ElapsedMilliseconds = null;
             ErrorMessage = null;
             CurrentFilePath = path;
+            CaptureSnapshot();
         }
         catch (RequestFileException ex)
         {
@@ -175,6 +195,7 @@ public class MainWindowViewModel : ViewModelBase
             var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
             var request = new HttpRequest(SelectedMethod, Url, body);
             await _store.SaveAsync(path, request);
+            CaptureSnapshot();
             ErrorMessage = null;
             return true;
         }
@@ -183,5 +204,24 @@ public class MainWindowViewModel : ViewModelBase
             ErrorMessage = ex.Message;
             return false;
         }
+    }
+
+    private void RecomputeDirty()
+    {
+        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
+        var current = new RequestSnapshot(SelectedMethod, Url, body);
+        IsDirty = _savedSnapshot != current;
+    }
+
+    private void CaptureSnapshot()
+    {
+        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
+        _savedSnapshot = new RequestSnapshot(SelectedMethod, Url, body);
+        IsDirty = false;
+    }
+
+    public void MarkSaved()
+    {
+        CaptureSnapshot();
     }
 }

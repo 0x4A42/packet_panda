@@ -1,9 +1,8 @@
-using Avalonia.ReactiveUI;
-using PacketPanda.Desktop.ViewModels;
+using Avalonia.Controls;
 
 namespace PacketPanda.Desktop.Views;
 
-public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
+public partial class MainWindow : Window
 {
     public MainWindow()
     {

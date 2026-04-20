@@ -29,12 +29,12 @@ dotnet test --watch   # run tests in watch mode
 
 ### Current state (vertical slice)
 
-Only the request-editor + response-viewer flow is implemented. The left "Collections" panel is a placeholder. There is no persistence, no environments, no auth, no scripting, no in-client tests yet — those are separate future tasks per the parent design spec. The one architectural seam that exists is `PacketPanda.Core.Http.IHttpRequestSender`; the ViewModel depends on it and tests mock it with Moq.
+The request-editor + response-viewer flow is implemented, plus a collections sidebar and multi-tab editor. Users can open a folder of `.toml` requests, click a request to open it in a tab, edit and save through Open/Save/Save As, and have their workspace auto-reopen on the next launch. Environments, auth, scripting, and in-client tests remain future work per the parent design spec. Architectural seams in place: `PacketPanda.Core.Http.IHttpRequestSender`, `PacketPanda.Core.Persistence.IRequestFileStore`, `PacketPanda.Core.Persistence.IWorkspaceScanner`, `PacketPanda.Core.Persistence.ISettingsStore`, `PacketPanda.Desktop.Services.IFilePickerService`, `IFolderPickerService`, `IDialogService` — ViewModels depend on these and tests mock them with Moq.
 
 3-panel Avalonia desktop app following ReactiveUI MVVM conventions:
 
 - **Left panel** — Collections sidebar: folders and saved requests loaded from disk
-- **Center panel** — Request editor: method, URL, headers, body, authentication
+- **Center panel** — Tab bar + request editor: method, URL, body. Multiple requests open in tabs with dirty indicators.
 - **Right panel** — Response viewer: syntax-highlighted body, headers, status/timing, per-request history
 
 **Data layer — filesystem only.** There is no database. Collections map to directories; individual requests are `.toml` files inside them. Environments are also `.toml` files stored alongside collections. ViewModels read/write these files directly through an abstracted file service (mockable for tests).

@@ -9,13 +9,13 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.ViewModels;
 
-public class MainWindowViewModelTests
+public class RequestEditorViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
     private readonly Mock<IRequestFileStore> _store = new(MockBehavior.Strict);
     private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
 
-    private MainWindowViewModel CreateVm() => new(_sender.Object, _store.Object, _picker.Object);
+    private RequestEditorViewModel CreateVm() => new(_sender.Object, _store.Object, _picker.Object);
 
     [Fact]
     public async Task Send_PopulatesResponseFieldsFromOkResult()
@@ -293,5 +293,88 @@ public class MainWindowViewModelTests
 
         vm.ErrorMessage.Should().Be("Could not write file: access denied");
         vm.CurrentFilePath.Should().Be("/tmp/req.toml");
+    }
+
+    [Fact]
+    public void IsDirty_FreshViewModel_IsFalse()
+    {
+        var vm = CreateVm();
+
+        vm.IsDirty.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsDirty_AfterEditingUrl_IsTrue()
+    {
+        var vm = CreateVm();
+
+        vm.Url = "https://example.com";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsDirty_AfterEditingBody_IsTrue()
+    {
+        var vm = CreateVm();
+
+        vm.RequestBody = "{}";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsDirty_AfterEditingMethod_IsTrue()
+    {
+        var vm = CreateVm();
+
+        vm.SelectedMethod = HttpMethod.Post;
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsDirty_IsFalseAfterSuccessfulOpen()
+    {
+        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/req.toml");
+        _store.Setup(s => s.LoadAsync("/tmp/req.toml"))
+              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://example.com", null));
+
+        var vm = CreateVm();
+        vm.Url = "dirty";
+
+        await vm.OpenCommand.Execute();
+
+        vm.IsDirty.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsDirty_IsFalseAfterSuccessfulSave()
+    {
+        _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
+              .Returns(Task.CompletedTask);
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.CurrentFilePath = "/tmp/req.toml";
+
+        await vm.SaveCommand.Execute();
+
+        vm.IsDirty.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsDirty_StaysTrueAfterFailedSave()
+    {
+        _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
+              .ThrowsAsync(new RequestFileException("disk full"));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.CurrentFilePath = "/tmp/req.toml";
+
+        await vm.SaveCommand.Execute();
+
+        vm.IsDirty.Should().BeTrue();
     }
 }

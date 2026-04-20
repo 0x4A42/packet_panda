@@ -3,86 +3,125 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+        xmlns:views="using:PacketPanda.Desktop.Views"
         xmlns:conv="using:PacketPanda.Desktop.Converters"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="PacketPanda.Desktop.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
+        x:DataType="vm:ShellViewModel"
         Title="PacketPanda"
         Width="1200" Height="800">
-    <Grid ColumnDefinitions="250,4,*,4,400">
-        <Border Grid.Column="0" Padding="12">
-            <TextBlock Text="Collections" FontWeight="SemiBold" />
-        </Border>
 
-        <GridSplitter Grid.Column="1" Background="#222" ResizeDirection="Columns" />
+    <Window.Resources>
+        <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
+        <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
+    </Window.Resources>
 
-        <Border Grid.Column="2" Padding="12">
-            <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
-                    <Button Content="Open…" Command="{Binding OpenCommand}" />
-                    <Button Content="Save" Command="{Binding SaveCommand}" />
-                    <Button Content="Save As…" Command="{Binding SaveAsCommand}" />
-                </StackPanel>
+    <Grid ColumnDefinitions="280,4,*">
+        <Grid Grid.Column="0" RowDefinitions="Auto,*" Background="#F5F5F5">
 
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                    <ComboBox Grid.Column="0"
-                              ItemsSource="{Binding AvailableMethods}"
-                              SelectedItem="{Binding SelectedMethod}"
-                              MinWidth="100">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Converter={x:Static conv:UpperCaseConverter.Instance}}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <TextBox Grid.Column="1"
-                             Text="{Binding Url}"
-                             Watermark="https://example.com/endpoint" />
-                    <Button Grid.Column="2"
-                            Content="Send"
-                            Command="{Binding SendCommand}" />
-                </Grid>
+            <!-- Toolbar: Open + Close workspace -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <Button Grid.Column="0"
+                        Content="Open…"
+                        Background="White"
+                        Margin="8,8,4,8"
+                        HorizontalAlignment="Stretch"
+                        Command="{Binding OpenFileCommand}">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#E8E8E8" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
 
-                <TextBlock Grid.Row="2" Text="Body (JSON, optional)" Opacity="0.7" />
-
-                <TextBox Grid.Row="3"
-                         Text="{Binding RequestBody}"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         FontFamily="Consolas,Menlo,monospace"
-                         Watermark="{}{ &quot;key&quot;: &quot;value&quot; }" />
+                <Button Grid.Column="1"
+                        Content="×"
+                        Margin="0,8,8,8"
+                        Padding="8,4"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        IsVisible="{Binding Sidebar.WorkspacePath, Converter={StaticResource IsNotNullConverter}}"
+                        Command="{Binding Sidebar.CloseWorkspaceCommand}"
+                        ToolTip.Tip="Close workspace" />
             </Grid>
-        </Border>
 
-        <GridSplitter Grid.Column="3" Background="#222" ResizeDirection="Columns" />
+            <!-- Collapsable folder tree -->
+            <TreeView Grid.Row="1"
+                      Background="Transparent"
+                      ItemsSource="{Binding Sidebar.RootNodes}"
+                      SelectedItem="{Binding Sidebar.SelectedNode}">
+                <TreeView.DataTemplates>
+                    <TreeDataTemplate DataType="vm:CollectionNodeViewModel"
+                                      ItemsSource="{Binding Children}">
+                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                            <Border IsVisible="{Binding Method, Converter={StaticResource IsNotNullConverter}}"
+                                    Background="{Binding Method, Converter={StaticResource MethodBrushConverter}}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Method}"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           Foreground="White" />
+                            </Border>
+                            <TextBlock Text="{Binding Name}"
+                                       Foreground="#1E1E1E"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </TreeDataTemplate>
+                </TreeView.DataTemplates>
+            </TreeView>
+        </Grid>
 
-        <Border Grid.Column="4" Padding="12">
-            <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
-                <TextBlock Grid.Row="0"
-                           Text="{Binding ErrorMessage}"
-                           Foreground="IndianRed"
-                           TextWrapping="Wrap"
-                           IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <GridSplitter Grid.Column="1" Background="#CCCCCC" ResizeDirection="Columns" />
 
-                <StackPanel Grid.Row="1"
-                            Orientation="Horizontal"
-                            Spacing="12"
-                            IsVisible="{Binding StatusCode, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <TextBlock Text="Status:" Opacity="0.7" />
-                    <TextBlock Text="{Binding StatusCode}" FontWeight="SemiBold" />
-                    <TextBlock Text="Elapsed:" Opacity="0.7" />
-                    <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat='{}{0} ms'}" />
-                </StackPanel>
+        <Grid Grid.Column="2" RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="4">
+                <TabStrip ItemsSource="{Binding Tabs}"
+                          SelectedItem="{Binding ActiveTab}">
+                    <TabStrip.ItemTemplate>
+                        <DataTemplate DataType="vm:TabViewModel">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
+                                        CornerRadius="2"
+                                        Padding="4,1"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding MethodLabel}"
+                                               FontSize="9"
+                                               FontWeight="Bold"
+                                               Foreground="White" />
+                                </Border>
+                                <TextBlock Text="{Binding DisplayTitle}" VerticalAlignment="Center" />
+                                <TextBlock Text="●"
+                                           FontSize="7"
+                                           Foreground="#999"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding ShowDirtyIndicator}" />
+                                <Button Content="×"
+                                        Command="{Binding CloseCommand}"
+                                        Padding="4,0"
+                                        Background="Transparent"
+                                        BorderThickness="0" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </TabStrip.ItemTemplate>
+                </TabStrip>
 
-                <TextBlock Grid.Row="2" Text="Response body" Opacity="0.7" />
-
-                <TextBox Grid.Row="3"
-                         Text="{Binding ResponseBody}"
-                         IsReadOnly="True"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         FontFamily="Consolas,Menlo,monospace" />
+                <Button Grid.Column="1"
+                        Content="+"
+                        Command="{Binding NewTabCommand}"
+                        Margin="4,0,0,0"
+                        Padding="8,2" />
             </Grid>
-        </Border>
+
+            <ContentControl Grid.Row="1"
+                            Content="{Binding ActiveTab.Editor}">
+                <ContentControl.DataTemplates>
+                    <DataTemplate DataType="vm:RequestEditorViewModel">
+                        <views:RequestEditorView />
+                    </DataTemplate>
+                </ContentControl.DataTemplates>
+            </ContentControl>
+        </Grid>
     </Grid>
 </Window>
