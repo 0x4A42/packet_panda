@@ -9,13 +9,13 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.ViewModels;
 
-public class MainWindowViewModelTests
+public class RequestEditorViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
     private readonly Mock<IRequestFileStore> _store = new(MockBehavior.Strict);
     private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
 
-    private MainWindowViewModel CreateVm() => new(_sender.Object, _store.Object, _picker.Object);
+    private RequestEditorViewModel CreateVm() => new(_sender.Object, _store.Object, _picker.Object);
 
     [Fact]
     public async Task Send_PopulatesResponseFieldsFromOkResult()

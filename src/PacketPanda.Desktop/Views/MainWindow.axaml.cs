@@ -3,7 +3,7 @@ using PacketPanda.Desktop.ViewModels;
 
 namespace PacketPanda.Desktop.Views;
 
-public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
+public partial class MainWindow : ReactiveWindow<RequestEditorViewModel>
 {
     public MainWindow()
     {

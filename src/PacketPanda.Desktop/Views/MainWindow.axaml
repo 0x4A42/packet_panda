@@ -6,7 +6,7 @@
         xmlns:conv="using:PacketPanda.Desktop.Converters"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="PacketPanda.Desktop.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
+        x:DataType="vm:RequestEditorViewModel"
         Title="PacketPanda"
         Width="1200" Height="800">
     <Grid ColumnDefinitions="250,4,*,4,400">

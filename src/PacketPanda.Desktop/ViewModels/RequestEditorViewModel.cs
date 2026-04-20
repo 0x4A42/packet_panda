@@ -7,7 +7,7 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
 
-public class MainWindowViewModel : ViewModelBase
+public class RequestEditorViewModel : ViewModelBase
 {
     private readonly IHttpRequestSender _sender;
     private readonly IRequestFileStore _store;
@@ -22,7 +22,7 @@ public class MainWindowViewModel : ViewModelBase
     private string? _errorMessage;
     private string? _currentFilePath;
 
-    public MainWindowViewModel(IHttpRequestSender sender, IRequestFileStore store, IFilePickerService picker)
+    public RequestEditorViewModel(IHttpRequestSender sender, IRequestFileStore store, IFilePickerService picker)
     {
         _sender = sender;
         _store = store;

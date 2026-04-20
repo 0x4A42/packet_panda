@@ -29,7 +29,7 @@ public partial class App : Application
 
             var mainWindow = new MainWindow();
             var picker = new AvaloniaFilePickerService(mainWindow);
-            mainWindow.DataContext = new MainWindowViewModel(sender, store, picker);
+            mainWindow.DataContext = new RequestEditorViewModel(sender, store, picker);
 
             desktop.MainWindow = mainWindow;
 
