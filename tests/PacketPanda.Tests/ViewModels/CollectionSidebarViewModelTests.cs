@@ -48,6 +48,23 @@ public class CollectionSidebarViewModelTests
     }
 
     [Fact]
+    public async Task CloseWorkspaceCommand_ClearsStateAndSavesSettings()
+    {
+        var tree = new FolderNode("root", "/ws", []);
+        _scanner.Setup(s => s.ScanAsync("/ws")).ReturnsAsync(tree);
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var vm = CreateVm();
+        await vm.LoadWorkspaceAsync("/ws");
+
+        await vm.CloseWorkspaceCommand.Execute();
+
+        vm.WorkspacePath.Should().BeNull();
+        vm.RootNodes.Should().BeEmpty();
+        _settings.Verify(s => s.SaveAsync(It.Is<AppSettings>(a => a.LastWorkspacePath == null)), Times.Once);
+    }
+
+    [Fact]
     public void SelectedNode_SetToRequestNode_FiresRequestOpened()
     {
         var vm = CreateVm();

@@ -15,12 +15,13 @@ public class TabViewModel : ReactiveObject
         Editor = editor;
         _dialog = dialog;
 
-        this.WhenAnyValue(t => t.Editor.CurrentFilePath, t => t.Editor.IsDirty)
+        this.WhenAnyValue(t => t.Editor.CurrentFilePath, t => t.Editor.IsDirty, t => t.Editor.SelectedMethod)
             .Subscribe(_ =>
             {
                 this.RaisePropertyChanged(nameof(FilePath));
                 this.RaisePropertyChanged(nameof(IsDirty));
                 this.RaisePropertyChanged(nameof(Title));
+                this.RaisePropertyChanged(nameof(MethodLabel));
             });
 
         CloseCommand = ReactiveCommand.CreateFromTask(CloseAsync);
@@ -42,6 +43,8 @@ public class TabViewModel : ReactiveObject
             return IsDirty ? $"{name} ●" : name;
         }
     }
+
+    public string MethodLabel => Editor.SelectedMethod.ToString().ToUpperInvariant();
 
     public ReactiveCommand<Unit, Unit> CloseCommand { get; }
 

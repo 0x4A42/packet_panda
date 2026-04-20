@@ -18,25 +18,41 @@
 
     <Grid ColumnDefinitions="280,4,*">
         <Grid Grid.Column="0" RowDefinitions="Auto,*" Background="#F5F5F5">
-            <Button Grid.Row="0"
-                    Content="Open…"
-                    Background="White"
-                    Margin="8"
-                    HorizontalAlignment="Stretch"
-                    Command="{Binding OpenFileCommand}">
-                <Button.Styles>
-                    <Style Selector="Button:pointerover /template/ ContentPresenter">
-                        <Setter Property="Background" Value="#E8E8E8" />
-                    </Style>
-                </Button.Styles>
-            </Button>
 
+            <!-- Toolbar: Open + Close workspace -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <Button Grid.Column="0"
+                        Content="Open…"
+                        Background="White"
+                        Margin="8,8,4,8"
+                        HorizontalAlignment="Stretch"
+                        Command="{Binding OpenFileCommand}">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#E8E8E8" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
+                <Button Grid.Column="1"
+                        Content="×"
+                        Margin="0,8,8,8"
+                        Padding="8,4"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        IsVisible="{Binding Sidebar.WorkspacePath, Converter={StaticResource IsNotNullConverter}}"
+                        Command="{Binding Sidebar.CloseWorkspaceCommand}"
+                        ToolTip.Tip="Close workspace" />
+            </Grid>
+
+            <!-- Collapsable folder tree -->
             <TreeView Grid.Row="1"
+                      Background="Transparent"
                       ItemsSource="{Binding Sidebar.RootNodes}"
                       SelectedItem="{Binding Sidebar.SelectedNode}">
-                <TreeView.ItemTemplate>
-                    <TreeDataTemplate ItemsSource="{Binding Children}"
-                                      DataType="vm:CollectionNodeViewModel">
+                <TreeView.DataTemplates>
+                    <TreeDataTemplate DataType="vm:CollectionNodeViewModel"
+                                      ItemsSource="{Binding Children}">
                         <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                             <Border IsVisible="{Binding Method, Converter={StaticResource IsNotNullConverter}}"
                                     Background="{Binding Method, Converter={StaticResource MethodBrushConverter}}"
@@ -53,7 +69,7 @@
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </TreeDataTemplate>
-                </TreeView.ItemTemplate>
+                </TreeView.DataTemplates>
             </TreeView>
         </Grid>
 
@@ -65,7 +81,16 @@
                           SelectedItem="{Binding ActiveTab}">
                     <TabStrip.ItemTemplate>
                         <DataTemplate DataType="vm:TabViewModel">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
+                                        CornerRadius="2"
+                                        Padding="4,1"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding MethodLabel}"
+                                               FontSize="9"
+                                               FontWeight="Bold"
+                                               Foreground="White" />
+                                </Border>
                                 <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                                 <Button Content="×"
                                         Command="{Binding CloseCommand}"

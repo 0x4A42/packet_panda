@@ -28,6 +28,9 @@ public class CollectionSidebarViewModel : ReactiveObject
         RootNodes = new ObservableCollection<CollectionNodeViewModel>();
         OpenRequestCommand = ReactiveCommand.CreateFromTask<CollectionNodeViewModel>(OpenRequestAsync);
 
+        var hasWorkspace = this.WhenAnyValue(x => x.WorkspacePath).Select(p => p is not null);
+        CloseWorkspaceCommand = ReactiveCommand.CreateFromTask(CloseWorkspaceAsync, hasWorkspace);
+
         _selectedNodeSub = this.WhenAnyValue(x => x.SelectedNode)
             .Where(n => n != null && !n.IsFolder)
             .Subscribe(n => _requestOpened.OnNext(n!.Path));
@@ -48,6 +51,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     }
 
     public ReactiveCommand<CollectionNodeViewModel, Unit> OpenRequestCommand { get; }
+    public ReactiveCommand<Unit, Unit> CloseWorkspaceCommand { get; }
 
     public IObservable<string> RequestOpened => _requestOpened;
 
@@ -75,6 +79,16 @@ public class CollectionSidebarViewModel : ReactiveObject
         }
 
         try { await _settings.SaveAsync(new AppSettings(path)); }
+        catch (SettingsException) { }
+    }
+
+    private async Task CloseWorkspaceAsync()
+    {
+        RootNodes.Clear();
+        WorkspacePath = null;
+        SelectedNode = null;
+        ErrorMessage = null;
+        try { await _settings.SaveAsync(new AppSettings()); }
         catch (SettingsException) { }
     }
 
