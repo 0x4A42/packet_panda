@@ -11,16 +11,18 @@
         Width="1200" Height="800">
     <Grid ColumnDefinitions="280,4,*">
         <Grid Grid.Column="0" RowDefinitions="Auto,*" Background="#111">
-            <StackPanel Grid.Row="0" Spacing="4" Margin="8">
-                <Button Content="Open Folder…"
-                        Command="{Binding Sidebar.OpenWorkspaceCommand}"
-                        Background="#555"
-                        HorizontalAlignment="Stretch" />
-                <Button Content="Open File…"
-                        Command="{Binding OpenFileCommand}"
-                        Background="#555"
-                        HorizontalAlignment="Stretch" />
-            </StackPanel>
+            <Button Grid.Row="0"
+                    Content="Open…"
+                    Background="White"
+                    Margin="8"
+                    HorizontalAlignment="Stretch">
+                <Button.Flyout>
+                    <MenuFlyout>
+                        <MenuItem Header="Open Folder…" Command="{Binding Sidebar.OpenWorkspaceCommand}" />
+                        <MenuItem Header="Open File…" Command="{Binding OpenFileCommand}" />
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
 
             <TreeView Grid.Row="1"
                       ItemsSource="{Binding Sidebar.RootNodes}">
