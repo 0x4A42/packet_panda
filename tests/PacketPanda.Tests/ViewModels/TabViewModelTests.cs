@@ -98,6 +98,7 @@ public class TabViewModelTests
         await tab.CloseCommand.Execute();
 
         observed.Should().BeTrue();
+        _dialog.Verify(d => d.ConfirmDiscardAsync(It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
