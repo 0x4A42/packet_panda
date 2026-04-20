@@ -53,7 +53,7 @@ public class TabViewModel : ReactiveObject
     {
         if (IsDirty)
         {
-            var discard = await _dialog.ConfirmDiscardAsync(Title);
+            var discard = await _dialog.ConfirmDiscardAsync(DisplayTitle);
             if (!discard) return;
         }
 
