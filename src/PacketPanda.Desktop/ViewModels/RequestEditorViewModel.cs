@@ -1,4 +1,5 @@
 using System.Reactive;
+using System.Reactive.Linq;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -21,6 +22,10 @@ public class RequestEditorViewModel : ViewModelBase
     private string? _responseBody;
     private string? _errorMessage;
     private string? _currentFilePath;
+    private bool _isDirty;
+    private RequestSnapshot? _savedSnapshot;
+
+    private sealed record RequestSnapshot(HttpMethod Method, string Url, string? Body);
 
     public RequestEditorViewModel(IHttpRequestSender sender, IRequestFileStore store, IFilePickerService picker)
     {
@@ -35,6 +40,14 @@ public class RequestEditorViewModel : ViewModelBase
         OpenCommand = ReactiveCommand.CreateFromTask(OpenAsync);
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
         SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync, canSave);
+
+        this.WhenAnyValue(
+                vm => vm.SelectedMethod,
+                vm => vm.Url,
+                vm => vm.RequestBody)
+            .Subscribe(_ => RecomputeDirty());
+
+        CaptureSnapshot();
     }
 
     public HttpMethod SelectedMethod
@@ -83,6 +96,12 @@ public class RequestEditorViewModel : ViewModelBase
     {
         get => _currentFilePath;
         set => this.RaiseAndSetIfChanged(ref _currentFilePath, value);
+    }
+
+    public bool IsDirty
+    {
+        get => _isDirty;
+        private set => this.RaiseAndSetIfChanged(ref _isDirty, value);
     }
 
     public ReactiveCommand<Unit, Unit> SendCommand { get; }
@@ -140,6 +159,7 @@ public class RequestEditorViewModel : ViewModelBase
             ElapsedMilliseconds = null;
             ErrorMessage = null;
             CurrentFilePath = path;
+            CaptureSnapshot();
         }
         catch (RequestFileException ex)
         {
@@ -175,6 +195,7 @@ public class RequestEditorViewModel : ViewModelBase
             var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
             var request = new HttpRequest(SelectedMethod, Url, body);
             await _store.SaveAsync(path, request);
+            CaptureSnapshot();
             ErrorMessage = null;
             return true;
         }
@@ -183,5 +204,24 @@ public class RequestEditorViewModel : ViewModelBase
             ErrorMessage = ex.Message;
             return false;
         }
+    }
+
+    private void RecomputeDirty()
+    {
+        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
+        var current = new RequestSnapshot(SelectedMethod, Url, body);
+        IsDirty = _savedSnapshot != current;
+    }
+
+    private void CaptureSnapshot()
+    {
+        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
+        _savedSnapshot = new RequestSnapshot(SelectedMethod, Url, body);
+        IsDirty = false;
+    }
+
+    public void MarkSaved()
+    {
+        CaptureSnapshot();
     }
 }
