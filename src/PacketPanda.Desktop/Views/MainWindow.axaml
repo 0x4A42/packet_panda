@@ -16,6 +16,11 @@
                     Background="White"
                     Margin="8"
                     HorizontalAlignment="Stretch">
+                <Button.Styles>
+                    <Style Selector="Button:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#E8E8E8" />
+                    </Style>
+                </Button.Styles>
                 <Button.Flyout>
                     <MenuFlyout>
                         <MenuItem Header="Open Folder…" Command="{Binding Sidebar.OpenWorkspaceCommand}" />
