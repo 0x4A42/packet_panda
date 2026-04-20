@@ -46,7 +46,11 @@ public sealed class TomlSettingsStore : ISettingsStore
         if (table.TryGetValue("last_workspace_path", out var v) && v is string s)
             workspace = s;
 
-        return new AppSettings(workspace);
+        string? activeEnv = null;
+        if (table.TryGetValue("active_environment_name", out var a) && a is string aStr)
+            activeEnv = aStr;
+
+        return new AppSettings(workspace, activeEnv);
     }
 
     public async Task SaveAsync(AppSettings settings)
@@ -58,6 +62,8 @@ public sealed class TomlSettingsStore : ISettingsStore
         var table = new TomlTable();
         if (!string.IsNullOrEmpty(settings.LastWorkspacePath))
             table["last_workspace_path"] = settings.LastWorkspacePath;
+        if (!string.IsNullOrEmpty(settings.ActiveEnvironmentName))
+            table["active_environment_name"] = settings.ActiveEnvironmentName;
 
         var toml = Toml.FromModel(table);
         try
