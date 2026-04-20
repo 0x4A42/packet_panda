@@ -20,6 +20,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
     private readonly BehaviorSubject<Environment?> _activeEnvSubject = new(null);
     private readonly IDisposable _envScannedSub;
+    private readonly IDisposable _envOpenSub;
+    private readonly IDisposable _activateEnvSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -47,12 +49,31 @@ public class ShellViewModel : ViewModelBase, IDisposable
         OpenFileInTabCommand = ReactiveCommand.CreateFromTask<string>(OpenFileInTabAsync);
         OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
 
+        EnvironmentSidebar = new EnvironmentSidebarViewModel(
+            environmentStore,
+            dialog,
+            () => Sidebar.WorkspacePath);
+
         Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
 
-        _envScannedSub = sidebar.EnvironmentsScanned.Subscribe(envs => UpdateAvailableEnvironments(envs));
+        _envScannedSub = sidebar.EnvironmentsScanned.Subscribe(envs =>
+        {
+            UpdateAvailableEnvironments(envs);
+            EnvironmentSidebar.SetEnvironments(envs);
+        });
+
+        _envOpenSub = EnvironmentSidebar.EnvironmentOpenRequested
+            .Subscribe(path => _ = OpenEnvironmentInTabAsync(path));
+
+        _activateEnvSub = EnvironmentSidebar.ActivateRequested
+            .Subscribe(name =>
+            {
+                SelectedEnvironment = AvailableEnvironments.FirstOrDefault(e => e.Name == name);
+            });
     }
 
     public CollectionSidebarViewModel Sidebar { get; }
+    public EnvironmentSidebarViewModel EnvironmentSidebar { get; }
     public ObservableCollection<TabViewModel> Tabs { get; }
     public ObservableCollection<EnvironmentRef> AvailableEnvironments { get; } = new();
     public IObservable<Environment?> ActiveEnvironmentObservable => _activeEnvSubject;
@@ -203,6 +224,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _envScannedSub.Dispose();
+        _envOpenSub.Dispose();
+        _activateEnvSub.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

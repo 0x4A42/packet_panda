@@ -50,4 +50,100 @@ public sealed class AvaloniaDialogService(Window owner) : IDialogService
         await dialog.ShowDialog(owner);
         return result;
     }
+
+    public async Task<bool> ConfirmAsync(string title, string message)
+    {
+        var result = false;
+        var dialog = new Window
+        {
+            Title = title,
+            Width = 360,
+            Height = 140,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        var messageBlock = new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Avalonia.Thickness(16, 16, 16, 8)
+        };
+
+        var yes = new Button { Content = "Yes", Margin = new Avalonia.Thickness(4) };
+        var no = new Button { Content = "No", Margin = new Avalonia.Thickness(4), IsDefault = true, IsCancel = true };
+
+        yes.Click += (_, _) => { result = true; dialog.Close(); };
+        no.Click += (_, _) => { result = false; dialog.Close(); };
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Avalonia.Thickness(8)
+        };
+        buttons.Children.Add(yes);
+        buttons.Children.Add(no);
+
+        var layout = new DockPanel();
+        DockPanel.SetDock(buttons, Dock.Bottom);
+        layout.Children.Add(buttons);
+        layout.Children.Add(messageBlock);
+
+        dialog.Content = layout;
+
+        await dialog.ShowDialog(owner);
+        return result;
+    }
+
+    public async Task<string?> PromptTextAsync(string title, string prompt)
+    {
+        var inputWindow = new Window
+        {
+            Title = title,
+            Width = 360,
+            Height = 140,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var textBox = new Avalonia.Controls.TextBox
+        {
+            Margin = new Avalonia.Thickness(12, 12, 12, 8),
+            Watermark = prompt
+        };
+
+        var okButton = new Button { Content = "OK", Margin = new Avalonia.Thickness(4) };
+        var cancelButton = new Button { Content = "Cancel", Margin = new Avalonia.Thickness(4), IsCancel = true };
+
+        okButton.Click += (_, _) => { inputWindow.Close(); };
+        cancelButton.Click += (_, _) => { textBox.Text = null; inputWindow.Close(); };
+        textBox.KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Enter) inputWindow.Close();
+            if (e.Key == Avalonia.Input.Key.Escape) { textBox.Text = null; inputWindow.Close(); }
+        };
+
+        var buttonRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 8,
+            Margin = new Avalonia.Thickness(8)
+        };
+        buttonRow.Children.Add(cancelButton);
+        buttonRow.Children.Add(okButton);
+
+        var layout = new DockPanel();
+        DockPanel.SetDock(buttonRow, Dock.Bottom);
+        layout.Children.Add(buttonRow);
+        layout.Children.Add(textBox);
+
+        inputWindow.Content = layout;
+
+        await inputWindow.ShowDialog(owner);
+
+        var result = textBox.Text;
+        return string.IsNullOrWhiteSpace(result) ? null : result.Trim();
+    }
 }

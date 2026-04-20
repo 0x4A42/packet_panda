@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             xmlns:envs="using:PacketPanda.Core.Environments"
+             x:Class="PacketPanda.Desktop.Views.EnvironmentSidebarView"
+             x:DataType="vm:EnvironmentSidebarViewModel">
+    <Grid RowDefinitions="Auto,*">
+        <Button Grid.Row="0"
+                Content="+ New Environment"
+                Command="{Binding NewEnvironmentCommand}"
+                HorizontalAlignment="Stretch"
+                Margin="8,8,8,4"
+                Padding="8,4" />
+
+        <ListBox Grid.Row="1"
+                 x:Name="EnvList"
+                 ItemsSource="{Binding Items}"
+                 SelectionMode="Single"
+                 Background="Transparent">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="envs:EnvironmentRef">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Name}"
+                                   VerticalAlignment="Center"
+                                   Margin="4,0,0,0"
+                                   Cursor="Hand">
+                            <TextBlock.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Open"
+                                              Command="{Binding $parent[ListBox].DataContext.OpenEnvironmentCommand}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="Delete"
+                                              Command="{Binding $parent[ListBox].DataContext.DeleteEnvironmentCommand}"
+                                              CommandParameter="{Binding}" />
+                                </ContextMenu>
+                            </TextBlock.ContextMenu>
+                        </TextBlock>
+                        <Button Grid.Column="1"
+                                Content="Activate"
+                                Command="{Binding $parent[ListBox].DataContext.ActivateEnvironmentCommand}"
+                                CommandParameter="{Binding}"
+                                Padding="4,2"
+                                FontSize="10"
+                                Margin="4,0,4,0"
+                                Background="Transparent"
+                                BorderThickness="1" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>
