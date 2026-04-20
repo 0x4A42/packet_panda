@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Persistence;
@@ -55,10 +56,14 @@ public class ShellViewModel : ViewModelBase, IDisposable
                     ActiveTab.CloseCommand.Execute().Subscribe();
             });
 
+        var hasWorkspace = sidebar.WhenAnyValue(s => s.WorkspacePath)
+            .Select(p => p is not null);
+
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
             dialog,
-            () => Sidebar.WorkspacePath);
+            () => Sidebar.WorkspacePath,
+            hasWorkspace);
 
         Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
 

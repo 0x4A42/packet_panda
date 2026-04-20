@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
 using PacketPanda.Desktop.Services;
@@ -37,14 +38,16 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     public EnvironmentSidebarViewModel(
         IEnvironmentFileStore store,
         IDialogService dialog,
-        Func<string?> getWorkspaceRoot)
+        Func<string?> getWorkspaceRoot,
+        IObservable<bool>? canExecuteWorkspaceCommands = null)
     {
         _store = store;
         _dialog = dialog;
         _getWorkspaceRoot = getWorkspaceRoot;
 
-        NewEnvironmentCommand = ReactiveCommand.CreateFromTask(NewEnvironmentAsync);
-        DeleteEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(DeleteEnvironmentAsync);
+        var canExecute = canExecuteWorkspaceCommands ?? Observable.Return(true);
+        NewEnvironmentCommand = ReactiveCommand.CreateFromTask(NewEnvironmentAsync, canExecute);
+        DeleteEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(DeleteEnvironmentAsync, canExecute);
         OpenEnvironmentCommand = ReactiveCommand.Create<EnvironmentRef>(env =>
             _environmentOpenRequested.OnNext(env.FilePath));
         ActivateEnvironmentCommand = ReactiveCommand.Create<EnvironmentRef>(env =>
