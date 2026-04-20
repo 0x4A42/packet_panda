@@ -11,6 +11,7 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NuGetAuditMode>direct</NuGetAuditMode>
+    <AssemblyName>PacketPanda</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
