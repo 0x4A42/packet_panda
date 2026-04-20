@@ -11,6 +11,7 @@ public class ShellViewModel : ViewModelBase
     private readonly Func<RequestEditorViewModel> _editorFactory;
     private readonly IDialogService _dialog;
     private readonly IRequestFileStore _store;
+    private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
 
     private TabViewModel? _activeTab;
 
@@ -30,7 +31,7 @@ public class ShellViewModel : ViewModelBase
         NewTabCommand = ReactiveCommand.Create(AddBlankTab);
         OpenFileInTabCommand = ReactiveCommand.CreateFromTask<string>(OpenFileInTabAsync);
 
-        Sidebar.RequestOpened.Subscribe(path => OpenFileInTabCommand.Execute(path).Subscribe());
+        Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
     }
 
     public CollectionSidebarViewModel Sidebar { get; }
@@ -49,7 +50,7 @@ public class ShellViewModel : ViewModelBase
     {
         var editor = _editorFactory();
         var tab = new TabViewModel(editor, _dialog);
-        tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
         Tabs.Add(tab);
         ActiveTab = tab;
     }
@@ -79,7 +80,7 @@ public class ShellViewModel : ViewModelBase
         }
 
         var tab = new TabViewModel(editor, _dialog);
-        tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
         Tabs.Add(tab);
         ActiveTab = tab;
     }
@@ -91,6 +92,9 @@ public class ShellViewModel : ViewModelBase
 
         var wasActive = ReferenceEquals(ActiveTab, tab);
         Tabs.RemoveAt(index);
+
+        if (_closeSubscriptions.Remove(tab, out var sub))
+            sub.Dispose();
 
         if (!wasActive) return;
 
