@@ -48,6 +48,34 @@ public class CollectionSidebarViewModelTests
     }
 
     [Fact]
+    public void SelectedNode_SetToRequestNode_FiresRequestOpened()
+    {
+        var vm = CreateVm();
+        var node = new CollectionNodeViewModel("a.toml", "/ws/a.toml", isFolder: false, method: null, []);
+
+        string? received = null;
+        vm.RequestOpened.Subscribe(p => received = p);
+
+        vm.SelectedNode = node;
+
+        received.Should().Be("/ws/a.toml");
+    }
+
+    [Fact]
+    public void SelectedNode_SetToFolderNode_DoesNotFireRequestOpened()
+    {
+        var vm = CreateVm();
+        var folder = new CollectionNodeViewModel("api", "/ws/api", isFolder: true, method: null, []);
+
+        string? received = null;
+        vm.RequestOpened.Subscribe(p => received = p);
+
+        vm.SelectedNode = folder;
+
+        received.Should().BeNull();
+    }
+
+    [Fact]
     public async Task RequestOpened_FiresWhenRequestNodeActivated()
     {
         var vm = CreateVm();

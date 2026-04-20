@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Persistence;
 using ReactiveUI;
@@ -14,6 +15,8 @@ public class CollectionSidebarViewModel : ReactiveObject
 
     private string? _workspacePath;
     private string? _errorMessage;
+    private CollectionNodeViewModel? _selectedNode;
+    private readonly IDisposable _selectedNodeSub;
 
     public CollectionSidebarViewModel(
         IWorkspaceScanner scanner,
@@ -24,6 +27,10 @@ public class CollectionSidebarViewModel : ReactiveObject
 
         RootNodes = new ObservableCollection<CollectionNodeViewModel>();
         OpenRequestCommand = ReactiveCommand.CreateFromTask<CollectionNodeViewModel>(OpenRequestAsync);
+
+        _selectedNodeSub = this.WhenAnyValue(x => x.SelectedNode)
+            .Where(n => n != null && !n.IsFolder)
+            .Subscribe(n => _requestOpened.OnNext(n!.Path));
     }
 
     public ObservableCollection<CollectionNodeViewModel> RootNodes { get; }
@@ -43,6 +50,12 @@ public class CollectionSidebarViewModel : ReactiveObject
     public ReactiveCommand<CollectionNodeViewModel, Unit> OpenRequestCommand { get; }
 
     public IObservable<string> RequestOpened => _requestOpened;
+
+    public CollectionNodeViewModel? SelectedNode
+    {
+        get => _selectedNode;
+        set => this.RaiseAndSetIfChanged(ref _selectedNode, value);
+    }
 
     public async Task LoadWorkspaceAsync(string path)
     {

@@ -4,11 +4,18 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:PacketPanda.Desktop.ViewModels"
         xmlns:views="using:PacketPanda.Desktop.Views"
+        xmlns:conv="using:PacketPanda.Desktop.Converters"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="PacketPanda.Desktop.Views.MainWindow"
         x:DataType="vm:ShellViewModel"
         Title="PacketPanda"
         Width="1200" Height="800">
+
+    <Window.Resources>
+        <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
+        <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
+    </Window.Resources>
+
     <Grid ColumnDefinitions="280,4,*">
         <Grid Grid.Column="0" RowDefinitions="Auto,*" Background="#F5F5F5">
             <Button Grid.Row="0"
@@ -25,13 +32,26 @@
             </Button>
 
             <TreeView Grid.Row="1"
-                      ItemsSource="{Binding Sidebar.RootNodes}">
+                      ItemsSource="{Binding Sidebar.RootNodes}"
+                      SelectedItem="{Binding Sidebar.SelectedNode}">
                 <TreeView.ItemTemplate>
                     <TreeDataTemplate ItemsSource="{Binding Children}"
                                       DataType="vm:CollectionNodeViewModel">
-                        <TextBlock Text="{Binding DisplayName}"
-                                   Foreground="#1E1E1E"
-                                   DoubleTapped="OnNodeDoubleTapped" />
+                        <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                            <Border IsVisible="{Binding Method, Converter={StaticResource IsNotNullConverter}}"
+                                    Background="{Binding Method, Converter={StaticResource MethodBrushConverter}}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Method}"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           Foreground="White" />
+                            </Border>
+                            <TextBlock Text="{Binding Name}"
+                                       Foreground="#1E1E1E"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
                     </TreeDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
