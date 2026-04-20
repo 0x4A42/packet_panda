@@ -1,7 +1,9 @@
 using System.Net.Http;
+using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -36,7 +38,12 @@ public partial class App : Application
 
             var sidebar = new CollectionSidebarViewModel(scanner, settingsStore);
 
-            RequestEditorViewModel EditorFactory() => new(sender, store, filePicker);
+            RequestEditorViewModel EditorFactory() => new(
+                sender,
+                store,
+                filePicker,
+                new VariableResolver(),
+                Observable.Return<PacketPanda.Core.Environments.Environment?>(null));
 
             var shell = new ShellViewModel(sidebar, EditorFactory, dialog, store, filePicker);
             mainWindow.DataContext = shell;

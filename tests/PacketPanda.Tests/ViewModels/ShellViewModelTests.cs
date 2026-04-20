@@ -1,10 +1,13 @@
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using FluentAssertions;
 using Moq;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
+using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.ViewModels;
@@ -23,7 +26,9 @@ public class ShellViewModelTests
         new(_scanner.Object, _settings.Object);
 
     private RequestEditorViewModel NewEditor() =>
-        new(_sender.Object, _store.Object, _picker.Object);
+        new(_sender.Object, _store.Object, _picker.Object,
+            new VariableResolver(),
+            new BehaviorSubject<Environment?>(null));
 
     private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null) =>
         new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object, _picker.Object);

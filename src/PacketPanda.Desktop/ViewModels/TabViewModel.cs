@@ -58,5 +58,6 @@ public class TabViewModel : ReactiveObject
         }
 
         _closeRequested.OnNext(Unit.Default);
+        Editor.Dispose();
     }
 }

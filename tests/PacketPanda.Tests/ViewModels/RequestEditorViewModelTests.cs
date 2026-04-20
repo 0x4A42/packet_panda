@@ -1,10 +1,13 @@
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using FluentAssertions;
 using Moq;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
+using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.ViewModels;
@@ -15,7 +18,12 @@ public class RequestEditorViewModelTests
     private readonly Mock<IRequestFileStore> _store = new(MockBehavior.Strict);
     private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
 
-    private RequestEditorViewModel CreateVm() => new(_sender.Object, _store.Object, _picker.Object);
+    private RequestEditorViewModel CreateVm() => new(
+        _sender.Object,
+        _store.Object,
+        _picker.Object,
+        new VariableResolver(),
+        new BehaviorSubject<Environment?>(null));
 
     [Fact]
     public async Task Send_PopulatesResponseFieldsFromOkResult()
@@ -376,5 +384,49 @@ public class RequestEditorViewModelTests
         await vm.SaveCommand.Execute();
 
         vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Send_UnresolvedVariables_DoesNotCallSenderAndSetsError()
+    {
+        var sender = new Mock<IHttpRequestSender>();
+        var activeEnv = new BehaviorSubject<Environment?>(null);
+        var vm = new RequestEditorViewModel(
+            sender.Object,
+            Mock.Of<IRequestFileStore>(),
+            Mock.Of<IFilePickerService>(),
+            new VariableResolver(),
+            activeEnv);
+        vm.Url = "{{baseUrl}}/users";
+
+        await vm.SendCommand.Execute();
+
+        vm.ErrorMessage.Should().Contain("baseUrl");
+        sender.Verify(s => s.SendAsync(It.IsAny<HttpRequest>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Send_AllResolved_PassesResolvedUrlToSender()
+    {
+        var sender = new Mock<IHttpRequestSender>();
+        sender.Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
+        var env = new Environment("dev", "/e.toml",
+            new Dictionary<string, string> { ["baseUrl"] = "https://api" });
+        var activeEnv = new BehaviorSubject<Environment?>(env);
+        var vm = new RequestEditorViewModel(
+            sender.Object,
+            Mock.Of<IRequestFileStore>(),
+            Mock.Of<IFilePickerService>(),
+            new VariableResolver(),
+            activeEnv);
+        vm.Url = "{{baseUrl}}/users";
+
+        await vm.SendCommand.Execute();
+
+        sender.Verify(s => s.SendAsync(
+            It.Is<HttpRequest>(r => r.Url == "https://api/users"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        vm.ErrorMessage.Should().BeNull();
     }
 }

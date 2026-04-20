@@ -1,5 +1,7 @@
 using System.Reactive;
 using System.Reactive.Linq;
+using PacketPanda.Core.Environments;
+using Environment = PacketPanda.Core.Environments.Environment;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -8,11 +10,14 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
 
-public class RequestEditorViewModel : ViewModelBase
+public class RequestEditorViewModel : ViewModelBase, IDisposable
 {
     private readonly IHttpRequestSender _sender;
     private readonly IRequestFileStore _store;
     private readonly IFilePickerService _picker;
+    private readonly IVariableResolver _resolver;
+    private Environment? _activeEnv;
+    private IDisposable? _activeEnvSub;
 
     private HttpMethod _selectedMethod = HttpMethod.Get;
     private string _url = string.Empty;
@@ -27,11 +32,18 @@ public class RequestEditorViewModel : ViewModelBase
 
     private sealed record RequestSnapshot(HttpMethod Method, string Url, string? Body);
 
-    public RequestEditorViewModel(IHttpRequestSender sender, IRequestFileStore store, IFilePickerService picker)
+    public RequestEditorViewModel(
+        IHttpRequestSender sender,
+        IRequestFileStore store,
+        IFilePickerService picker,
+        IVariableResolver resolver,
+        IObservable<Environment?> activeEnvironment)
     {
         _sender = sender;
         _store = store;
         _picker = picker;
+        _resolver = resolver;
+        _activeEnvSub = activeEnvironment.Subscribe(env => _activeEnv = env);
 
         var canSend = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
         var canSave = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
@@ -121,8 +133,26 @@ public class RequestEditorViewModel : ViewModelBase
     {
         ErrorMessage = null;
 
-        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-        var request = new HttpRequest(SelectedMethod, Url, body);
+        var urlResult = _resolver.Resolve(Url, _activeEnv);
+        var bodyTemplate = RequestBody ?? string.Empty;
+        var bodyResult = _resolver.Resolve(bodyTemplate, _activeEnv);
+
+        var unresolved = urlResult.UnresolvedNames
+            .Concat(bodyResult.UnresolvedNames)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (unresolved.Count > 0)
+        {
+            ErrorMessage = $"Unresolved variables: {string.Join(", ", unresolved)}";
+            StatusCode = null;
+            ResponseBody = null;
+            ElapsedMilliseconds = null;
+            return;
+        }
+
+        var body = string.IsNullOrEmpty(bodyResult.Text) ? null : bodyResult.Text;
+        var request = new HttpRequest(SelectedMethod, urlResult.Text, body);
         var result = await _sender.SendAsync(request);
 
         switch (result)
@@ -141,6 +171,11 @@ public class RequestEditorViewModel : ViewModelBase
                 ElapsedMilliseconds = null;
                 break;
         }
+    }
+
+    public void Dispose()
+    {
+        _activeEnvSub?.Dispose();
     }
 
     private async Task OpenAsync()
