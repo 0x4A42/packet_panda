@@ -26,16 +26,43 @@ public partial class App : Application
             _httpClient = new HttpClient();
             var sender = new HttpRequestSender(_httpClient);
             var store = new TomlRequestFileStore();
+            var scanner = new WorkspaceScanner();
+            var settingsStore = new TomlSettingsStore(TomlSettingsStore.DefaultPath);
 
             var mainWindow = new MainWindow();
-            var picker = new AvaloniaFilePickerService(mainWindow);
-            mainWindow.DataContext = new RequestEditorViewModel(sender, store, picker);
+
+            var filePicker = new AvaloniaFilePickerService(mainWindow);
+            var folderPicker = new AvaloniaFolderPickerService(mainWindow);
+            var dialog = new AvaloniaDialogService(mainWindow);
+
+            var sidebar = new CollectionSidebarViewModel(folderPicker, scanner, settingsStore);
+
+            RequestEditorViewModel EditorFactory() => new(sender, store, filePicker);
+
+            var shell = new ShellViewModel(sidebar, EditorFactory, dialog, store);
+            mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;
+
+            _ = AutoReopenAsync(sidebar, settingsStore);
 
             desktop.Exit += (_, _) => _httpClient?.Dispose();
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static async Task AutoReopenAsync(CollectionSidebarViewModel sidebar, ISettingsStore settings)
+    {
+        try
+        {
+            var app = await settings.LoadAsync();
+            if (!string.IsNullOrEmpty(app.LastWorkspacePath) && Directory.Exists(app.LastWorkspacePath))
+                await sidebar.LoadWorkspaceAsync(app.LastWorkspacePath);
+        }
+        catch (SettingsException)
+        {
+            // Non-fatal — sidebar starts empty.
+        }
     }
 }
