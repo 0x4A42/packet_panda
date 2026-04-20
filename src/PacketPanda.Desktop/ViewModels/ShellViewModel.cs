@@ -56,14 +56,10 @@ public class ShellViewModel : ViewModelBase, IDisposable
                     ActiveTab.CloseCommand.Execute().Subscribe();
             });
 
-        var hasWorkspace = sidebar.WhenAnyValue(s => s.WorkspacePath)
-            .Select(p => p is not null);
-
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
             dialog,
-            () => Sidebar.WorkspacePath,
-            hasWorkspace);
+            () => Sidebar.WorkspacePath);
 
         Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
 

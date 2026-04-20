@@ -38,16 +38,14 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     public EnvironmentSidebarViewModel(
         IEnvironmentFileStore store,
         IDialogService dialog,
-        Func<string?> getWorkspaceRoot,
-        IObservable<bool>? canExecuteWorkspaceCommands = null)
+        Func<string?> getWorkspaceRoot)
     {
         _store = store;
         _dialog = dialog;
         _getWorkspaceRoot = getWorkspaceRoot;
 
-        var canExecute = canExecuteWorkspaceCommands ?? Observable.Return(true);
-        NewEnvironmentCommand = ReactiveCommand.CreateFromTask(NewEnvironmentAsync, canExecute);
-        DeleteEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(DeleteEnvironmentAsync, canExecute);
+        NewEnvironmentCommand = ReactiveCommand.CreateFromTask(NewEnvironmentAsync);
+        DeleteEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(DeleteEnvironmentAsync);
         OpenEnvironmentCommand = ReactiveCommand.Create<EnvironmentRef>(env =>
             _environmentOpenRequested.OnNext(env.FilePath));
         ActivateEnvironmentCommand = ReactiveCommand.Create<EnvironmentRef>(env =>
@@ -64,7 +62,12 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     private async Task NewEnvironmentAsync()
     {
         var root = _getWorkspaceRoot();
-        if (root is null) return;
+        if (root is null)
+        {
+            await _dialog.ConfirmAsync("No workspace open",
+                "Open a workspace folder first by clicking 'Open…' in the Requests tab.");
+            return;
+        }
 
         var name = await _dialog.PromptTextAsync("New Environment", "Environment name");
         if (string.IsNullOrWhiteSpace(name)) return;
