@@ -85,6 +85,7 @@ public class ShellViewModelTests
 
         shell.Tabs.Should().ContainSingle();
         shell.ActiveTab!.Editor.ErrorMessage.Should().Be("Invalid TOML: bad");
+        shell.ActiveTab.FilePath.Should().Be("/tmp/bad.toml");
     }
 
     [Fact]

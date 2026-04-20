@@ -6,7 +6,7 @@ using ReactiveUI;
 
 namespace PacketPanda.Desktop.ViewModels;
 
-public class ShellViewModel : ViewModelBase
+public class ShellViewModel : ViewModelBase, IDisposable
 {
     private readonly Func<RequestEditorViewModel> _editorFactory;
     private readonly IDialogService _dialog;
@@ -77,12 +77,20 @@ public class ShellViewModel : ViewModelBase
         catch (RequestFileException ex)
         {
             editor.ErrorMessage = ex.Message;
+            editor.CurrentFilePath = path;
         }
 
         var tab = new TabViewModel(editor, _dialog);
         _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
         Tabs.Add(tab);
         ActiveTab = tab;
+    }
+
+    public void Dispose()
+    {
+        foreach (var sub in _closeSubscriptions.Values)
+            sub.Dispose();
+        _closeSubscriptions.Clear();
     }
 
     private void CloseTab(TabViewModel tab)

@@ -46,7 +46,7 @@ public partial class App : Application
 
             _ = AutoReopenAsync(sidebar, settingsStore);
 
-            desktop.Exit += (_, _) => _httpClient?.Dispose();
+            desktop.Exit += (_, _) => { _httpClient?.Dispose(); shell.Dispose(); };
         }
 
         base.OnFrameworkInitializationCompleted();
