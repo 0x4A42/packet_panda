@@ -21,6 +21,7 @@ public class TabViewModel : ReactiveObject
                 this.RaisePropertyChanged(nameof(FilePath));
                 this.RaisePropertyChanged(nameof(IsDirty));
                 this.RaisePropertyChanged(nameof(Title));
+                this.RaisePropertyChanged(nameof(DisplayTitle));
                 this.RaisePropertyChanged(nameof(MethodLabel));
             });
 
@@ -33,16 +34,11 @@ public class TabViewModel : ReactiveObject
 
     public bool IsDirty => Editor.IsDirty;
 
-    public string Title
-    {
-        get
-        {
-            var name = FilePath is null
-                ? "Untitled"
-                : Path.GetFileNameWithoutExtension(FilePath);
-            return IsDirty ? $"{name} ●" : name;
-        }
-    }
+    public string DisplayTitle => FilePath is null
+        ? "Untitled"
+        : Path.GetFileNameWithoutExtension(FilePath);
+
+    public string Title => IsDirty ? $"{DisplayTitle} ●" : DisplayTitle;
 
     public string MethodLabel => Editor.SelectedMethod.ToString().ToUpperInvariant();
 
