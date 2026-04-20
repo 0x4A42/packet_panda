@@ -39,13 +39,16 @@
 
             <!-- Save icon + Save As caret -->
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
-                <Button Content="💾"
-                        Command="{Binding SaveCommand}"
+                <Button Command="{Binding SaveCommand}"
                         Background="Transparent"
                         BorderThickness="0"
                         Padding="8,6"
-                        FontSize="15"
-                        ToolTip.Tip="Save" />
+                        ToolTip.Tip="Save">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="💾" FontSize="15" VerticalAlignment="Center" />
+                        <TextBlock Text="Save" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
                 <Button Content="▾"
                         Background="Transparent"
                         BorderThickness="0"
