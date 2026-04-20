@@ -43,7 +43,7 @@ public sealed class TomlSettingsStore : ISettingsStore
         }
 
         string? workspace = null;
-        if (table.TryGetValue("last_workspace_path", out var v) && v is string s && s.Length > 0)
+        if (table.TryGetValue("last_workspace_path", out var v) && v is string s)
             workspace = s;
 
         return new AppSettings(workspace);
