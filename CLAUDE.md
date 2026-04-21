@@ -49,19 +49,15 @@ The request-editor + response-viewer flow is implemented, plus a collections sid
 
 ## Testing Conventions
 
-- Tests use **FluentAssertions** for all assertions — `value.Should().Be(...)`, never `Assert.Equal(...)`. Consistency across the suite beats xUnit's default style.
-- FluentAssertions is pinned to **7.2.0** (the last Apache-2.0 licensed version). Do not upgrade to 8.x without discussion — 8.x switched to a commercial licence.
-- Mocks use **Moq** — `new Mock<IFoo>()`, `.Setup(...)`, `.Verify(...)`. Do not introduce NSubstitute or other mocking libraries.
-- Test method names follow the `Subject_Scenario_ExpectedOutcome` pattern with PascalCase within each segment — e.g. `Save_Failure_SetsErrorMessageAndLeavesCurrentFilePathUnchanged`. No lowercase words between underscores.
+- Tests use **FluentAssertions** for all assertions — `value.Should().Be(...)`, never `Assert.Equal(...)`.
+- FluentAssertions is pinned to **7.2.0** (the last Apache-2.0 licensed version).
+- Mocks use **Moq** — `new Mock<IFoo>()`, `.Setup(...)`, `.Verify(...)`.
+- Test method names follow the `Subject_Scenario_ExpectedOutcome` pattern with PascalCase within each segment — e.g. `Save_Failure_SetsErrorMessageAndLeavesCurrentFilePathUnchanged`.
 
 ## Workflow Constraints
 
 - Each functional piece gets its own branch, named `task/<feature-name>` (e.g., `task/add-environments`). Create and checkout the branch before starting work on that piece.
 - Commit early and often — commit each completed piece of work, not just at feature completion.
-- Run `dotnet test` before every commit and only commit if all tests pass.
 - All PR titles must use semantic commit format: `type(scope): description` — e.g., `feat(auth): add bearer token support`, `fix(env): resolve variable substitution order`. Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
-- Keep documentation in sync with code. When a change affects CLAUDE.md, a design spec under `docs/superpowers/specs/`, or the README, update those docs in the same unit of work — don't let them drift.
+- Keep documentation in sync with code. When a change affects CLAUDE.md or the README, update those docs in the same unit of work — don't let them drift.
 
-## Design Spec
-
-Full design rationale and feature scope: `docs/superpowers/specs/2026-04-17-packet-panda-design.md`
