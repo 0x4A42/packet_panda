@@ -53,7 +53,7 @@ public partial class App : Application
 
             desktop.MainWindow = mainWindow;
 
-            _ = AutoReopenAsync(sidebar, settingsStore);
+            _ = AutoReopenAsync(sidebar, settingsStore, shell);
 
             desktop.Exit += (_, _) => { _httpClient?.Dispose(); shell.Dispose(); };
         }
@@ -61,11 +61,13 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static async Task AutoReopenAsync(CollectionSidebarViewModel sidebar, ISettingsStore settings)
+    private static async Task AutoReopenAsync(CollectionSidebarViewModel sidebar, ISettingsStore settings, ShellViewModel shell)
     {
         try
         {
             var app = await settings.LoadAsync();
+            // Set pending env name BEFORE loading workspace so RestoreSelectedEnvironment picks it up
+            shell.SetPendingActiveEnvironmentName(app.ActiveEnvironmentName);
             if (!string.IsNullOrEmpty(app.LastWorkspacePath) && Directory.Exists(app.LastWorkspacePath))
                 await sidebar.LoadWorkspaceAsync(app.LastWorkspacePath);
         }

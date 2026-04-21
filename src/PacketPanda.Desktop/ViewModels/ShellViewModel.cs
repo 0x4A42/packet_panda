@@ -27,6 +27,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
     private SidebarTab _activeSidebarTab = SidebarTab.Requests;
+    private string? _pendingActiveEnvName;
 
     public ShellViewModel(
         CollectionSidebarViewModel sidebar,
@@ -195,12 +196,27 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
+    public void SetPendingActiveEnvironmentName(string? name) => _pendingActiveEnvName = name;
+
     private void RestoreSelectedEnvironment()
     {
-        var currentName = _selectedEnvironment?.Name;
-        var match = AvailableEnvironments.FirstOrDefault(e => e.Name == currentName);
-        _selectedEnvironment = match;
-        this.RaisePropertyChanged(nameof(SelectedEnvironment));
+        var nameToRestore = _pendingActiveEnvName ?? _selectedEnvironment?.Name;
+        var isPendingRestore = _pendingActiveEnvName is not null;
+        _pendingActiveEnvName = null;
+
+        var match = AvailableEnvironments.FirstOrDefault(e => e.Name == nameToRestore);
+
+        if (isPendingRestore)
+        {
+            // Startup: use the full setter so the env is loaded and published to the subject
+            SelectedEnvironment = match;
+        }
+        else
+        {
+            // Re-scan: just re-point the reference and notify UI
+            _selectedEnvironment = match;
+            this.RaisePropertyChanged(nameof(SelectedEnvironment));
+        }
     }
 
     private async Task OnSelectedEnvironmentChangedAsync(EnvironmentRef? envRef)

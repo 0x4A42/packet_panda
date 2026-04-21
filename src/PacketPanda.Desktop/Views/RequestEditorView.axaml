@@ -36,18 +36,14 @@
                     BorderThickness="1"
                     CornerRadius="4"
                     Background="{DynamicResource TextControlBackground}"
-                    Height="34"
-                    ClipToBounds="True">
+                    Height="34">
                 <aedit:TextEditor x:Name="UrlEditor"
-                                  Document="{Binding UrlDocument}"
                                   FontFamily="Consolas,Menlo,monospace"
                                   FontSize="13"
-                                  Padding="8,6"
                                   HorizontalScrollBarVisibility="Hidden"
                                   VerticalScrollBarVisibility="Disabled"
                                   Background="Transparent"
-                                  BorderThickness="0"
-                                  VerticalAlignment="Center" />
+                                  BorderThickness="0" />
             </Border>
 
             <Button Grid.Column="2"
@@ -88,13 +84,10 @@
                 BorderThickness="1"
                 CornerRadius="4"
                 Background="{DynamicResource TextControlBackground}"
-                Height="120"
-                ClipToBounds="True">
+                Height="120">
             <aedit:TextEditor x:Name="BodyEditor"
-                              Document="{Binding BodyDocument}"
                               FontFamily="Consolas,Menlo,monospace"
                               FontSize="13"
-                              Padding="8,6"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto"
                               Background="Transparent"
