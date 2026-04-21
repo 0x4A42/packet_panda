@@ -39,3 +39,16 @@ public sealed class HttpMethodBrushConverter : IValueConverter
         _        => new SolidColorBrush(Color.Parse("#888888"))
     };
 }
+
+/// <summary>
+/// Returns true when the bound value equals ConverterParameter.
+/// Used for activity-bar active-class binding.
+/// </summary>
+public sealed class EqualityConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Equals(value, parameter);
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}

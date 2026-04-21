@@ -1,4 +1,5 @@
 using System.Reactive;
+using AvaloniaEdit.Document;
 using PacketPanda.Core.Environments;
 using Environment = PacketPanda.Core.Environments.Environment;
 using PacketPanda.Core.Http;
@@ -17,6 +18,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private readonly IVariableResolver _resolver;
     private Environment? _activeEnv;
     private IDisposable? _activeEnvSub;
+    private bool _syncingDocuments;
 
     private HttpMethod _selectedMethod = HttpMethod.Get;
     private string _url = string.Empty;
@@ -44,6 +46,25 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _resolver = resolver;
         _activeEnvSub = activeEnvironment.Subscribe(env => _activeEnv = env);
 
+        UrlDocument = new TextDocument();
+        BodyDocument = new TextDocument();
+
+        UrlDocument.TextChanged += (_, _) =>
+        {
+            if (_syncingDocuments) return;
+            _url = UrlDocument.Text;
+            this.RaisePropertyChanged(nameof(Url));
+            RecomputeDirty();
+        };
+
+        BodyDocument.TextChanged += (_, _) =>
+        {
+            if (_syncingDocuments) return;
+            _requestBody = string.IsNullOrEmpty(BodyDocument.Text) ? null : BodyDocument.Text;
+            this.RaisePropertyChanged(nameof(RequestBody));
+            RecomputeDirty();
+        };
+
         var canSend = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
         var canSave = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
 
@@ -52,14 +73,14 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
         SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync, canSave);
 
-        this.WhenAnyValue(
-                vm => vm.SelectedMethod,
-                vm => vm.Url,
-                vm => vm.RequestBody)
+        this.WhenAnyValue(vm => vm.SelectedMethod)
             .Subscribe(_ => RecomputeDirty());
 
         CaptureSnapshot();
     }
+
+    public TextDocument UrlDocument { get; }
+    public TextDocument BodyDocument { get; }
 
     public HttpMethod SelectedMethod
     {
@@ -70,13 +91,27 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public string Url
     {
         get => _url;
-        set => this.RaiseAndSetIfChanged(ref _url, value);
+        set
+        {
+            if (_url == value) return;
+            _url = value;
+            this.RaisePropertyChanged(nameof(Url));
+            SyncDocumentText(UrlDocument, value ?? string.Empty);
+            RecomputeDirty();
+        }
     }
 
     public string? RequestBody
     {
         get => _requestBody;
-        set => this.RaiseAndSetIfChanged(ref _requestBody, value);
+        set
+        {
+            if (_requestBody == value) return;
+            _requestBody = value;
+            this.RaisePropertyChanged(nameof(RequestBody));
+            SyncDocumentText(BodyDocument, value ?? string.Empty);
+            RecomputeDirty();
+        }
     }
 
     public int? StatusCode
@@ -120,13 +155,21 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveAsCommand { get; }
 
-public HttpMethod[] AvailableMethods { get; } =
+    public HttpMethod[] AvailableMethods { get; } =
     {
         HttpMethod.Get,
         HttpMethod.Post,
         HttpMethod.Put,
         HttpMethod.Delete
     };
+
+    private void SyncDocumentText(TextDocument doc, string text)
+    {
+        if (doc.Text == text) return;
+        _syncingDocuments = true;
+        try { doc.Text = text; }
+        finally { _syncingDocuments = false; }
+    }
 
     private async Task SendAsync()
     {
@@ -265,5 +308,4 @@ public HttpMethod[] AvailableMethods { get; } =
         : Path.GetFileNameWithoutExtension(CurrentFilePath);
 
     string? ITabContent.MethodLabel => SelectedMethod.ToString().ToUpperInvariant();
-
 }

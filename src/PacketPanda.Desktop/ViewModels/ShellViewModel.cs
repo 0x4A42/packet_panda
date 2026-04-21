@@ -26,6 +26,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
+    private SidebarTab _activeSidebarTab = SidebarTab.Requests;
 
     public ShellViewModel(
         CollectionSidebarViewModel sidebar,
@@ -55,6 +56,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
                 if (ActiveTab is not null)
                     ActiveTab.CloseCommand.Execute().Subscribe();
             });
+        SetRequestsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Requests; });
+        SetEnvironmentsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Environments; });
 
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
@@ -77,6 +80,12 @@ public class ShellViewModel : ViewModelBase, IDisposable
             {
                 SelectedEnvironment = AvailableEnvironments.FirstOrDefault(e => e.Name == name);
             });
+    }
+
+    public SidebarTab ActiveSidebarTab
+    {
+        get => _activeSidebarTab;
+        set => this.RaiseAndSetIfChanged(ref _activeSidebarTab, value);
     }
 
     public CollectionSidebarViewModel Sidebar { get; }
@@ -105,6 +114,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<string, Unit> OpenFileInTabCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
     public ReactiveCommand<Unit, Unit> CloseActiveTabCommand { get; }
+    public ReactiveCommand<Unit, Unit> SetRequestsTabCommand { get; }
+    public ReactiveCommand<Unit, Unit> SetEnvironmentsTabCommand { get; }
 
     private async Task OpenFileAsync()
     {

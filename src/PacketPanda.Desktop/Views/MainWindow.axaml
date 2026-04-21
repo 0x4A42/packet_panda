@@ -19,14 +19,69 @@
     <Window.Resources>
         <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
+        <conv:EqualityConverter x:Key="EqualityConverter" />
     </Window.Resources>
 
-    <Grid ColumnDefinitions="280,4,*">
-        <TabControl Grid.Column="0" TabStripPlacement="Top">
-            <TabItem Header="Requests">
-                <Grid RowDefinitions="Auto,*" Background="#F5F5F5">
+    <Window.Styles>
+        <Style Selector="Button.activity-btn">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="52" />
+            <Setter Property="Height" Value="62" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.activity-btn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3C3C3C" />
+        </Style>
+        <Style Selector="Button.activity-btn.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="#37373D" />
+        </Style>
+    </Window.Styles>
 
-                    <!-- Toolbar: Open + Close workspace -->
+    <Grid ColumnDefinitions="280,4,*">
+
+        <!-- Left panel: activity bar (52px) + sidebar content -->
+        <Grid Grid.Column="0" ColumnDefinitions="52,*">
+
+            <!-- Activity bar -->
+            <Border Grid.Column="0"
+                    Background="#252526"
+                    BorderBrush="#1E1E1E"
+                    BorderThickness="0,0,1,0">
+                <StackPanel Orientation="Vertical" Margin="0,8,0,0">
+
+                    <Button Classes="activity-btn"
+                            Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}"
+                            Command="{Binding SetRequestsTabCommand}"
+                            ToolTip.Tip="Requests">
+                        <StackPanel Orientation="Vertical" Spacing="3" HorizontalAlignment="Center">
+                            <TextBlock Text="📁" FontSize="18" HorizontalAlignment="Center" Foreground="White" />
+                            <TextBlock Text="Files" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="activity-btn"
+                            Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}"
+                            Command="{Binding SetEnvironmentsTabCommand}"
+                            ToolTip.Tip="Environments">
+                        <StackPanel Orientation="Vertical" Spacing="3" HorizontalAlignment="Center">
+                            <TextBlock Text="🌐" FontSize="18" HorizontalAlignment="Center" Foreground="White" />
+                            <TextBlock Text="Envs" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
+                        </StackPanel>
+                    </Button>
+
+                </StackPanel>
+            </Border>
+
+            <!-- Sidebar content -->
+            <Grid Grid.Column="1" Background="#F5F5F5">
+
+                <!-- Requests panel -->
+                <Grid RowDefinitions="Auto,*"
+                      IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}">
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                         <Button Grid.Column="0"
                                 Content="Open…"
@@ -40,7 +95,6 @@
                                 </Style>
                             </Button.Styles>
                         </Button>
-
                         <Button Grid.Column="1"
                                 Content="×"
                                 Margin="0,8,8,8"
@@ -51,8 +105,6 @@
                                 Command="{Binding Sidebar.CloseWorkspaceCommand}"
                                 ToolTip.Tip="Close workspace" />
                     </Grid>
-
-                    <!-- Collapsable folder tree -->
                     <TreeView Grid.Row="1"
                               Background="Transparent"
                               ItemsSource="{Binding Sidebar.RootNodes}"
@@ -71,19 +123,20 @@
                                                    FontWeight="Bold"
                                                    Foreground="White" />
                                     </Border>
-                                    <TextBlock Text="{Binding Name}"
-                                               Foreground="#1E1E1E"
-                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" Foreground="#1E1E1E" VerticalAlignment="Center" />
                                 </StackPanel>
                             </TreeDataTemplate>
                         </TreeView.DataTemplates>
                     </TreeView>
                 </Grid>
-            </TabItem>
-            <TabItem Header="Environments">
-                <views:EnvironmentSidebarView DataContext="{Binding EnvironmentSidebar}" />
-            </TabItem>
-        </TabControl>
+
+                <!-- Environments panel -->
+                <views:EnvironmentSidebarView
+                    DataContext="{Binding EnvironmentSidebar}"
+                    IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}" />
+
+            </Grid>
+        </Grid>
 
         <GridSplitter Grid.Column="1" Background="#CCCCCC" ResizeDirection="Columns" />
 

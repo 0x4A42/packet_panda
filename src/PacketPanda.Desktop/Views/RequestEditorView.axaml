@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
              xmlns:conv="using:PacketPanda.Desktop.Converters"
+             xmlns:aedit="using:AvaloniaEdit"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
              x:Class="PacketPanda.Desktop.Views.RequestEditorView"
              x:DataType="vm:RequestEditorViewModel">
@@ -14,7 +15,7 @@
 
     <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8" Margin="12">
 
-        <!-- URL bar: method selector | URL | Send | 💾 ▾ -->
+        <!-- URL bar: method selector | URL editor | Send | 💾 ▾ -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="4">
             <ComboBox Grid.Column="0"
                       ItemsSource="{Binding AvailableMethods}"
@@ -29,9 +30,25 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <TextBox Grid.Column="1"
-                     Text="{Binding Url}"
-                     Watermark="https://example.com/endpoint" />
+            <!-- Single-line URL editor with variable highlighting -->
+            <Border Grid.Column="1"
+                    BorderBrush="{DynamicResource TextControlBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Background="{DynamicResource TextControlBackground}"
+                    Height="34"
+                    ClipToBounds="True">
+                <aedit:TextEditor x:Name="UrlEditor"
+                                  Document="{Binding UrlDocument}"
+                                  FontFamily="Consolas,Menlo,monospace"
+                                  FontSize="13"
+                                  Padding="8,6"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  VerticalAlignment="Center" />
+            </Border>
 
             <Button Grid.Column="2"
                     Content="Send"
@@ -65,13 +82,25 @@
 
         <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
 
-        <TextBox Grid.Row="2"
-                 Text="{Binding RequestBody}"
-                 AcceptsReturn="True"
-                 TextWrapping="Wrap"
-                 FontFamily="Consolas,Menlo,monospace"
-                 Height="120"
-                 Watermark="{}{ &quot;key&quot;: &quot;value&quot; }" />
+        <!-- Multi-line body editor with variable highlighting -->
+        <Border Grid.Row="2"
+                BorderBrush="{DynamicResource TextControlBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Background="{DynamicResource TextControlBackground}"
+                Height="120"
+                ClipToBounds="True">
+            <aedit:TextEditor x:Name="BodyEditor"
+                              Document="{Binding BodyDocument}"
+                              FontFamily="Consolas,Menlo,monospace"
+                              FontSize="13"
+                              Padding="8,6"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              ShowLineNumbers="False" />
+        </Border>
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
