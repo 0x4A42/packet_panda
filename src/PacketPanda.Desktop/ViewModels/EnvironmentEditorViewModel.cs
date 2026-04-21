@@ -15,16 +15,16 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     private string? _currentFilePath;
     private bool _isDirty;
     private string? _errorMessage;
-    private List<(string Name, string Value)> _savedSnapshot = new();
+    private List<(string Name, string Value, string Description)> _savedSnapshot = new();
 
     public EnvironmentEditorViewModel(IEnvironmentFileStore store)
     {
         _store = store;
         Rows = new ObservableCollection<EnvironmentVariableRowViewModel>();
         Rows.CollectionChanged += OnCollectionChanged;
+        Rows.Add(new EnvironmentVariableRowViewModel()); // start with one empty trailing row
 
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync);
-        AddRowCommand = ReactiveCommand.Create(AddRow);
     }
 
     public string EnvironmentName
@@ -52,53 +52,48 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     }
 
     public ObservableCollection<EnvironmentVariableRowViewModel> Rows { get; }
-
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
-    public ReactiveCommand<Unit, Unit> AddRowCommand { get; }
 
     public void Load(Environment env)
     {
-        // Unsubscribe from all existing rows
-        foreach (var existing in Rows)
-            existing.PropertyChanged -= OnRowPropertyChanged;
-
-        Rows.Clear();
+        Rows.Clear(); // CollectionChanged handles unsubscribing old rows
 
         foreach (var kvp in env.Variables)
         {
-            var row = new EnvironmentVariableRowViewModel { Name = kvp.Key, Value = kvp.Value };
-            row.PropertyChanged += OnRowPropertyChanged;
-            Rows.Add(row);
+            var description = env.Descriptions?.GetValueOrDefault(kvp.Key) ?? string.Empty;
+            Rows.Add(new EnvironmentVariableRowViewModel
+            {
+                Name = kvp.Key,
+                Value = kvp.Value,
+                Description = description
+            });
         }
+
+        EnsureTrailingEmptyRow();
 
         EnvironmentName = env.Name;
         CurrentFilePath = env.FilePath;
         CaptureSnapshot();
     }
 
-    public void AddRow()
+    private void EnsureTrailingEmptyRow()
     {
-        var row = new EnvironmentVariableRowViewModel();
-        row.PropertyChanged += OnRowPropertyChanged;
-        Rows.Add(row);
-        RecomputeDirty();
-    }
-
-    public void RemoveRow(EnvironmentVariableRowViewModel row)
-    {
-        row.PropertyChanged -= OnRowPropertyChanged;
-        Rows.Remove(row);
-        RecomputeDirty();
+        var last = Rows.LastOrDefault();
+        if (last is null
+            || !string.IsNullOrEmpty(last.Name)
+            || !string.IsNullOrEmpty(last.Value)
+            || !string.IsNullOrEmpty(last.Description))
+        {
+            Rows.Add(new EnvironmentVariableRowViewModel());
+        }
     }
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        // Subscribe to newly added rows (handles direct collection manipulation)
         if (e.NewItems is not null)
             foreach (EnvironmentVariableRowViewModel row in e.NewItems)
                 row.PropertyChanged += OnRowPropertyChanged;
 
-        // Unsubscribe from removed rows
         if (e.OldItems is not null)
             foreach (EnvironmentVariableRowViewModel row in e.OldItems)
                 row.PropertyChanged -= OnRowPropertyChanged;
@@ -107,17 +102,26 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     }
 
     private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
-        => RecomputeDirty();
+    {
+        EnsureTrailingEmptyRow();
+        RecomputeDirty();
+    }
 
     private void RecomputeDirty()
     {
-        var current = Rows.Select(r => (r.Name, r.Value)).ToList();
+        var current = Rows
+            .Where(r => !string.IsNullOrEmpty(r.Name))
+            .Select(r => (r.Name, r.Value, r.Description))
+            .ToList();
         IsDirty = !current.SequenceEqual(_savedSnapshot);
     }
 
     private void CaptureSnapshot()
     {
-        _savedSnapshot = Rows.Select(r => (r.Name, r.Value)).ToList();
+        _savedSnapshot = Rows
+            .Where(r => !string.IsNullOrEmpty(r.Name))
+            .Select(r => (r.Name, r.Value, r.Description))
+            .ToList();
         IsDirty = false;
     }
 
@@ -132,16 +136,9 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     {
         ErrorMessage = null;
 
-        // Validate: no blank names
-        var blankRow = Rows.FirstOrDefault(r => string.IsNullOrWhiteSpace(r.Name));
-        if (blankRow is not null)
-        {
-            ErrorMessage = "Variable names cannot be blank.";
-            return;
-        }
+        var nonEmpty = Rows.Where(r => !string.IsNullOrEmpty(r.Name)).ToList();
 
-        // Validate: no duplicate names
-        var duplicates = Rows
+        var duplicates = nonEmpty
             .GroupBy(r => r.Name, StringComparer.Ordinal)
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
@@ -153,8 +150,12 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
             return;
         }
 
-        var vars = Rows.ToDictionary(r => r.Name, r => r.Value, StringComparer.Ordinal);
-        var env = new Environment(EnvironmentName, CurrentFilePath!, vars);
+        var vars = nonEmpty.ToDictionary(r => r.Name, r => r.Value, StringComparer.Ordinal);
+        var descs = nonEmpty
+            .Where(r => !string.IsNullOrEmpty(r.Description))
+            .ToDictionary(r => r.Name, r => r.Description, StringComparer.Ordinal);
+
+        var env = new Environment(EnvironmentName, CurrentFilePath!, vars, descs);
         await _store.SaveAsync(CurrentFilePath!, env);
         CaptureSnapshot();
     }

@@ -6,6 +6,7 @@ public class EnvironmentVariableRowViewModel : ReactiveObject
 {
     private string _name = string.Empty;
     private string _value = string.Empty;
+    private string _description = string.Empty;
 
     public string Name
     {
@@ -17,5 +18,11 @@ public class EnvironmentVariableRowViewModel : ReactiveObject
     {
         get => _value;
         set => this.RaiseAndSetIfChanged(ref _value, value);
+    }
+
+    public string Description
+    {
+        get => _description;
+        set => this.RaiseAndSetIfChanged(ref _description, value);
     }
 }

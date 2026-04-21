@@ -30,16 +30,33 @@ public sealed class TomlEnvironmentFileStore : IEnvironmentFileStore
             }
         }
 
-        return new Environment(name, path, vars);
+        var descriptions = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (table.TryGetValue("descriptions", out var d) && d is TomlTable dt)
+        {
+            foreach (var kvp in dt)
+                if (kvp.Value is string ds)
+                    descriptions[kvp.Key] = ds;
+        }
+
+        return new Environment(name, path, vars, descriptions);
     }
 
     public async Task SaveAsync(string path, Environment env)
     {
         var table = new TomlTable { ["name"] = env.Name };
+
         var vars = new TomlTable();
         foreach (var kvp in env.Variables)
             vars[kvp.Key] = kvp.Value;
         table["variables"] = vars;
+
+        if (env.Descriptions is { Count: > 0 })
+        {
+            var descs = new TomlTable();
+            foreach (var kvp in env.Descriptions)
+                descs[kvp.Key] = kvp.Value;
+            table["descriptions"] = descs;
+        }
 
         var toml = Toml.FromModel(table);
         try { await File.WriteAllTextAsync(path, toml); }
