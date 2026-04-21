@@ -29,16 +29,9 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <StackPanel Grid.Column="1">
-                <TextBox Text="{Binding Url}"
-                         Watermark="https://example.com/endpoint" />
-                <TextBlock x:Name="UrlVariablePreview"
-                           FontFamily="Consolas,Menlo,monospace"
-                           FontSize="11"
-                           Margin="4,2,4,0"
-                           TextWrapping="Wrap"
-                           IsVisible="False" />
-            </StackPanel>
+            <TextBox Grid.Column="1"
+                     Text="{Binding Url}"
+                     Watermark="https://example.com/endpoint" />
 
             <Button Grid.Column="2"
                     Content="Send"
@@ -72,20 +65,13 @@
 
         <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
 
-        <StackPanel Grid.Row="2">
-            <TextBox Text="{Binding RequestBody}"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     FontFamily="Consolas,Menlo,monospace"
-                     Height="120"
-                     Watermark="{}{ &quot;key&quot;: &quot;value&quot; }" />
-            <TextBlock x:Name="BodyVariablePreview"
-                       FontFamily="Consolas,Menlo,monospace"
-                       FontSize="11"
-                       Margin="4,2,4,0"
-                       TextWrapping="Wrap"
-                       IsVisible="False" />
-        </StackPanel>
+        <TextBox Grid.Row="2"
+                 Text="{Binding RequestBody}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 FontFamily="Consolas,Menlo,monospace"
+                 Height="120"
+                 Watermark="{}{ &quot;key&quot;: &quot;value&quot; }" />
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
