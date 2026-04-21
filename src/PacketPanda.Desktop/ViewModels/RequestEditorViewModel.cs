@@ -44,7 +44,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _store = store;
         _picker = picker;
         _resolver = resolver;
-        _activeEnvSub = activeEnvironment.Subscribe(env => _activeEnv = env);
+        _activeEnvSub = activeEnvironment.Subscribe(env =>
+        {
+            _activeEnv = env;
+            this.RaisePropertyChanged(nameof(ActiveEnvironmentVariables));
+        });
 
         UrlDocument = new TextDocument();
         BodyDocument = new TextDocument();
@@ -81,6 +85,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public TextDocument UrlDocument { get; }
     public TextDocument BodyDocument { get; }
+
+    public IReadOnlyDictionary<string, string>? ActiveEnvironmentVariables => _activeEnv?.Variables;
 
     public HttpMethod SelectedMethod
     {
