@@ -1,9 +1,8 @@
+using Avalonia;
 using Avalonia.Input;
 using Avalonia.ReactiveUI;
 using PacketPanda.Desktop.Highlighting;
 using PacketPanda.Desktop.ViewModels;
-using ReactiveUI;
-using System.Reactive.Disposables;
 
 namespace PacketPanda.Desktop.Views;
 
@@ -20,17 +19,26 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
             InputElement.KeyDownEvent,
             (_, e) => { if (e.Key == Key.Enter) e.Handled = true; },
             handledEventsToo: false);
+    }
 
-        this.WhenActivated(d =>
-        {
-            this.WhenAnyValue(x => x.ViewModel)
-                .WhereNotNull()
-                .Subscribe(vm =>
-                {
-                    UrlEditor.Document = vm.UrlDocument;
-                    BodyEditor.Document = vm.BodyDocument;
-                })
-                .DisposeWith(d);
-        });
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        AssignDocuments();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        AssignDocuments();
+    }
+
+    private void AssignDocuments()
+    {
+        if (DataContext is not RequestEditorViewModel vm) return;
+        if (UrlEditor.Document != vm.UrlDocument)
+            UrlEditor.Document = vm.UrlDocument;
+        if (BodyEditor.Document != vm.BodyDocument)
+            BodyEditor.Document = vm.BodyDocument;
     }
 }

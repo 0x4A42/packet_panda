@@ -31,20 +31,18 @@
             </ComboBox>
 
             <!-- Single-line URL editor with variable highlighting -->
-            <Border Grid.Column="1"
-                    BorderBrush="{DynamicResource TextControlBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Background="{DynamicResource TextControlBackground}"
-                    Height="34">
-                <aedit:TextEditor x:Name="UrlEditor"
-                                  FontFamily="Consolas,Menlo,monospace"
-                                  FontSize="13"
-                                  HorizontalScrollBarVisibility="Hidden"
-                                  VerticalScrollBarVisibility="Disabled"
-                                  Background="Transparent"
-                                  BorderThickness="0" />
-            </Border>
+            <aedit:TextEditor x:Name="UrlEditor"
+                              Grid.Column="1"
+                              FontFamily="Consolas,Menlo,monospace"
+                              FontSize="13"
+                              Height="34"
+                              HorizontalScrollBarVisibility="Hidden"
+                              VerticalScrollBarVisibility="Disabled"
+                              BorderBrush="{DynamicResource TextControlBorderBrush}"
+                              BorderThickness="1"
+                              Background="{DynamicResource TextControlBackground}"
+                              Padding="4,6"
+                              IsReadOnly="False" />
 
             <Button Grid.Column="2"
                     Content="Send"
@@ -79,21 +77,18 @@
         <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
 
         <!-- Multi-line body editor with variable highlighting -->
-        <Border Grid.Row="2"
-                BorderBrush="{DynamicResource TextControlBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="4"
-                Background="{DynamicResource TextControlBackground}"
-                Height="120">
-            <aedit:TextEditor x:Name="BodyEditor"
-                              FontFamily="Consolas,Menlo,monospace"
-                              FontSize="13"
-                              HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto"
-                              Background="Transparent"
-                              BorderThickness="0"
-                              ShowLineNumbers="False" />
-        </Border>
+        <aedit:TextEditor x:Name="BodyEditor"
+                          Grid.Row="2"
+                          FontFamily="Consolas,Menlo,monospace"
+                          FontSize="13"
+                          Height="120"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          BorderBrush="{DynamicResource TextControlBorderBrush}"
+                          BorderThickness="1"
+                          Background="{DynamicResource TextControlBackground}"
+                          ShowLineNumbers="False"
+                          IsReadOnly="False" />
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
