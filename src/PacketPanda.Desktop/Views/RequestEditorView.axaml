@@ -4,7 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
              xmlns:conv="using:PacketPanda.Desktop.Converters"
-             xmlns:aedit="using:AvaloniaEdit"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
              x:Class="PacketPanda.Desktop.Views.RequestEditorView"
              x:DataType="vm:RequestEditorViewModel">
@@ -15,7 +14,7 @@
 
     <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8" Margin="12">
 
-        <!-- URL bar: method selector | URL editor | Send | 💾 ▾ -->
+        <!-- URL bar: method selector | URL | Send | 💾 ▾ -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="4">
             <ComboBox Grid.Column="0"
                       ItemsSource="{Binding AvailableMethods}"
@@ -30,19 +29,12 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <!-- Single-line URL editor with variable highlighting -->
-            <Border Grid.Column="1"
-                    BorderBrush="{DynamicResource TextControlBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Background="{DynamicResource TextControlBackground}"
-                    Height="34">
-                <aedit:TextEditor x:Name="UrlEditor"
-                                  FontFamily="Consolas,Menlo,monospace"
-                                  FontSize="13"
-                                  HorizontalScrollBarVisibility="Hidden"
-                                  VerticalScrollBarVisibility="Disabled" />
-            </Border>
+            <TextBox Grid.Column="1"
+                     Text="{Binding Url, Mode=TwoWay}"
+                     AcceptsReturn="False"
+                     FontFamily="Consolas,Menlo,monospace"
+                     FontSize="13"
+                     VerticalContentAlignment="Center" />
 
             <Button Grid.Column="2"
                     Content="Send"
@@ -76,20 +68,15 @@
 
         <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
 
-        <!-- Multi-line body editor with variable highlighting -->
-        <Border Grid.Row="2"
-                BorderBrush="{DynamicResource TextControlBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="4"
-                Background="{DynamicResource TextControlBackground}"
-                Height="120">
-            <aedit:TextEditor x:Name="BodyEditor"
-                              FontFamily="Consolas,Menlo,monospace"
-                              FontSize="13"
-                              HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Auto"
-                              ShowLineNumbers="False" />
-        </Border>
+        <TextBox Grid.Row="2"
+                 Text="{Binding RequestBody, Mode=TwoWay}"
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap"
+                 FontFamily="Consolas,Menlo,monospace"
+                 FontSize="13"
+                 Height="120"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
