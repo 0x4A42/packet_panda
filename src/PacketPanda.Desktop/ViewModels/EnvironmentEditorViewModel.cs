@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Reactive;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
+using PacketPanda.Desktop.Services;
 using ReactiveUI;
 using Environment = PacketPanda.Core.Environments.Environment;
 
@@ -12,6 +13,7 @@ namespace PacketPanda.Desktop.ViewModels;
 public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 {
     private readonly IEnvironmentFileStore _store;
+    private readonly IDialogService _dialog;
     private string _environmentName = string.Empty;
     private string _savedName = string.Empty;
     private string? _currentFilePath;
@@ -23,9 +25,10 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
     public IObservable<Environment> Saved => _saved;
 
-    public EnvironmentEditorViewModel(IEnvironmentFileStore store)
+    public EnvironmentEditorViewModel(IEnvironmentFileStore store, IDialogService dialog)
     {
         _store = store;
+        _dialog = dialog;
         Rows = new ObservableCollection<EnvironmentVariableRowViewModel>();
         Rows.CollectionChanged += OnCollectionChanged;
         Rows.Add(new EnvironmentVariableRowViewModel());
@@ -96,6 +99,13 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     {
         _isNew = true;
         IsDirty = true;
+    }
+
+    public void RevertName()
+    {
+        _environmentName = _savedName;
+        this.RaisePropertyChanged(nameof(EnvironmentName));
+        RecomputeDirty();
     }
 
     private void EnsureTrailingEmptyRow()
@@ -171,7 +181,9 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
         if (duplicates.Count > 0)
         {
-            ErrorMessage = $"Duplicate variable names: {string.Join(", ", duplicates)}";
+            var msg = $"Duplicate variable names: {string.Join(", ", duplicates)}";
+            ErrorMessage = msg;
+            await _dialog.AlertAsync("Duplicate Variables", msg);
             return;
         }
 

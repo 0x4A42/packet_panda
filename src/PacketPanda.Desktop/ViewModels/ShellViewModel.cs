@@ -205,7 +205,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var existing = Tabs.FirstOrDefault(t => t.FilePath == filePath);
         if (existing is not null) { ActiveTab = existing; return; }
 
-        var envEditor = new EnvironmentEditorViewModel(_environmentStore);
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog);
         try
         {
             var env = await _environmentStore.LoadAsync(filePath);
@@ -239,7 +239,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var envEditor = new EnvironmentEditorViewModel(_environmentStore);
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog);
         try
         {
             var env = await _environmentStore.LoadAsync(filePath);

@@ -96,6 +96,44 @@ public sealed class AvaloniaDialogService(Window owner) : IDialogService
         return result;
     }
 
+    public async Task AlertAsync(string title, string message)
+    {
+        var dialog = new Window
+        {
+            Title = title,
+            Width = 360,
+            Height = 140,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        var messageBlock = new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Avalonia.Thickness(16, 16, 16, 8)
+        };
+
+        var ok = new Button { Content = "OK", Margin = new Avalonia.Thickness(4), IsDefault = true };
+        ok.Click += (_, _) => dialog.Close();
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Avalonia.Thickness(8)
+        };
+        buttons.Children.Add(ok);
+
+        var layout = new DockPanel();
+        DockPanel.SetDock(buttons, Dock.Bottom);
+        layout.Children.Add(buttons);
+        layout.Children.Add(messageBlock);
+
+        dialog.Content = layout;
+        await dialog.ShowDialog(owner);
+    }
+
     public async Task<string?> PromptTextAsync(string title, string prompt)
     {
         var inputWindow = new Window

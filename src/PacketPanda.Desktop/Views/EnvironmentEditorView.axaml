@@ -29,6 +29,7 @@
         </TextBox>
 
         <DataGrid Grid.Row="1"
+                  x:Name="VarsGrid"
                   ItemsSource="{Binding Rows}"
                   AutoGenerateColumns="False"
                   GridLinesVisibility="Horizontal"

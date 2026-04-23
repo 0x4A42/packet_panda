@@ -9,6 +9,7 @@ namespace PacketPanda.Desktop.Views;
 public partial class EnvironmentEditorView : ReactiveUserControl<EnvironmentEditorViewModel>
 {
     private TextBlock? _nameMirror;
+    private bool _suppressSaveOnLostFocus;
 
     public EnvironmentEditorView()
     {
@@ -31,17 +32,36 @@ public partial class EnvironmentEditorView : ReactiveUserControl<EnvironmentEdit
 
         NameBox.TextChanged += (_, _) => MeasureNameBox();
 
-        NameBox.LostFocus += (_, _) => ViewModel?.SaveCommand.Execute().Subscribe();
+        NameBox.LostFocus += (_, _) =>
+        {
+            if (_suppressSaveOnLostFocus) { _suppressSaveOnLostFocus = false; return; }
+            ViewModel?.SaveCommand.Execute().Subscribe();
+        };
 
         NameBox.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Enter)
             {
                 e.Handled = true;
+                _suppressSaveOnLostFocus = true;
                 ViewModel?.SaveCommand.Execute().Subscribe();
-                NameBox.ClearSelection();
+                MoveFocusToGrid();
+            }
+            else if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                _suppressSaveOnLostFocus = true;
+                ViewModel?.RevertName();
+                MoveFocusToGrid();
             }
         };
+
+        VarsGrid.CellPointerPressed += (_, _) => VarsGrid.BeginEdit();
+    }
+
+    private void MoveFocusToGrid()
+    {
+        VarsGrid.Focus();
     }
 
     private void MeasureNameBox()
