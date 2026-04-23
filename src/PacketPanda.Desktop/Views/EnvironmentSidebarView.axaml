@@ -27,8 +27,8 @@
                      Text="{Binding SearchText}"
                      Watermark="Search…"
                      Margin="4,0,0,0"
-                     Padding="6,4"
-                     FontSize="12" />
+                     Padding="4,2"
+                     FontSize="11" />
         </Grid>
 
         <!-- Globals pinned row -->
@@ -78,9 +78,9 @@
                                 BorderThickness="0"
                                 ToolTip.Tip="Set as active environment" />
 
-                        <!-- Edit/settings button with flyout (⋯) -->
+                        <!-- Settings/edit button with flyout -->
                         <Button Grid.Column="2"
-                                Content="⋯"
+                                Content="⚙"
                                 Padding="4,2"
                                 Margin="2,0,4,0"
                                 FontSize="13"
