@@ -6,6 +6,9 @@
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
 
         <TextBox Grid.Row="0"
+                 x:Name="NameBox"
+                 HorizontalAlignment="Left"
+                 MinWidth="80"
                  Text="{Binding EnvironmentName}"
                  FontWeight="SemiBold"
                  FontSize="15"

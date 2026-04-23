@@ -92,6 +92,16 @@ public class EnvironmentSidebarViewModel : ReactiveObject
         GlobalsRef = globalsRef;
     }
 
+    public void UpdateEnvironmentRef(string filePath, string newName)
+    {
+        var existing = _allItems.FirstOrDefault(i => i.FilePath == filePath);
+        if (existing is null || existing.Name == newName) return;
+        var newRef = new EnvironmentRef(newName, filePath);
+        var idx = _allItems.IndexOf(existing);
+        if (idx >= 0) _allItems[idx] = newRef;
+        ApplyFilter();
+    }
+
     private void ApplyFilter()
     {
         Items.Clear();

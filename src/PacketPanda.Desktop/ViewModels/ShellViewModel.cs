@@ -222,6 +222,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         {
             if (_globalsRef?.FilePath == env.FilePath) { _globals = env; _ = PublishMergedEnvAsync(); }
             else if (SelectedEnvironment?.FilePath == env.FilePath) { _loadedActiveEnv = env; _ = PublishMergedEnvAsync(); }
+            SyncEnvRefOnSave(env);
         });
         _closeSubscriptions[tab] = new CompositeDisposable(
             tab.CloseRequested.Subscribe(_ => CloseTab(tab)), savedSub);
@@ -262,6 +263,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
                 _loadedActiveEnv = env;
                 _ = PublishMergedEnvAsync();
             }
+            SyncEnvRefOnSave(env);
         });
         _closeSubscriptions[tab] = new CompositeDisposable(
             tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
@@ -431,6 +433,25 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var name = active?.Name ?? globals?.Name ?? "Merged";
         var filePath = active?.FilePath ?? globals?.FilePath ?? string.Empty;
         return new Environment(name, filePath, mergedVars);
+    }
+
+    private void SyncEnvRefOnSave(PacketPanda.Core.Environments.Environment env)
+    {
+        if (IsGlobalsFile(env.FilePath)) return;
+
+        EnvironmentSidebar.UpdateEnvironmentRef(env.FilePath, env.Name);
+
+        var pickerIdx = EnvironmentsForPicker.IndexOf(
+            EnvironmentsForPicker.FirstOrDefault(e => e.FilePath == env.FilePath)!);
+        if (pickerIdx >= 0)
+        {
+            EnvironmentsForPicker[pickerIdx] = new EnvironmentRef(env.Name, env.FilePath);
+            if (_selectedEnvironment?.FilePath == env.FilePath)
+            {
+                _selectedEnvironment = EnvironmentsForPicker[pickerIdx];
+                this.RaisePropertyChanged(nameof(SelectedEnvironment));
+            }
+        }
     }
 
     private async Task PersistActiveEnvNameAsync(string? name)
