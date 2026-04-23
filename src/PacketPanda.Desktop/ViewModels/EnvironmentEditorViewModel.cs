@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Reactive;
+using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
 using ReactiveUI;
 using Environment = PacketPanda.Core.Environments.Environment;
@@ -15,7 +16,10 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     private string? _currentFilePath;
     private bool _isDirty;
     private string? _errorMessage;
-    private List<(string Name, string Value, string Description)> _savedSnapshot = new();
+    private List<(string Name, string Value, string Description, bool IsEnabled)> _savedSnapshot = new();
+    private readonly Subject<Environment> _saved = new();
+
+    public IObservable<Environment> Saved => _saved;
 
     public EnvironmentEditorViewModel(IEnvironmentFileStore store)
     {
@@ -58,6 +62,10 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     {
         Rows.Clear(); // CollectionChanged handles unsubscribing old rows
 
+        var disabledSet = env.DisabledVariables is not null
+            ? new HashSet<string>(env.DisabledVariables, StringComparer.Ordinal)
+            : null;
+
         foreach (var kvp in env.Variables)
         {
             var description = env.Descriptions?.GetValueOrDefault(kvp.Key) ?? string.Empty;
@@ -65,7 +73,8 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
             {
                 Name = kvp.Key,
                 Value = kvp.Value,
-                Description = description
+                Description = description,
+                IsEnabled = disabledSet?.Contains(kvp.Key) != true
             });
         }
 
@@ -111,7 +120,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     {
         var current = Rows
             .Where(r => !string.IsNullOrEmpty(r.Name))
-            .Select(r => (r.Name, r.Value, r.Description))
+            .Select(r => (r.Name, r.Value, r.Description, r.IsEnabled))
             .ToList();
         IsDirty = !current.SequenceEqual(_savedSnapshot);
     }
@@ -120,7 +129,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     {
         _savedSnapshot = Rows
             .Where(r => !string.IsNullOrEmpty(r.Name))
-            .Select(r => (r.Name, r.Value, r.Description))
+            .Select(r => (r.Name, r.Value, r.Description, r.IsEnabled))
             .ToList();
         IsDirty = false;
     }
@@ -154,9 +163,15 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         var descs = nonEmpty
             .Where(r => !string.IsNullOrEmpty(r.Description))
             .ToDictionary(r => r.Name, r => r.Description, StringComparer.Ordinal);
+        var disabled = nonEmpty
+            .Where(r => !r.IsEnabled)
+            .Select(r => r.Name)
+            .ToList();
 
-        var env = new Environment(EnvironmentName, CurrentFilePath!, vars, descs);
+        var env = new Environment(EnvironmentName, CurrentFilePath!, vars, descs,
+            disabled.Count > 0 ? disabled : null);
         await _store.SaveAsync(CurrentFilePath!, env);
         CaptureSnapshot();
+        _saved.OnNext(env);
     }
 }

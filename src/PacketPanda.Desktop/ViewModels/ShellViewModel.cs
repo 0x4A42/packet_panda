@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
@@ -12,6 +13,9 @@ namespace PacketPanda.Desktop.ViewModels;
 
 public class ShellViewModel : ViewModelBase, IDisposable
 {
+    private static readonly EnvironmentRef NoEnvironmentSentinel = new("No environment", string.Empty);
+    private const string GlobalsFileName = "globals.toml";
+
     private readonly Func<RequestEditorViewModel> _editorFactory;
     private readonly IDialogService _dialog;
     private readonly IRequestFileStore _store;
@@ -23,11 +27,16 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _envScannedSub;
     private readonly IDisposable _envOpenSub;
     private readonly IDisposable _activateEnvSub;
+    private readonly IDisposable _envRenamedSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
     private SidebarTab _activeSidebarTab = SidebarTab.Requests;
     private string? _pendingActiveEnvName;
+
+    private EnvironmentRef? _globalsRef;
+    private Environment? _globals;
+    private Environment? _loadedActiveEnv;
 
     public ShellViewModel(
         CollectionSidebarViewModel sidebar,
@@ -47,6 +56,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _settings = settings;
 
         Tabs = new ObservableCollection<TabViewModel>();
+        EnvironmentsForPicker = new ObservableCollection<EnvironmentRef> { NoEnvironmentSentinel };
 
         NewTabCommand = ReactiveCommand.Create(AddBlankTab);
         OpenFileInTabCommand = ReactiveCommand.CreateFromTask<string>(OpenFileInTabAsync);
@@ -59,6 +69,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             });
         SetRequestsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Requests; });
         SetEnvironmentsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Environments; });
+        SaveActiveTabCommand = ReactiveCommand.CreateFromTask(SaveActiveTabAsync);
 
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
@@ -68,10 +79,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
 
         _envScannedSub = sidebar.EnvironmentsScanned.Subscribe(envs =>
-        {
-            EnvironmentSidebar.SetEnvironments(envs);
-            RestoreSelectedEnvironment();
-        });
+            _ = HandleEnvironmentsScanAsync(envs));
 
         _envOpenSub = EnvironmentSidebar.EnvironmentOpenRequested
             .Subscribe(path => _ = OpenEnvironmentInTabAsync(path));
@@ -79,8 +87,12 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _activateEnvSub = EnvironmentSidebar.ActivateRequested
             .Subscribe(name =>
             {
-                SelectedEnvironment = AvailableEnvironments.FirstOrDefault(e => e.Name == name);
+                SelectedEnvironment = EnvironmentsForPicker.FirstOrDefault(e => e.Name == name)
+                    ?? NoEnvironmentSentinel;
             });
+
+        _envRenamedSub = EnvironmentSidebar.EnvironmentRenamed
+            .Subscribe(rename => HandleEnvironmentRenamed(rename.OldRef, rename.NewRef));
     }
 
     public SidebarTab ActiveSidebarTab
@@ -92,7 +104,11 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public CollectionSidebarViewModel Sidebar { get; }
     public EnvironmentSidebarViewModel EnvironmentSidebar { get; }
     public ObservableCollection<TabViewModel> Tabs { get; }
-    public ObservableCollection<EnvironmentRef> AvailableEnvironments => EnvironmentSidebar.Items;
+    public ObservableCollection<EnvironmentRef> EnvironmentsForPicker { get; }
+
+    // Kept for backward compat with MainWindow binding
+    public ObservableCollection<EnvironmentRef> AvailableEnvironments => EnvironmentsForPicker;
+
     public IObservable<Environment?> ActiveEnvironmentObservable => _activeEnvSubject;
 
     public TabViewModel? ActiveTab
@@ -117,6 +133,16 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> CloseActiveTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetRequestsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetEnvironmentsTabCommand { get; }
+    public ReactiveCommand<Unit, Unit> SaveActiveTabCommand { get; }
+
+    private async Task SaveActiveTabAsync()
+    {
+        var content = ActiveTab?.Content;
+        if (content is RequestEditorViewModel req)
+            await req.SaveCommand.Execute();
+        else if (content is EnvironmentEditorViewModel env)
+            await env.SaveCommand.Execute();
+    }
 
     private async Task OpenFileAsync()
     {
@@ -191,12 +217,96 @@ public class ShellViewModel : ViewModelBase, IDisposable
         }
 
         var tab = new TabViewModel(envEditor, _dialog);
-        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+        var savedSub = envEditor.Saved.Subscribe(env =>
+        {
+            if (_globalsRef?.FilePath == env.FilePath)
+            {
+                _globals = env;
+                _ = PublishMergedEnvAsync();
+            }
+            else if (SelectedEnvironment?.FilePath == env.FilePath)
+            {
+                _loadedActiveEnv = env;
+                _ = PublishMergedEnvAsync();
+            }
+        });
+        _closeSubscriptions[tab] = new CompositeDisposable(
+            tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
+            savedSub);
         Tabs.Add(tab);
         ActiveTab = tab;
     }
 
     public void SetPendingActiveEnvironmentName(string? name) => _pendingActiveEnvName = name;
+
+    private async Task HandleEnvironmentsScanAsync(IReadOnlyList<EnvironmentRef> envs)
+    {
+        var root = Sidebar.WorkspacePath;
+        if (root is not null)
+            await EnsureGlobalsAsync(root, envs);
+
+        var nonGlobals = envs
+            .Where(e => !IsGlobalsFile(e.FilePath))
+            .ToList();
+
+        EnvironmentSidebar.SetGlobalsRef(_globalsRef);
+        EnvironmentSidebar.SetEnvironments(nonGlobals);
+        SyncEnvironmentsForPicker(nonGlobals);
+        RestoreSelectedEnvironment();
+    }
+
+    private static bool IsGlobalsFile(string filePath) =>
+        Path.GetFileName(filePath).Equals(GlobalsFileName, StringComparison.OrdinalIgnoreCase);
+
+    private async Task EnsureGlobalsAsync(string workspaceRoot, IReadOnlyList<EnvironmentRef> scannedEnvs)
+    {
+        var globalsPath = Path.Combine(workspaceRoot, "environments", GlobalsFileName);
+
+        _globalsRef = scannedEnvs.FirstOrDefault(e => IsGlobalsFile(e.FilePath))
+            ?? new EnvironmentRef("Globals", globalsPath);
+
+        if (!File.Exists(globalsPath))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath)!);
+            var empty = new Environment("Globals", globalsPath,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+            try { await _environmentStore.SaveAsync(globalsPath, empty); }
+            catch { /* best-effort */ }
+        }
+
+        try { _globals = await _environmentStore.LoadAsync(globalsPath); }
+        catch { _globals = null; }
+    }
+
+    private void SyncEnvironmentsForPicker(IReadOnlyList<EnvironmentRef> nonGlobals)
+    {
+        EnvironmentsForPicker.Clear();
+        EnvironmentsForPicker.Add(NoEnvironmentSentinel);
+        foreach (var e in nonGlobals)
+            EnvironmentsForPicker.Add(e);
+    }
+
+    private void HandleEnvironmentRenamed(EnvironmentRef oldRef, EnvironmentRef newRef)
+    {
+        // Update picker
+        var pickerIdx = EnvironmentsForPicker.IndexOf(oldRef);
+        if (pickerIdx >= 0) EnvironmentsForPicker[pickerIdx] = newRef;
+
+        // Update SelectedEnvironment if it pointed to the renamed env
+        if (_selectedEnvironment?.FilePath == oldRef.FilePath)
+        {
+            _selectedEnvironment = newRef;
+            this.RaisePropertyChanged(nameof(SelectedEnvironment));
+        }
+
+        // Close old tab and open new one
+        var oldTab = Tabs.FirstOrDefault(t => t.FilePath == oldRef.FilePath);
+        if (oldTab is not null)
+        {
+            CloseTab(oldTab);
+            _ = OpenEnvironmentInTabAsync(newRef.FilePath);
+        }
+    }
 
     private void RestoreSelectedEnvironment()
     {
@@ -204,16 +314,23 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var isPendingRestore = _pendingActiveEnvName is not null;
         _pendingActiveEnvName = null;
 
-        var match = AvailableEnvironments.FirstOrDefault(e => e.Name == nameToRestore);
+        EnvironmentRef match;
+        if (nameToRestore is null || nameToRestore == NoEnvironmentSentinel.Name)
+        {
+            match = NoEnvironmentSentinel;
+        }
+        else
+        {
+            match = EnvironmentsForPicker.FirstOrDefault(e => e.Name == nameToRestore)
+                ?? NoEnvironmentSentinel;
+        }
 
         if (isPendingRestore)
         {
-            // Startup: use the full setter so the env is loaded and published to the subject
             SelectedEnvironment = match;
         }
         else
         {
-            // Re-scan: just re-point the reference and notify UI
             _selectedEnvironment = match;
             this.RaisePropertyChanged(nameof(SelectedEnvironment));
         }
@@ -221,23 +338,66 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     private async Task OnSelectedEnvironmentChangedAsync(EnvironmentRef? envRef)
     {
-        if (envRef is null)
+        var isSentinel = envRef is null || envRef.FilePath == string.Empty;
+
+        if (isSentinel)
         {
-            _activeEnvSubject.OnNext(null);
+            _loadedActiveEnv = null;
             await PersistActiveEnvNameAsync(null);
+            await PublishMergedEnvAsync();
             return;
         }
 
         try
         {
-            var env = await _environmentStore.LoadAsync(envRef.FilePath);
-            _activeEnvSubject.OnNext(env);
+            var env = await _environmentStore.LoadAsync(envRef!.FilePath);
+            _loadedActiveEnv = env;
             await PersistActiveEnvNameAsync(envRef.Name);
         }
         catch (EnvironmentFileException)
         {
-            _activeEnvSubject.OnNext(null);
+            _loadedActiveEnv = null;
         }
+
+        await PublishMergedEnvAsync();
+    }
+
+    private Task PublishMergedEnvAsync()
+    {
+        var merged = MergeEnvironments(_globals, _loadedActiveEnv);
+        _activeEnvSubject.OnNext(merged);
+        return Task.CompletedTask;
+    }
+
+    private static Environment? MergeEnvironments(Environment? globals, Environment? active)
+    {
+        if (globals is null && active is null) return null;
+
+        var mergedVars = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        if (globals is not null)
+        {
+            var disabledGlobals = globals.DisabledVariables is not null
+                ? new HashSet<string>(globals.DisabledVariables, StringComparer.Ordinal)
+                : null;
+            foreach (var kvp in globals.Variables)
+                if (disabledGlobals?.Contains(kvp.Key) != true)
+                    mergedVars[kvp.Key] = kvp.Value;
+        }
+
+        if (active is not null)
+        {
+            var disabledActive = active.DisabledVariables is not null
+                ? new HashSet<string>(active.DisabledVariables, StringComparer.Ordinal)
+                : null;
+            foreach (var kvp in active.Variables)
+                if (disabledActive?.Contains(kvp.Key) != true)
+                    mergedVars[kvp.Key] = kvp.Value;
+        }
+
+        var name = active?.Name ?? globals?.Name ?? "Merged";
+        var filePath = active?.FilePath ?? globals?.FilePath ?? string.Empty;
+        return new Environment(name, filePath, mergedVars);
     }
 
     private async Task PersistActiveEnvNameAsync(string? name)
@@ -255,6 +415,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _envScannedSub.Dispose();
         _envOpenSub.Dispose();
         _activateEnvSub.Dispose();
+        _envRenamedSub.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

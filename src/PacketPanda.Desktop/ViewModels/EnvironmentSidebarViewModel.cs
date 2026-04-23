@@ -17,12 +17,17 @@ public class EnvironmentSidebarViewModel : ReactiveObject
 
     private readonly Subject<string> _environmentOpenRequested = new();
     private readonly Subject<string> _activateRequested = new();
+    private readonly Subject<(EnvironmentRef OldRef, EnvironmentRef NewRef)> _environmentRenamed = new();
 
+    private readonly ObservableCollection<EnvironmentRef> _allItems = new();
     private string? _activeEnvironmentName;
+    private string _searchText = string.Empty;
+    private EnvironmentRef? _globalsRef;
 
     public ObservableCollection<EnvironmentRef> Items { get; } = new();
     public IObservable<string> EnvironmentOpenRequested => _environmentOpenRequested;
     public IObservable<string> ActivateRequested => _activateRequested;
+    public IObservable<(EnvironmentRef OldRef, EnvironmentRef NewRef)> EnvironmentRenamed => _environmentRenamed;
 
     public string? ActiveEnvironmentName
     {
@@ -30,10 +35,28 @@ public class EnvironmentSidebarViewModel : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref _activeEnvironmentName, value);
     }
 
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _searchText, value);
+            ApplyFilter();
+        }
+    }
+
+    public EnvironmentRef? GlobalsRef
+    {
+        get => _globalsRef;
+        private set => this.RaiseAndSetIfChanged(ref _globalsRef, value);
+    }
+
     public ReactiveCommand<Unit, Unit> NewEnvironmentCommand { get; }
     public ReactiveCommand<EnvironmentRef, Unit> DeleteEnvironmentCommand { get; }
     public ReactiveCommand<EnvironmentRef, Unit> OpenEnvironmentCommand { get; }
     public ReactiveCommand<EnvironmentRef, Unit> ActivateEnvironmentCommand { get; }
+    public ReactiveCommand<EnvironmentRef, Unit> RenameEnvironmentCommand { get; }
+    public ReactiveCommand<EnvironmentRef, Unit> DuplicateEnvironmentCommand { get; }
 
     public EnvironmentSidebarViewModel(
         IEnvironmentFileStore store,
@@ -50,13 +73,33 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             _environmentOpenRequested.OnNext(env.FilePath));
         ActivateEnvironmentCommand = ReactiveCommand.Create<EnvironmentRef>(env =>
             _activateRequested.OnNext(env.Name));
+        RenameEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(RenameEnvironmentAsync);
+        DuplicateEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(DuplicateEnvironmentAsync);
     }
 
     public void SetEnvironments(IReadOnlyList<EnvironmentRef> envs)
     {
-        Items.Clear();
+        _allItems.Clear();
         foreach (var e in envs)
-            Items.Add(e);
+            _allItems.Add(e);
+        ApplyFilter();
+    }
+
+    public void SetGlobalsRef(EnvironmentRef? globalsRef)
+    {
+        GlobalsRef = globalsRef;
+    }
+
+    private void ApplyFilter()
+    {
+        Items.Clear();
+        var query = _searchText.Trim();
+        foreach (var e in _allItems)
+        {
+            if (string.IsNullOrEmpty(query) ||
+                e.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                Items.Add(e);
+        }
     }
 
     private async Task NewEnvironmentAsync()
@@ -84,10 +127,77 @@ public class EnvironmentSidebarViewModel : ReactiveObject
         await _store.SaveAsync(filePath, env);
 
         var envRef = new EnvironmentRef(name, filePath);
-        if (!Items.Any(i => i.FilePath == filePath))
-            Items.Add(envRef);
+        if (!_allItems.Any(i => i.FilePath == filePath))
+        {
+            _allItems.Add(envRef);
+            ApplyFilter();
+        }
 
         _environmentOpenRequested.OnNext(filePath);
+    }
+
+    private async Task RenameEnvironmentAsync(EnvironmentRef envRef)
+    {
+        var newName = await _dialog.PromptTextAsync("Rename Environment", "New name");
+        if (string.IsNullOrWhiteSpace(newName) || newName == envRef.Name) return;
+
+        var safeName = string.Concat(newName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+        if (string.IsNullOrWhiteSpace(safeName)) return;
+
+        var dir = Path.GetDirectoryName(envRef.FilePath)!;
+        var newPath = Path.Combine(dir, $"{safeName}.toml");
+
+        try
+        {
+            var env = await _store.LoadAsync(envRef.FilePath);
+            var renamed = env with { Name = newName, FilePath = newPath };
+            await _store.SaveAsync(newPath, renamed);
+            if (!string.Equals(envRef.FilePath, newPath, StringComparison.OrdinalIgnoreCase))
+                File.Delete(envRef.FilePath);
+
+            var newRef = new EnvironmentRef(newName, newPath);
+            var idx = _allItems.IndexOf(envRef);
+            if (idx >= 0) _allItems[idx] = newRef;
+            ApplyFilter();
+
+            _environmentRenamed.OnNext((envRef, newRef));
+        }
+        catch (Exception ex)
+        {
+            await _dialog.ConfirmAsync("Rename Failed", ex.Message);
+        }
+    }
+
+    private async Task DuplicateEnvironmentAsync(EnvironmentRef envRef)
+    {
+        var newName = await _dialog.PromptTextAsync("Duplicate Environment", "New environment name");
+        if (string.IsNullOrWhiteSpace(newName)) return;
+
+        var safeName = string.Concat(newName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+        if (string.IsNullOrWhiteSpace(safeName)) return;
+
+        var dir = Path.GetDirectoryName(envRef.FilePath)!;
+        var newPath = Path.Combine(dir, $"{safeName}.toml");
+
+        try
+        {
+            var env = await _store.LoadAsync(envRef.FilePath);
+            var copy = env with { Name = newName, FilePath = newPath };
+            await _store.SaveAsync(newPath, copy);
+
+            var newRef = new EnvironmentRef(newName, newPath);
+            if (!_allItems.Any(i => i.FilePath == newPath))
+            {
+                _allItems.Add(newRef);
+                ApplyFilter();
+            }
+
+            _environmentOpenRequested.OnNext(newPath);
+        }
+        catch (Exception ex)
+        {
+            await _dialog.ConfirmAsync("Duplicate Failed", ex.Message);
+        }
     }
 
     private async Task DeleteEnvironmentAsync(EnvironmentRef envRef)
@@ -99,8 +209,11 @@ public class EnvironmentSidebarViewModel : ReactiveObject
 
         try { File.Delete(envRef.FilePath); } catch { /* best-effort */ }
 
-        var existing = Items.FirstOrDefault(i => i.FilePath == envRef.FilePath);
+        var existing = _allItems.FirstOrDefault(i => i.FilePath == envRef.FilePath);
         if (existing is not null)
-            Items.Remove(existing);
+        {
+            _allItems.Remove(existing);
+            ApplyFilter();
+        }
     }
 }

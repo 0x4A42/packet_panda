@@ -38,7 +38,15 @@ public sealed class TomlEnvironmentFileStore : IEnvironmentFileStore
                     descriptions[kvp.Key] = ds;
         }
 
-        return new Environment(name, path, vars, descriptions);
+        List<string>? disabled = null;
+        if (table.TryGetValue("disabled", out var dis) && dis is TomlArray da)
+        {
+            disabled = new List<string>();
+            foreach (var item in da)
+                if (item is string sk) disabled.Add(sk);
+        }
+
+        return new Environment(name, path, vars, descriptions, disabled);
     }
 
     public async Task SaveAsync(string path, Environment env)
@@ -56,6 +64,13 @@ public sealed class TomlEnvironmentFileStore : IEnvironmentFileStore
             foreach (var kvp in env.Descriptions)
                 descs[kvp.Key] = kvp.Value;
             table["descriptions"] = descs;
+        }
+
+        if (env.DisabledVariables is { Count: > 0 })
+        {
+            var da = new TomlArray();
+            foreach (var key in env.DisabledVariables) da.Add(key);
+            table["disabled"] = da;
         }
 
         var toml = Toml.FromModel(table);

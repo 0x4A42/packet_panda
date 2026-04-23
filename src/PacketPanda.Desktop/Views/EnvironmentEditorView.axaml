@@ -23,6 +23,9 @@
                   CanUserResizeColumns="True"
                   CanUserSortColumns="False">
             <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="On"
+                                        Binding="{Binding IsEnabled}"
+                                        Width="36" />
                 <DataGridTextColumn Header="Variable"
                                     Binding="{Binding Name}"
                                     Width="2*" />
