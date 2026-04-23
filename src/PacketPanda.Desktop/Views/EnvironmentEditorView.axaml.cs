@@ -47,6 +47,16 @@ public partial class EnvironmentEditorView : ReactiveUserControl<EnvironmentEdit
         // Defer BeginEdit so cell selection has completed before edit mode starts
         VarsGrid.CellPointerPressed += (_, _) =>
             Dispatcher.UIThread.Post(() => VarsGrid.BeginEdit());
+
+        // Clicking outside the DataGrid commits any active cell edit and drops focus
+        this.AddHandler(PointerPressedEvent, (_, _) =>
+        {
+            if (!VarsGrid.IsPointerOver)
+            {
+                VarsGrid.CommitEdit(DataGridEditingUnit.Row, exitEditingMode: true);
+                ClearFocus();
+            }
+        }, Avalonia.Interactivity.RoutingStrategies.Bubble);
     }
 
     private void ClearFocus()
