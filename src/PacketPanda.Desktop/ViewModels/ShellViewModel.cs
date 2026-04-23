@@ -26,6 +26,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly BehaviorSubject<Environment?> _activeEnvSubject = new(null);
     private readonly IDisposable _envScannedSub;
     private readonly IDisposable _envOpenSub;
+    private readonly IDisposable _newEnvCreatedSub;
     private readonly IDisposable _activateEnvSub;
     private readonly IDisposable _envRenamedSub;
 
@@ -83,6 +84,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         _envOpenSub = EnvironmentSidebar.EnvironmentOpenRequested
             .Subscribe(path => _ = OpenEnvironmentInTabAsync(path));
+
+        _newEnvCreatedSub = EnvironmentSidebar.NewEnvironmentCreated
+            .Subscribe(path => _ = OpenNewEnvironmentInTabAsync(path));
 
         _activateEnvSub = EnvironmentSidebar.ActivateRequested
             .Subscribe(name =>
@@ -192,6 +196,35 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         var tab = new TabViewModel(editor, _dialog);
         _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+        Tabs.Add(tab);
+        ActiveTab = tab;
+    }
+
+    private async Task OpenNewEnvironmentInTabAsync(string filePath)
+    {
+        var existing = Tabs.FirstOrDefault(t => t.FilePath == filePath);
+        if (existing is not null) { ActiveTab = existing; return; }
+
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore);
+        try
+        {
+            var env = await _environmentStore.LoadAsync(filePath);
+            envEditor.Load(env);
+            envEditor.MarkAsNew();
+        }
+        catch (EnvironmentFileException ex)
+        {
+            envEditor.ErrorMessage = ex.Message;
+        }
+
+        var tab = new TabViewModel(envEditor, _dialog);
+        var savedSub = envEditor.Saved.Subscribe(env =>
+        {
+            if (_globalsRef?.FilePath == env.FilePath) { _globals = env; _ = PublishMergedEnvAsync(); }
+            else if (SelectedEnvironment?.FilePath == env.FilePath) { _loadedActiveEnv = env; _ = PublishMergedEnvAsync(); }
+        });
+        _closeSubscriptions[tab] = new CompositeDisposable(
+            tab.CloseRequested.Subscribe(_ => CloseTab(tab)), savedSub);
         Tabs.Add(tab);
         ActiveTab = tab;
     }
@@ -414,6 +447,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     {
         _envScannedSub.Dispose();
         _envOpenSub.Dispose();
+        _newEnvCreatedSub.Dispose();
         _activateEnvSub.Dispose();
         _envRenamedSub.Dispose();
         foreach (var sub in _closeSubscriptions.Values)

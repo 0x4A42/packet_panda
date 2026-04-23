@@ -5,11 +5,25 @@
              x:DataType="vm:EnvironmentEditorViewModel">
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
 
-        <TextBlock Grid.Row="0"
-                   Text="{Binding EnvironmentName}"
-                   FontWeight="SemiBold"
-                   FontSize="15"
-                   Margin="0,0,0,10" />
+        <TextBox Grid.Row="0"
+                 Text="{Binding EnvironmentName}"
+                 FontWeight="SemiBold"
+                 FontSize="15"
+                 Margin="0,0,0,8"
+                 Padding="2,2"
+                 Background="Transparent"
+                 BorderThickness="0,0,0,1"
+                 BorderBrush="Transparent"
+                 CornerRadius="0">
+            <TextBox.Styles>
+                <Style Selector="TextBox:focus">
+                    <Setter Property="BorderBrush" Value="#AAAAAA" />
+                </Style>
+                <Style Selector="TextBox:pointerover">
+                    <Setter Property="BorderBrush" Value="#CCCCCC" />
+                </Style>
+            </TextBox.Styles>
+        </TextBox>
 
         <DataGrid Grid.Row="1"
                   ItemsSource="{Binding Rows}"

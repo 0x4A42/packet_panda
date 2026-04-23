@@ -16,6 +16,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     private readonly Func<string?> _getWorkspaceRoot;
 
     private readonly Subject<string> _environmentOpenRequested = new();
+    private readonly Subject<string> _newEnvironmentCreated = new();
     private readonly Subject<string> _activateRequested = new();
     private readonly Subject<(EnvironmentRef OldRef, EnvironmentRef NewRef)> _environmentRenamed = new();
 
@@ -26,6 +27,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
 
     public ObservableCollection<EnvironmentRef> Items { get; } = new();
     public IObservable<string> EnvironmentOpenRequested => _environmentOpenRequested;
+    public IObservable<string> NewEnvironmentCreated => _newEnvironmentCreated;
     public IObservable<string> ActivateRequested => _activateRequested;
     public IObservable<(EnvironmentRef OldRef, EnvironmentRef NewRef)> EnvironmentRenamed => _environmentRenamed;
 
@@ -112,12 +114,14 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             return;
         }
 
-        var name = await _dialog.PromptTextAsync("New Environment", "Environment name");
-        if (string.IsNullOrWhiteSpace(name)) return;
+        // Generate a unique default name
+        const string baseName = "New Environment";
+        var name = baseName;
+        var counter = 2;
+        while (_allItems.Any(i => i.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            name = $"{baseName} {counter++}";
 
         var safeName = string.Concat(name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-        if (string.IsNullOrWhiteSpace(safeName)) return;
-
         var envDir = Path.Combine(root, "environments");
         Directory.CreateDirectory(envDir);
         var filePath = Path.Combine(envDir, $"{safeName}.toml");
@@ -133,7 +137,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             ApplyFilter();
         }
 
-        _environmentOpenRequested.OnNext(filePath);
+        _newEnvironmentCreated.OnNext(filePath);
     }
 
     private async Task RenameEnvironmentAsync(EnvironmentRef envRef)

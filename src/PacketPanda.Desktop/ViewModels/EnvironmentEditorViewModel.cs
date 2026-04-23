@@ -13,8 +13,10 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 {
     private readonly IEnvironmentFileStore _store;
     private string _environmentName = string.Empty;
+    private string _savedName = string.Empty;
     private string? _currentFilePath;
     private bool _isDirty;
+    private bool _isNew;
     private string? _errorMessage;
     private List<(string Name, string Value, string Description, bool IsEnabled)> _savedSnapshot = new();
     private readonly Subject<Environment> _saved = new();
@@ -26,7 +28,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         _store = store;
         Rows = new ObservableCollection<EnvironmentVariableRowViewModel>();
         Rows.CollectionChanged += OnCollectionChanged;
-        Rows.Add(new EnvironmentVariableRowViewModel()); // start with one empty trailing row
+        Rows.Add(new EnvironmentVariableRowViewModel());
 
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync);
     }
@@ -34,7 +36,11 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     public string EnvironmentName
     {
         get => _environmentName;
-        private set => this.RaiseAndSetIfChanged(ref _environmentName, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _environmentName, value);
+            RecomputeDirty();
+        }
     }
 
     public string? CurrentFilePath
@@ -60,7 +66,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
     public void Load(Environment env)
     {
-        Rows.Clear(); // CollectionChanged handles unsubscribing old rows
+        Rows.Clear();
 
         var disabledSet = env.DisabledVariables is not null
             ? new HashSet<string>(env.DisabledVariables, StringComparer.Ordinal)
@@ -80,9 +86,16 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
         EnsureTrailingEmptyRow();
 
-        EnvironmentName = env.Name;
+        _environmentName = env.Name;
+        this.RaisePropertyChanged(nameof(EnvironmentName));
         CurrentFilePath = env.FilePath;
         CaptureSnapshot();
+    }
+
+    public void MarkAsNew()
+    {
+        _isNew = true;
+        IsDirty = true;
     }
 
     private void EnsureTrailingEmptyRow()
@@ -118,15 +131,18 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
     private void RecomputeDirty()
     {
-        var current = Rows
+        if (_isNew) { IsDirty = true; return; }
+        var currentRows = Rows
             .Where(r => !string.IsNullOrEmpty(r.Name))
             .Select(r => (r.Name, r.Value, r.Description, r.IsEnabled))
             .ToList();
-        IsDirty = !current.SequenceEqual(_savedSnapshot);
+        IsDirty = EnvironmentName != _savedName || !currentRows.SequenceEqual(_savedSnapshot);
     }
 
     private void CaptureSnapshot()
     {
+        _isNew = false;
+        _savedName = EnvironmentName;
         _savedSnapshot = Rows
             .Where(r => !string.IsNullOrEmpty(r.Name))
             .Select(r => (r.Name, r.Value, r.Description, r.IsEnabled))
