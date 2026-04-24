@@ -366,6 +366,10 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         if (_selectedEnvironment?.FilePath == deleted.FilePath)
             SelectedEnvironment = NoEnvironmentSentinel;
+
+        var openTab = Tabs.FirstOrDefault(t => t.FilePath == deleted.FilePath);
+        if (openTab is not null)
+            CloseTab(openTab);
     }
 
     private void RestoreSelectedEnvironment()

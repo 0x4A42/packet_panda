@@ -296,6 +296,26 @@ public class ShellViewModelTests
     }
 
     [Fact]
+    public async Task DeleteEnvironment_ClosesOpenTab()
+    {
+        _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.toml"))
+            .ReturnsAsync(new Environment("Dev", "/tmp/dev.toml",
+                new Dictionary<string, string>(StringComparer.Ordinal)));
+
+        var shell = CreateShell();
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
+        shell.EnvironmentsForPicker.Add(envRef);
+        await shell.OpenEnvironmentInTabAsync("/tmp/dev.toml");
+        shell.Tabs.Should().ContainSingle();
+
+        await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
+
+        shell.Tabs.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task DeleteEnvironment_WhenActiveEnvDeleted_ResetsSelectionToNoEnvironment()
     {
         _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
