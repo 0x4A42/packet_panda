@@ -38,6 +38,10 @@ public class EnvironmentEditorViewModelTests
             vars.Where(p => !string.IsNullOrEmpty(p.d))
                 .ToDictionary(p => p.k, p => p.d));
 
+    private static Environment BlankNewEnv() =>
+        new("New Environment", "/ws/environments/New Environment.toml",
+            new Dictionary<string, string>(StringComparer.Ordinal));
+
     [Fact]
     public void Load_PopulatesRowsFromVariables()
     {
@@ -152,10 +156,6 @@ public class EnvironmentEditorViewModelTests
             It.Is<Environment>(e => e.Variables.Count == 0)), Times.Once);
     }
 
-    private static Environment BlankNewEnv() =>
-        new("New Environment", "/ws/environments/New Environment.toml",
-            new Dictionary<string, string>(StringComparer.Ordinal));
-
     [Fact]
     public void MarkAsNew_PristineState_IsDirtyFalse()
     {
@@ -188,5 +188,18 @@ public class EnvironmentEditorViewModelTests
         vm.Rows[0].Name = "myVar";
 
         vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void MarkAsNew_RecomputeWithNoUserEdit_StaysClean()
+    {
+        var vm = NewVm();
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+
+        // Assigning the same value triggers the setter but makes no real change
+        vm.EnvironmentName = vm.EnvironmentName;
+
+        vm.IsDirty.Should().BeFalse();
     }
 }

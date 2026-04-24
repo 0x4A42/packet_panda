@@ -94,6 +94,8 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         CaptureSnapshot();
     }
 
+    /// <summary>Marks this editor as representing an unsaved new environment.
+    /// Must be called after <see cref="Load"/> with an environment that has no variables.</summary>
     public void MarkAsNew()
     {
         _savedName = EnvironmentName;
