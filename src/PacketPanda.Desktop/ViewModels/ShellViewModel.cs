@@ -30,6 +30,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _activateEnvSub;
     private readonly IDisposable _envRenamedSub;
     private readonly IDisposable _envDeletedSub;
+    private readonly IDisposable _envAddedSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -102,6 +103,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         _envDeletedSub = EnvironmentSidebar.EnvironmentDeleted
             .Subscribe(HandleEnvironmentDeleted);
+
+        _envAddedSub = EnvironmentSidebar.EnvironmentAdded
+            .Subscribe(added =>
+            {
+                if (!EnvironmentsForPicker.Any(e => e.FilePath == added.FilePath))
+                    EnvironmentsForPicker.Add(added);
+            });
     }
 
     public SidebarTab ActiveSidebarTab
@@ -502,6 +510,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _activateEnvSub.Dispose();
         _envRenamedSub.Dispose();
         _envDeletedSub.Dispose();
+        _envAddedSub.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

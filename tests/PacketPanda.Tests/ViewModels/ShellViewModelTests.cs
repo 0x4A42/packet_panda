@@ -281,6 +281,25 @@ public class ShellViewModelTests
     }
 
     [Fact]
+    public async Task DuplicateEnvironment_AddsEntryToEnvironmentsForPicker()
+    {
+        _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.toml"))
+            .ReturnsAsync(new Environment("Dev", "/tmp/dev.toml",
+                new Dictionary<string, string>(StringComparer.Ordinal)));
+        _environmentStore.Setup(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
+
+        await shell.EnvironmentSidebar.DuplicateEnvironmentCommand.Execute(envRef);
+
+        shell.EnvironmentsForPicker.Should().Contain(e => e.Name == "Dev - duplicate");
+    }
+
+    [Fact]
     public async Task DeleteEnvironment_RemovesEntryFromEnvironmentsForPicker()
     {
         _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);

@@ -23,6 +23,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     private readonly Subject<string> _activateRequested = new();
     private readonly Subject<(EnvironmentRef OldRef, EnvironmentRef NewRef)> _environmentRenamed = new();
     private readonly Subject<EnvironmentRef> _environmentDeleted = new();
+    private readonly Subject<EnvironmentRef> _environmentAdded = new();
 
     private readonly ObservableCollection<EnvironmentRef> _allItems = new();
     private readonly HashSet<string> _pendingPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -37,6 +38,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     public IObservable<string> ActivateRequested => _activateRequested;
     public IObservable<(EnvironmentRef OldRef, EnvironmentRef NewRef)> EnvironmentRenamed => _environmentRenamed;
     public IObservable<EnvironmentRef> EnvironmentDeleted => _environmentDeleted;
+    public IObservable<EnvironmentRef> EnvironmentAdded => _environmentAdded;
 
     public string? ActiveEnvironmentName
     {
@@ -276,6 +278,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             {
                 _allItems.Add(newRef);
                 ApplyFilter();
+                _environmentAdded.OnNext(newRef);
             }
 
             _environmentOpenRequested.OnNext(newPath);
