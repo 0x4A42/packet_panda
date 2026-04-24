@@ -29,6 +29,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _newEnvCreatedSub;
     private readonly IDisposable _activateEnvSub;
     private readonly IDisposable _envRenamedSub;
+    private readonly IDisposable _envDeletedSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -98,6 +99,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         _envRenamedSub = EnvironmentSidebar.EnvironmentRenamed
             .Subscribe(rename => HandleEnvironmentRenamed(rename.OldRef, rename.NewRef));
+
+        _envDeletedSub = EnvironmentSidebar.EnvironmentDeleted
+            .Subscribe(HandleEnvironmentDeleted);
     }
 
     public SidebarTab ActiveSidebarTab
@@ -354,6 +358,16 @@ public class ShellViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private void HandleEnvironmentDeleted(EnvironmentRef deleted)
+    {
+        var pickerEntry = EnvironmentsForPicker.FirstOrDefault(e => e.FilePath == deleted.FilePath);
+        if (pickerEntry is not null)
+            EnvironmentsForPicker.Remove(pickerEntry);
+
+        if (_selectedEnvironment?.FilePath == deleted.FilePath)
+            SelectedEnvironment = NoEnvironmentSentinel;
+    }
+
     private void RestoreSelectedEnvironment()
     {
         var nameToRestore = _pendingActiveEnvName ?? _selectedEnvironment?.Name;
@@ -482,6 +496,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _newEnvCreatedSub.Dispose();
         _activateEnvSub.Dispose();
         _envRenamedSub.Dispose();
+        _envDeletedSub.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

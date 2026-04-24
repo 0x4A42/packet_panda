@@ -279,4 +279,38 @@ public class ShellViewModelTests
         shell.Tabs.Should().ContainSingle(t => t.FilePath == "/tmp/envs/New Environment.toml");
         shell.ActiveTab!.FilePath.Should().Be("/tmp/envs/New Environment.toml");
     }
+
+    [Fact]
+    public async Task DeleteEnvironment_RemovesEntryFromEnvironmentsForPicker()
+    {
+        _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+
+        var shell = CreateShell();
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
+        shell.EnvironmentsForPicker.Add(envRef);
+
+        await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
+
+        shell.EnvironmentsForPicker.Should().NotContain(e => e.FilePath == "/tmp/dev.toml");
+    }
+
+    [Fact]
+    public async Task DeleteEnvironment_WhenActiveEnvDeleted_ResetsSelectionToNoEnvironment()
+    {
+        _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+        _environmentStore.Setup(s => s.LoadAsync(It.IsAny<string>()))
+            .ThrowsAsync(new EnvironmentFileException("gone"));
+
+        var shell = CreateShell();
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
+        shell.EnvironmentsForPicker.Add(envRef);
+        shell.SelectedEnvironment = envRef;
+
+        await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
+
+        shell.SelectedEnvironment!.FilePath.Should().BeEmpty();
+        shell.SelectedEnvironment.Name.Should().Be("No environment");
+    }
 }

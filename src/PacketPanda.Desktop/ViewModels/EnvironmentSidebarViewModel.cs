@@ -20,6 +20,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     private readonly Subject<(string Name, string FilePath)> _newEnvironmentCreated = new();
     private readonly Subject<string> _activateRequested = new();
     private readonly Subject<(EnvironmentRef OldRef, EnvironmentRef NewRef)> _environmentRenamed = new();
+    private readonly Subject<EnvironmentRef> _environmentDeleted = new();
 
     private readonly ObservableCollection<EnvironmentRef> _allItems = new();
     private readonly HashSet<string> _pendingPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -32,6 +33,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     public IObservable<(string Name, string FilePath)> NewEnvironmentCreated => _newEnvironmentCreated;
     public IObservable<string> ActivateRequested => _activateRequested;
     public IObservable<(EnvironmentRef OldRef, EnvironmentRef NewRef)> EnvironmentRenamed => _environmentRenamed;
+    public IObservable<EnvironmentRef> EnvironmentDeleted => _environmentDeleted;
 
     public string? ActiveEnvironmentName
     {
@@ -255,5 +257,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             _allItems.Remove(existing);
             ApplyFilter();
         }
+
+        _environmentDeleted.OnNext(envRef);
     }
 }
