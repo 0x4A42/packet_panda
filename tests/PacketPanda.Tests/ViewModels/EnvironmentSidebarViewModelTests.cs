@@ -134,4 +134,87 @@ public class EnvironmentSidebarViewModelTests
 
         fired.Should().BeFalse();
     }
+
+    [Fact]
+    public void BeginRename_SetsIsEditingAndEditingNameOnItem()
+    {
+        var vm = NewVm();
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        vm.SetEnvironments(new[] { envRef });
+        var item = vm.Items.Single();
+
+        vm.RenameEnvironmentCommand.Execute(item).Subscribe();
+
+        item.IsEditing.Should().BeTrue();
+        item.EditingName.Should().Be("Dev");
+        vm.EditingItem.Should().BeSameAs(item);
+    }
+
+    [Fact]
+    public void CancelRename_ClearsIsEditingAndEditingItem()
+    {
+        var vm = NewVm();
+        vm.SetEnvironments(new[] { new EnvironmentRef("Dev", "/tmp/dev.toml") });
+        var item = vm.Items.Single();
+        vm.RenameEnvironmentCommand.Execute(item).Subscribe();
+
+        vm.CancelRenameCommand.Execute(item).Subscribe();
+
+        item.IsEditing.Should().BeFalse();
+        vm.EditingItem.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CommitRename_WithBlankName_CancelsWithoutFiringRenamed()
+    {
+        var vm = NewVm();
+        vm.SetEnvironments(new[] { new EnvironmentRef("Dev", "/tmp/dev.toml") });
+        var item = vm.Items.Single();
+        vm.RenameEnvironmentCommand.Execute(item).Subscribe();
+        item.EditingName = "   ";
+
+        var renamed = false;
+        vm.EnvironmentRenamed.Subscribe(_ => renamed = true);
+        await vm.CommitRenameCommand.Execute(item);
+
+        item.IsEditing.Should().BeFalse();
+        renamed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CommitRename_WithSameName_CancelsWithoutFiringRenamed()
+    {
+        var vm = NewVm();
+        vm.SetEnvironments(new[] { new EnvironmentRef("Dev", "/tmp/dev.toml") });
+        var item = vm.Items.Single();
+        vm.RenameEnvironmentCommand.Execute(item).Subscribe();
+        item.EditingName = "Dev";
+
+        var renamed = false;
+        vm.EnvironmentRenamed.Subscribe(_ => renamed = true);
+        await vm.CommitRenameCommand.Execute(item);
+
+        item.IsEditing.Should().BeFalse();
+        renamed.Should().BeFalse();
+    }
+
+    [Fact]
+    public void BeginRename_WhenAnotherItemAlreadyEditing_CancelsPreviousItem()
+    {
+        var vm = NewVm();
+        vm.SetEnvironments(new[]
+        {
+            new EnvironmentRef("Dev", "/tmp/dev.toml"),
+            new EnvironmentRef("Prod", "/tmp/prod.toml"),
+        });
+        var first = vm.Items[0];
+        var second = vm.Items[1];
+        vm.RenameEnvironmentCommand.Execute(first).Subscribe();
+
+        vm.RenameEnvironmentCommand.Execute(second).Subscribe();
+
+        first.IsEditing.Should().BeFalse();
+        second.IsEditing.Should().BeTrue();
+        vm.EditingItem.Should().BeSameAs(second);
+    }
 }
