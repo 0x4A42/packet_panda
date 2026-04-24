@@ -19,6 +19,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     private string? _currentFilePath;
     private bool _isDirty;
     private string? _errorMessage;
+    private bool _isNew;
     private List<(string Name, string Value, string Description, bool IsEnabled)> _savedSnapshot = new();
     private readonly Subject<Environment> _saved = new();
 
@@ -98,6 +99,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     /// Must be called after <see cref="Load"/> with an environment that has no variables.</summary>
     public void MarkAsNew()
     {
+        _isNew = true;
         _savedName = EnvironmentName;
         _savedSnapshot = [];
         IsDirty = false;
@@ -195,6 +197,15 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
             .Where(r => !r.IsEnabled)
             .Select(r => r.Name)
             .ToList();
+
+        if (_isNew)
+        {
+            _isNew = false;
+            var safeName = string.Concat(EnvironmentName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+            var lastSep = CurrentFilePath!.LastIndexOfAny(new[] { '/', '\\' });
+            var dirPrefix = lastSep >= 0 ? CurrentFilePath[..(lastSep + 1)] : string.Empty;
+            CurrentFilePath = dirPrefix + safeName + ".toml";
+        }
 
         var env = new Environment(EnvironmentName, CurrentFilePath!, vars, descs,
             disabled.Count > 0 ? disabled : null);

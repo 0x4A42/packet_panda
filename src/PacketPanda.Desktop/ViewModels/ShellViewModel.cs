@@ -223,6 +223,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             if (isFirstSave)
             {
                 isFirstSave = false;
+                EnvironmentSidebar.DiscardPendingEnvironment(filePath);
                 EnvironmentSidebar.CommitEnvironment(savedEnv.FilePath, savedEnv.Name);
                 EnvironmentsForPicker.Add(new EnvironmentRef(savedEnv.Name, savedEnv.FilePath));
             }

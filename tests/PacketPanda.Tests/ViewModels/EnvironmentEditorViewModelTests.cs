@@ -202,4 +202,49 @@ public class EnvironmentEditorViewModelTests
 
         vm.IsDirty.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task Save_WhenNew_AndNameUnchanged_SavesToOriginalPath()
+    {
+        var store = NewStore();
+        var vm = NewVm(store);
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+
+        await vm.SaveCommand.Execute();
+
+        store.Verify(s => s.SaveAsync("/ws/environments/New Environment.toml", It.IsAny<Environment>()), Times.Once);
+        vm.CurrentFilePath.Should().Be("/ws/environments/New Environment.toml");
+    }
+
+    [Fact]
+    public async Task Save_WhenNew_AndNameChanged_SavesWithDerivedPath()
+    {
+        var store = NewStore();
+        var vm = NewVm(store);
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+        vm.EnvironmentName = "Staging";
+
+        await vm.SaveCommand.Execute();
+
+        store.Verify(s => s.SaveAsync("/ws/environments/Staging.toml", It.IsAny<Environment>()), Times.Once);
+        vm.CurrentFilePath.Should().Be("/ws/environments/Staging.toml");
+    }
+
+    [Fact]
+    public async Task Save_WhenNew_SecondSave_DoesNotRederivePath()
+    {
+        var store = NewStore();
+        var vm = NewVm(store);
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+        vm.EnvironmentName = "Staging";
+        await vm.SaveCommand.Execute();  // first save → path becomes Staging.toml
+
+        vm.EnvironmentName = "Production";
+        await vm.SaveCommand.Execute();  // second save → stays Staging.toml (rename is a separate action)
+
+        store.Verify(s => s.SaveAsync("/ws/environments/Staging.toml", It.IsAny<Environment>()), Times.Exactly(2));
+    }
 }
