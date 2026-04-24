@@ -12,9 +12,10 @@ namespace PacketPanda.Tests.ViewModels;
 
 public class EnvironmentSidebarViewModelTests
 {
-    private static EnvironmentSidebarViewModel NewVm() =>
+    private static EnvironmentSidebarViewModel NewVm(IFilePickerService? picker = null) =>
         new(new Mock<IEnvironmentFileStore>().Object,
             new Mock<IDialogService>().Object,
+            picker ?? new Mock<IFilePickerService>().Object,
             () => System.IO.Path.GetTempPath());
 
     [Fact]
@@ -22,7 +23,10 @@ public class EnvironmentSidebarViewModelTests
     {
         var store = new Mock<IEnvironmentFileStore>();
         var vm = new EnvironmentSidebarViewModel(
-            store.Object, new Mock<IDialogService>().Object, () => System.IO.Path.GetTempPath());
+            store.Object,
+            new Mock<IDialogService>().Object,
+            new Mock<IFilePickerService>().Object,
+            () => System.IO.Path.GetTempPath());
 
         await vm.NewEnvironmentCommand.Execute();
 
@@ -99,5 +103,35 @@ public class EnvironmentSidebarViewModelTests
         events.Should().HaveCount(2);
         events[1].FilePath.Should().Be(events[0].FilePath);
         events[1].Name.Should().Be(events[0].Name);
+    }
+
+    [Fact]
+    public async Task OpenEnvironmentFile_PickerReturnsPath_FiresEnvironmentOpenRequested()
+    {
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/my-env.toml");
+        var vm = NewVm(picker.Object);
+
+        string? receivedPath = null;
+        vm.EnvironmentOpenRequested.Subscribe(p => receivedPath = p);
+
+        await vm.OpenEnvironmentFileCommand.Execute();
+
+        receivedPath.Should().Be("/tmp/my-env.toml");
+    }
+
+    [Fact]
+    public async Task OpenEnvironmentFile_PickerCancelled_DoesNotFireEnvironmentOpenRequested()
+    {
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickOpenAsync()).ReturnsAsync((string?)null);
+        var vm = NewVm(picker.Object);
+
+        var fired = false;
+        vm.EnvironmentOpenRequested.Subscribe(_ => fired = true);
+
+        await vm.OpenEnvironmentFileCommand.Execute();
+
+        fired.Should().BeFalse();
     }
 }

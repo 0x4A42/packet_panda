@@ -14,6 +14,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     private readonly IEnvironmentFileStore _store;
     private readonly IDialogService _dialog;
     private readonly Func<string?> _getWorkspaceRoot;
+    private readonly IFilePickerService _picker;
 
     private readonly Subject<string> _environmentOpenRequested = new();
     private readonly Subject<(string Name, string FilePath)> _newEnvironmentCreated = new();
@@ -60,14 +61,17 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     public ReactiveCommand<EnvironmentRef, Unit> ActivateEnvironmentCommand { get; }
     public ReactiveCommand<EnvironmentRef, Unit> RenameEnvironmentCommand { get; }
     public ReactiveCommand<EnvironmentRef, Unit> DuplicateEnvironmentCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenEnvironmentFileCommand { get; }
 
     public EnvironmentSidebarViewModel(
         IEnvironmentFileStore store,
         IDialogService dialog,
+        IFilePickerService picker,
         Func<string?> getWorkspaceRoot)
     {
         _store = store;
         _dialog = dialog;
+        _picker = picker;
         _getWorkspaceRoot = getWorkspaceRoot;
 
         NewEnvironmentCommand = ReactiveCommand.CreateFromTask(NewEnvironmentAsync);
@@ -78,6 +82,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             _activateRequested.OnNext(env.Name));
         RenameEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(RenameEnvironmentAsync);
         DuplicateEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(DuplicateEnvironmentAsync);
+        OpenEnvironmentFileCommand = ReactiveCommand.CreateFromTask(OpenEnvironmentFileAsync);
     }
 
     public void SetEnvironments(IReadOnlyList<EnvironmentRef> envs)
@@ -129,6 +134,13 @@ public class EnvironmentSidebarViewModel : ReactiveObject
                 e.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
                 Items.Add(e);
         }
+    }
+
+    private async Task OpenEnvironmentFileAsync()
+    {
+        var path = await _picker.PickOpenAsync();
+        if (path is not null)
+            _environmentOpenRequested.OnNext(path);
     }
 
     private async Task NewEnvironmentAsync()

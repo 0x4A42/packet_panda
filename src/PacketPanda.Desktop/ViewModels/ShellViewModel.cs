@@ -75,6 +75,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
             dialog,
+            filePicker,
             () => Sidebar.WorkspacePath);
 
         Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
