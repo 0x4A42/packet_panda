@@ -111,6 +111,10 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             _allItems.Add(new EnvironmentRef(name, filePath));
             ApplyFilter();
         }
+        else
+        {
+            UpdateEnvironmentRef(filePath, name);
+        }
     }
 
     public void DiscardPendingEnvironment(string filePath) => _pendingPaths.Remove(filePath);
