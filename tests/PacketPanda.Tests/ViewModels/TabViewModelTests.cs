@@ -1,10 +1,13 @@
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using FluentAssertions;
 using Moq;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
+using Environment = PacketPanda.Core.Environments.Environment;
 
 namespace PacketPanda.Tests.ViewModels;
 
@@ -16,7 +19,9 @@ public class TabViewModelTests
     private readonly Mock<IDialogService> _dialog = new(MockBehavior.Strict);
 
     private RequestEditorViewModel NewEditor() =>
-        new(_sender.Object, _store.Object, _picker.Object);
+        new(_sender.Object, _store.Object, _picker.Object,
+            new VariableResolver(),
+            new BehaviorSubject<Environment?>(null));
 
     [Fact]
     public void Title_ForFreshTab_IsUntitled()

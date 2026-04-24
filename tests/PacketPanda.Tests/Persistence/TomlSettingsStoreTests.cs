@@ -76,4 +76,38 @@ public class TomlSettingsStoreTests : IDisposable
             if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task SaveAsync_ThenLoadAsync_WithActiveEnvironmentName_RoundTrips()
+    {
+        var store = new TomlSettingsStore(_tempPath);
+        await store.SaveAsync(new AppSettings("/ws", "dev"));
+
+        var loaded = await store.LoadAsync();
+
+        loaded.LastWorkspacePath.Should().Be("/ws");
+        loaded.ActiveEnvironmentName.Should().Be("dev");
+    }
+
+    [Fact]
+    public async Task LoadAsync_LegacyFileWithoutActiveEnvironmentName_ReturnsNull()
+    {
+        await File.WriteAllTextAsync(_tempPath, "last_workspace_path = \"/ws\"\n");
+        var store = new TomlSettingsStore(_tempPath);
+
+        var loaded = await store.LoadAsync();
+
+        loaded.ActiveEnvironmentName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SaveAsync_NullActiveEnvironmentName_DoesNotWriteKeyToFile()
+    {
+        var store = new TomlSettingsStore(_tempPath);
+        await store.SaveAsync(new AppSettings("/ws", null));
+
+        var content = await File.ReadAllTextAsync(_tempPath);
+
+        content.Should().NotContain("active_environment_name");
+    }
 }

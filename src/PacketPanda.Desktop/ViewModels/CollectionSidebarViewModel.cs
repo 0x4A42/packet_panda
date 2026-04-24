@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Persistence;
 using ReactiveUI;
 
@@ -12,6 +13,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private readonly IWorkspaceScanner _scanner;
     private readonly ISettingsStore _settings;
     private readonly Subject<string> _requestOpened = new();
+    private readonly Subject<IReadOnlyList<EnvironmentRef>> _environmentsScanned = new();
 
     private string? _workspacePath;
     private string? _errorMessage;
@@ -54,6 +56,9 @@ public class CollectionSidebarViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> CloseWorkspaceCommand { get; }
 
     public IObservable<string> RequestOpened => _requestOpened;
+    public IObservable<IReadOnlyList<EnvironmentRef>> EnvironmentsScanned => _environmentsScanned;
+
+    public IReadOnlyList<EnvironmentRef> LastScannedEnvironments { get; private set; } = Array.Empty<EnvironmentRef>();
 
     public CollectionNodeViewModel? SelectedNode
     {
@@ -66,9 +71,11 @@ public class CollectionSidebarViewModel : ReactiveObject
         ErrorMessage = null;
         try
         {
-            var tree = await _scanner.ScanAsync(path);
-            ReplaceRoots(tree);
+            var scan = await _scanner.ScanAsync(path);
+            ReplaceRoots(scan.Collections);
+            LastScannedEnvironments = scan.Environments;
             WorkspacePath = path;
+            _environmentsScanned.OnNext(scan.Environments);
         }
         catch (Exception ex)
         {

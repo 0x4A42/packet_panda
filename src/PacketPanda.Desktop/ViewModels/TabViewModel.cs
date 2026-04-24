@@ -10,13 +10,14 @@ public class TabViewModel : ReactiveObject
     private readonly IDialogService _dialog;
     private readonly Subject<Unit> _closeRequested = new();
 
-    public TabViewModel(RequestEditorViewModel editor, IDialogService dialog)
+    public TabViewModel(ITabContent content, IDialogService dialog)
     {
-        Editor = editor;
+        Content = content;
         _dialog = dialog;
 
-        this.WhenAnyValue(t => t.Editor.CurrentFilePath, t => t.Editor.IsDirty, t => t.Editor.SelectedMethod)
-            .Subscribe(_ =>
+        if (content is IReactiveObject reactiveContent)
+        {
+            reactiveContent.PropertyChanged += (_, _) =>
             {
                 this.RaisePropertyChanged(nameof(FilePath));
                 this.RaisePropertyChanged(nameof(IsDirty));
@@ -24,26 +25,25 @@ public class TabViewModel : ReactiveObject
                 this.RaisePropertyChanged(nameof(Title));
                 this.RaisePropertyChanged(nameof(DisplayTitle));
                 this.RaisePropertyChanged(nameof(MethodLabel));
-            });
+            };
+        }
 
         CloseCommand = ReactiveCommand.CreateFromTask(CloseAsync);
     }
 
-    public RequestEditorViewModel Editor { get; }
+    public ITabContent Content { get; }
 
-    public string? FilePath => Editor.CurrentFilePath;
+    public string? FilePath => Content.CurrentFilePath;
 
-    public bool IsDirty => Editor.IsDirty;
+    public bool IsDirty => Content.IsDirty;
 
-    public string DisplayTitle => FilePath is null
-        ? "Untitled"
-        : Path.GetFileNameWithoutExtension(FilePath);
+    public string DisplayTitle => Content.DisplayTitle;
 
     public string Title => IsDirty ? $"{DisplayTitle} ●" : DisplayTitle;
 
     public bool ShowDirtyIndicator => IsDirty || FilePath is null;
 
-    public string MethodLabel => Editor.SelectedMethod.ToString().ToUpperInvariant();
+    public string? MethodLabel => Content.MethodLabel;
 
     public ReactiveCommand<Unit, Unit> CloseCommand { get; }
 
@@ -58,5 +58,7 @@ public class TabViewModel : ReactiveObject
         }
 
         _closeRequested.OnNext(Unit.Default);
+        if (Content is IDisposable d)
+            d.Dispose();
     }
 }

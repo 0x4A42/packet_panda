@@ -1,7 +1,9 @@
 using System.Net.Http;
+using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -34,16 +36,24 @@ public partial class App : Application
             var filePicker = new AvaloniaFilePickerService(mainWindow);
             var dialog = new AvaloniaDialogService(mainWindow);
 
+            var environmentStore = new TomlEnvironmentFileStore();
+
             var sidebar = new CollectionSidebarViewModel(scanner, settingsStore);
 
-            RequestEditorViewModel EditorFactory() => new(sender, store, filePicker);
+            ShellViewModel? shell = null;
+            RequestEditorViewModel EditorFactory() => new(
+                sender,
+                store,
+                filePicker,
+                new VariableResolver(),
+                shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<PacketPanda.Core.Environments.Environment?>(null));
 
-            var shell = new ShellViewModel(sidebar, EditorFactory, dialog, store, filePicker);
+            shell = new ShellViewModel(sidebar, EditorFactory, dialog, store, filePicker, environmentStore, settingsStore);
             mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;
 
-            _ = AutoReopenAsync(sidebar, settingsStore);
+            _ = AutoReopenAsync(sidebar, settingsStore, shell);
 
             desktop.Exit += (_, _) => { _httpClient?.Dispose(); shell.Dispose(); };
         }
@@ -51,11 +61,13 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static async Task AutoReopenAsync(CollectionSidebarViewModel sidebar, ISettingsStore settings)
+    private static async Task AutoReopenAsync(CollectionSidebarViewModel sidebar, ISettingsStore settings, ShellViewModel shell)
     {
         try
         {
             var app = await settings.LoadAsync();
+            // Set pending env name BEFORE loading workspace so RestoreSelectedEnvironment picks it up
+            shell.SetPendingActiveEnvironmentName(app.ActiveEnvironmentName);
             if (!string.IsNullOrEmpty(app.LastWorkspacePath) && Directory.Exists(app.LastWorkspacePath))
                 await sidebar.LoadWorkspaceAsync(app.LastWorkspacePath);
         }

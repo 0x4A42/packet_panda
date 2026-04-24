@@ -30,8 +30,11 @@
             </ComboBox>
 
             <TextBox Grid.Column="1"
-                     Text="{Binding Url}"
-                     Watermark="https://example.com/endpoint" />
+                     Text="{Binding Url, Mode=TwoWay}"
+                     AcceptsReturn="False"
+                     FontFamily="Consolas,Menlo,monospace"
+                     FontSize="13"
+                     VerticalContentAlignment="Center" />
 
             <Button Grid.Column="2"
                     Content="Send"
@@ -66,12 +69,14 @@
         <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
 
         <TextBox Grid.Row="2"
-                 Text="{Binding RequestBody}"
+                 Text="{Binding RequestBody, Mode=TwoWay}"
                  AcceptsReturn="True"
-                 TextWrapping="Wrap"
+                 TextWrapping="NoWrap"
                  FontFamily="Consolas,Menlo,monospace"
+                 FontSize="13"
                  Height="120"
-                 Watermark="{}{ &quot;key&quot;: &quot;value&quot; }" />
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"

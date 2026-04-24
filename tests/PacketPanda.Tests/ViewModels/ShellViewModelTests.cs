@@ -1,10 +1,13 @@
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using FluentAssertions;
 using Moq;
+using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
+using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.ViewModels;
@@ -18,15 +21,19 @@ public class ShellViewModelTests
 
     private readonly Mock<IWorkspaceScanner> _scanner = new(MockBehavior.Strict);
     private readonly Mock<ISettingsStore> _settings = new(MockBehavior.Strict);
+    private readonly Mock<IEnvironmentFileStore> _environmentStore = new(MockBehavior.Strict);
 
     private CollectionSidebarViewModel NewSidebar() =>
         new(_scanner.Object, _settings.Object);
 
     private RequestEditorViewModel NewEditor() =>
-        new(_sender.Object, _store.Object, _picker.Object);
+        new(_sender.Object, _store.Object, _picker.Object,
+            new VariableResolver(),
+            new BehaviorSubject<Environment?>(null));
 
     private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null) =>
-        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object, _picker.Object);
+        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object, _picker.Object,
+            _environmentStore.Object, _settings.Object);
 
     [Fact]
     public async Task NewTabCommand_AddsUntitledTabAndSetsItActive()
@@ -52,7 +59,7 @@ public class ShellViewModelTests
 
         shell.Tabs.Should().ContainSingle();
         shell.ActiveTab!.FilePath.Should().Be("/tmp/a.toml");
-        shell.ActiveTab.Editor.Url.Should().Be("https://example.com");
+        ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://example.com");
     }
 
     [Fact]
@@ -83,7 +90,7 @@ public class ShellViewModelTests
         await shell.OpenFileInTabCommand.Execute("/tmp/bad.toml");
 
         shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.Editor.ErrorMessage.Should().Be("Invalid TOML: bad");
+        ((RequestEditorViewModel)shell.ActiveTab!.Content).ErrorMessage.Should().Be("Invalid TOML: bad");
         shell.ActiveTab.FilePath.Should().Be("/tmp/bad.toml");
     }
 
@@ -137,7 +144,7 @@ public class ShellViewModelTests
 
         var shell = CreateShell();
         await shell.NewTabCommand.Execute();
-        shell.Tabs[0].Editor.Url = "https://dirty.com";
+        ((RequestEditorViewModel)shell.Tabs[0].Content).Url = "https://dirty.com";
 
         await shell.Tabs[0].CloseCommand.Execute();
 
@@ -151,7 +158,7 @@ public class ShellViewModelTests
 
         var shell = CreateShell();
         await shell.NewTabCommand.Execute();
-        shell.Tabs[0].Editor.Url = "https://dirty.com";
+        ((RequestEditorViewModel)shell.Tabs[0].Content).Url = "https://dirty.com";
 
         await shell.Tabs[0].CloseCommand.Execute();
 
@@ -167,7 +174,9 @@ public class ShellViewModelTests
         _store.Setup(s => s.LoadAsync(pickedPath))
               .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://picked.com", null));
         _scanner.Setup(s => s.ScanAsync(It.IsAny<string>()))
-                .ReturnsAsync(new FolderNode("dir", "dir", Array.Empty<CollectionNode>()));
+                .ReturnsAsync(new WorkspaceScan(
+                    new FolderNode("dir", "dir", Array.Empty<CollectionNode>()),
+                    Array.Empty<PacketPanda.Core.Environments.EnvironmentRef>()));
         _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>()))
                  .Returns(Task.CompletedTask);
 
@@ -177,7 +186,7 @@ public class ShellViewModelTests
 
         shell.Tabs.Should().ContainSingle();
         shell.ActiveTab!.FilePath.Should().Be(pickedPath);
-        shell.ActiveTab.Editor.Url.Should().Be("https://picked.com");
+        ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://picked.com");
         shell.Sidebar.WorkspacePath.Should().NotBeNull();
     }
 
@@ -191,5 +200,156 @@ public class ShellViewModelTests
         await shell.OpenFileCommand.Execute();
 
         shell.Tabs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_DoesNotLoadFromStore_OpensPristineTab()
+    {
+        var shell = CreateShell();
+
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+
+        _environmentStore.Verify(s => s.LoadAsync(It.IsAny<string>()), Times.Never);
+        shell.Tabs.Should().ContainSingle();
+        shell.ActiveTab!.IsDirty.Should().BeFalse();
+        shell.ActiveTab.DisplayTitle.Should().Be("New Environment");
+    }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_OnFirstSave_AddsToEnvironmentsForPicker()
+    {
+        var shell = CreateShell();
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        _environmentStore
+            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.toml", It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        var envEditor = (EnvironmentEditorViewModel)shell.ActiveTab!.Content;
+        await envEditor.SaveCommand.Execute();
+
+        shell.EnvironmentsForPicker.Should().Contain(e =>
+            e.Name == "New Environment" && e.FilePath == "/tmp/envs/New Environment.toml");
+    }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_OnCloseWithoutChanges_SilentlyDiscardsWithoutPrompt()
+    {
+        var shell = CreateShell();
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+
+        await shell.ActiveTab!.CloseCommand.Execute();
+
+        shell.Tabs.Should().BeEmpty();
+        // _dialog is MockBehavior.Strict — ConfirmDiscardAsync being called would throw here,
+        // so this assertion doubles as "no discard dialog was shown"
+        shell.EnvironmentsForPicker.Should().NotContain(e =>
+            e.FilePath == "/tmp/envs/New Environment.toml");
+    }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_OnSecondSave_UpdatesPickerEntryViaSync()
+    {
+        var shell = CreateShell();
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        _environmentStore
+            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.toml", It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        var envEditor = (EnvironmentEditorViewModel)shell.ActiveTab!.Content;
+        // First save — adds to picker
+        await envEditor.SaveCommand.Execute();
+        // Rename and second save — picker entry name should update
+        envEditor.EnvironmentName = "Staging";
+        await envEditor.SaveCommand.Execute();
+
+        shell.EnvironmentsForPicker.Should().Contain(e =>
+            e.Name == "Staging" && e.FilePath == "/tmp/envs/New Environment.toml");
+        shell.EnvironmentsForPicker.Should().NotContain(e => e.Name == "New Environment");
+    }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_WithAlreadyOpenPath_FocusesExistingTab()
+    {
+        var shell = CreateShell();
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.NewTabCommand.Execute(); // make a different tab active
+
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+
+        shell.Tabs.Should().ContainSingle(t => t.FilePath == "/tmp/envs/New Environment.toml");
+        shell.ActiveTab!.FilePath.Should().Be("/tmp/envs/New Environment.toml");
+    }
+
+    [Fact]
+    public async Task DuplicateEnvironment_AddsEntryToEnvironmentsForPicker()
+    {
+        _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.toml"))
+            .ReturnsAsync(new Environment("Dev", "/tmp/dev.toml",
+                new Dictionary<string, string>(StringComparer.Ordinal)));
+        _environmentStore.Setup(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
+
+        await shell.EnvironmentSidebar.DuplicateEnvironmentCommand.Execute(envRef);
+
+        shell.EnvironmentsForPicker.Should().Contain(e => e.Name == "Dev - duplicate");
+    }
+
+    [Fact]
+    public async Task DeleteEnvironment_RemovesEntryFromEnvironmentsForPicker()
+    {
+        _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+
+        var shell = CreateShell();
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
+        shell.EnvironmentsForPicker.Add(envRef);
+
+        await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
+
+        shell.EnvironmentsForPicker.Should().NotContain(e => e.FilePath == "/tmp/dev.toml");
+    }
+
+    [Fact]
+    public async Task DeleteEnvironment_ClosesOpenTab()
+    {
+        _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.toml"))
+            .ReturnsAsync(new Environment("Dev", "/tmp/dev.toml",
+                new Dictionary<string, string>(StringComparer.Ordinal)));
+
+        var shell = CreateShell();
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
+        shell.EnvironmentsForPicker.Add(envRef);
+        await shell.OpenEnvironmentInTabAsync("/tmp/dev.toml");
+        shell.Tabs.Should().ContainSingle();
+
+        await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
+
+        shell.Tabs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeleteEnvironment_WhenActiveEnvDeleted_ResetsSelectionToNoEnvironment()
+    {
+        _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+        _environmentStore.Setup(s => s.LoadAsync(It.IsAny<string>()))
+            .ThrowsAsync(new EnvironmentFileException("gone"));
+
+        var shell = CreateShell();
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
+        shell.EnvironmentsForPicker.Add(envRef);
+        shell.SelectedEnvironment = envRef;
+
+        await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
+
+        shell.SelectedEnvironment!.FilePath.Should().BeEmpty();
+        shell.SelectedEnvironment.Name.Should().Be("No environment");
     }
 }

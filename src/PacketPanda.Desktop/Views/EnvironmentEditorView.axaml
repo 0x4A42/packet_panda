@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             x:Class="PacketPanda.Desktop.Views.EnvironmentEditorView"
+             x:DataType="vm:EnvironmentEditorViewModel">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+
+        <TextBox Grid.Row="0"
+                 x:Name="NameBox"
+                 HorizontalAlignment="Left"
+                 MinWidth="80"
+                 Text="{Binding EnvironmentName}"
+                 FontWeight="SemiBold"
+                 FontSize="15"
+                 Margin="0,0,0,8"
+                 Padding="2,2"
+                 Background="Transparent"
+                 BorderThickness="0,0,0,1"
+                 BorderBrush="Transparent"
+                 CornerRadius="0">
+            <TextBox.Styles>
+                <Style Selector="TextBox:focus">
+                    <Setter Property="BorderBrush" Value="#AAAAAA" />
+                </Style>
+                <Style Selector="TextBox:pointerover">
+                    <Setter Property="BorderBrush" Value="#CCCCCC" />
+                </Style>
+            </TextBox.Styles>
+        </TextBox>
+
+        <DataGrid Grid.Row="1"
+                  x:Name="VarsGrid"
+                  ItemsSource="{Binding Rows}"
+                  AutoGenerateColumns="False"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="1"
+                  BorderBrush="#DDDDDD"
+                  RowHeight="34"
+                  HeadersVisibility="Column"
+                  CanUserReorderColumns="False"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="False">
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="On"
+                                        Binding="{Binding IsEnabled}"
+                                        Width="36" />
+                <DataGridTextColumn Header="Variable"
+                                    Binding="{Binding Name}"
+                                    Width="2*" />
+                <DataGridTextColumn Header="Value"
+                                    Binding="{Binding Value}"
+                                    Width="2*" />
+                <DataGridTextColumn Header="Description"
+                                    Binding="{Binding Description}"
+                                    Width="3*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding ErrorMessage}"
+                       Foreground="IndianRed"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <Button Grid.Column="1"
+                    Content="Save"
+                    Command="{Binding SaveCommand}"
+                    Padding="16,6" />
+        </Grid>
+    </Grid>
+</UserControl>

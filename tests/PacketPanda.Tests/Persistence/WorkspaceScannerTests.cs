@@ -15,13 +15,20 @@ public class WorkspaceScannerTests : IDisposable
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
     }
 
+    private string CreateTempDir()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"pp-scanner-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
     [Fact]
     public async Task Scan_EmptyFolder_ReturnsFolderWithNoChildren()
     {
         var result = await _scanner.ScanAsync(_root);
 
-        result.Path.Should().Be(_root);
-        result.Children.Should().BeEmpty();
+        result.Collections.Path.Should().Be(_root);
+        result.Collections.Children.Should().BeEmpty();
     }
 
     [Fact]
@@ -32,9 +39,9 @@ public class WorkspaceScannerTests : IDisposable
 
         var result = await _scanner.ScanAsync(_root);
 
-        result.Children.Should().HaveCount(2);
-        result.Children[0].Should().BeOfType<RequestNode>().Which.Name.Should().Be("a.toml");
-        result.Children[1].Should().BeOfType<RequestNode>().Which.Name.Should().Be("b.toml");
+        result.Collections.Children.Should().HaveCount(2);
+        result.Collections.Children[0].Should().BeOfType<RequestNode>().Which.Name.Should().Be("a.toml");
+        result.Collections.Children[1].Should().BeOfType<RequestNode>().Which.Name.Should().Be("b.toml");
     }
 
     [Fact]
@@ -45,7 +52,7 @@ public class WorkspaceScannerTests : IDisposable
 
         var result = await _scanner.ScanAsync(_root);
 
-        result.Children.Should().ContainSingle()
+        result.Collections.Children.Should().ContainSingle()
             .Which.Name.Should().Be("req.toml");
     }
 
@@ -58,8 +65,8 @@ public class WorkspaceScannerTests : IDisposable
 
         var result = await _scanner.ScanAsync(_root);
 
-        result.Children.Should().ContainSingle();
-        var folder = result.Children[0].Should().BeOfType<FolderNode>().Subject;
+        result.Collections.Children.Should().ContainSingle();
+        var folder = result.Collections.Children[0].Should().BeOfType<FolderNode>().Subject;
         folder.Name.Should().Be("api");
         folder.Children.Should().ContainSingle()
             .Which.Name.Should().Be("login.toml");
@@ -72,7 +79,7 @@ public class WorkspaceScannerTests : IDisposable
 
         var result = await _scanner.ScanAsync(_root);
 
-        var node = result.Children.Should().ContainSingle().Which.Should().BeOfType<RequestNode>().Subject;
+        var node = result.Collections.Children.Should().ContainSingle().Which.Should().BeOfType<RequestNode>().Subject;
         node.Method.Should().Be("GET");
     }
 
@@ -83,7 +90,7 @@ public class WorkspaceScannerTests : IDisposable
 
         var result = await _scanner.ScanAsync(_root);
 
-        result.Children.Should().ContainSingle().Which.Should().BeOfType<RequestNode>()
+        result.Collections.Children.Should().ContainSingle().Which.Should().BeOfType<RequestNode>()
             .Which.Method.Should().BeNull();
     }
 
@@ -95,8 +102,49 @@ public class WorkspaceScannerTests : IDisposable
 
         var result = await _scanner.ScanAsync(_root);
 
-        result.Children.Should().HaveCount(2);
-        result.Children[0].Should().BeOfType<FolderNode>();
-        result.Children[1].Should().BeOfType<RequestNode>();
+        result.Collections.Children.Should().HaveCount(2);
+        result.Collections.Children[0].Should().BeOfType<FolderNode>();
+        result.Collections.Children[1].Should().BeOfType<RequestNode>();
+    }
+
+    [Fact]
+    public async Task ScanAsync_WorkspaceWithEnvironmentsFolder_ExcludesItFromCollections()
+    {
+        var root = CreateTempDir();
+        Directory.CreateDirectory(Path.Combine(root, "environments"));
+        await File.WriteAllTextAsync(Path.Combine(root, "environments", "dev.toml"), "name = \"dev\"\n[variables]\n");
+        Directory.CreateDirectory(Path.Combine(root, "MyCollection"));
+        await File.WriteAllTextAsync(Path.Combine(root, "MyCollection", "req.toml"), "method = \"GET\"\nurl = \"https://x\"\n");
+
+        var scan = await new WorkspaceScanner().ScanAsync(root);
+
+        scan.Collections.Children.Select(c => c.Name).Should().BeEquivalentTo(new[] { "MyCollection" });
+        scan.Environments.Should().ContainSingle().Which.Name.Should().Be("dev");
+
+        Directory.Delete(root, recursive: true);
+    }
+
+    [Fact]
+    public async Task ScanAsync_WorkspaceWithoutEnvironmentsFolder_ReturnsEmptyEnvironmentList()
+    {
+        var root = CreateTempDir();
+        var scan = await new WorkspaceScanner().ScanAsync(root);
+        scan.Environments.Should().BeEmpty();
+
+        Directory.Delete(root, recursive: true);
+    }
+
+    [Fact]
+    public async Task ScanAsync_EnvironmentsFolder_EnvRefNameFallsBackToFilenameWhenNameFieldMissing()
+    {
+        var root = CreateTempDir();
+        Directory.CreateDirectory(Path.Combine(root, "environments"));
+        await File.WriteAllTextAsync(Path.Combine(root, "environments", "staging.toml"), "[variables]\nx=\"1\"\n");
+
+        var scan = await new WorkspaceScanner().ScanAsync(root);
+
+        scan.Environments.Should().ContainSingle().Which.Name.Should().Be("staging");
+
+        Directory.Delete(root, recursive: true);
     }
 }

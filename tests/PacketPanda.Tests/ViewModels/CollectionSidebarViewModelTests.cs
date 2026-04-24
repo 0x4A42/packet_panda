@@ -17,10 +17,12 @@ public class CollectionSidebarViewModelTests
     [Fact]
     public async Task LoadWorkspaceAsync_Success_PopulatesRootNodesAndSavesSettings()
     {
-        var tree = new FolderNode("root", "/ws", new CollectionNode[]
-        {
-            new RequestNode("a.toml", "/ws/a.toml")
-        });
+        var tree = new WorkspaceScan(
+            new FolderNode("root", "/ws", new CollectionNode[]
+            {
+                new RequestNode("a.toml", "/ws/a.toml")
+            }),
+            Array.Empty<PacketPanda.Core.Environments.EnvironmentRef>());
         _scanner.Setup(s => s.ScanAsync("/ws")).ReturnsAsync(tree);
         _settings.Setup(s => s.SaveAsync(It.Is<AppSettings>(a => a.LastWorkspacePath == "/ws")))
                  .Returns(Task.CompletedTask);
@@ -50,7 +52,9 @@ public class CollectionSidebarViewModelTests
     [Fact]
     public async Task CloseWorkspaceCommand_ClearsStateAndSavesSettings()
     {
-        var tree = new FolderNode("root", "/ws", []);
+        var tree = new WorkspaceScan(
+            new FolderNode("root", "/ws", []),
+            Array.Empty<PacketPanda.Core.Environments.EnvironmentRef>());
         _scanner.Setup(s => s.ScanAsync("/ws")).ReturnsAsync(tree);
         _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
 
