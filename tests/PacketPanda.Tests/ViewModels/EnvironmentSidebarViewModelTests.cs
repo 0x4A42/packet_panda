@@ -72,6 +72,20 @@ public class EnvironmentSidebarViewModelTests
     }
 
     [Fact]
+    public async Task CommitEnvironment_WhenPathAlreadyCommitted_UpdatesName()
+    {
+        var vm = NewVm();
+        string? receivedPath = null;
+        vm.NewEnvironmentCreated.Subscribe(ev => receivedPath = ev.FilePath);
+        await vm.NewEnvironmentCommand.Execute();
+
+        vm.CommitEnvironment(receivedPath!, "Original Name");
+        vm.CommitEnvironment(receivedPath!, "Updated Name");
+
+        vm.Items.Should().ContainSingle(i => i.Name == "Updated Name" && i.FilePath == receivedPath);
+    }
+
+    [Fact]
     public async Task DiscardPendingEnvironment_AllowsReuseOfSameNameAndPath()
     {
         var vm = NewVm();
