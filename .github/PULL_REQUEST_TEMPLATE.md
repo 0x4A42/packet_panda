@@ -21,5 +21,5 @@ _Please describe the tests that you ran to verify your changes. Include test out
 - [ ] My code follows the style guidelines of this project
 - [ ] I have made relevant changes to the documentation
 - [ ] My changes generate no new warnings and successfully builds
-- [ ] I have added tests at the appropriate level (unit, intrgration, functional) that verify the code change
+- [ ] I have added tests at the appropriate level (unit, integration, functional) that verify the code change
 - [ ] All existing and new tests pass locally
