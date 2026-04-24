@@ -16,18 +16,19 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     private readonly Func<string?> _getWorkspaceRoot;
 
     private readonly Subject<string> _environmentOpenRequested = new();
-    private readonly Subject<string> _newEnvironmentCreated = new();
+    private readonly Subject<(string Name, string FilePath)> _newEnvironmentCreated = new();
     private readonly Subject<string> _activateRequested = new();
     private readonly Subject<(EnvironmentRef OldRef, EnvironmentRef NewRef)> _environmentRenamed = new();
 
     private readonly ObservableCollection<EnvironmentRef> _allItems = new();
+    private readonly HashSet<string> _pendingPaths = new(StringComparer.OrdinalIgnoreCase);
     private string? _activeEnvironmentName;
     private string _searchText = string.Empty;
     private EnvironmentRef? _globalsRef;
 
     public ObservableCollection<EnvironmentRef> Items { get; } = new();
     public IObservable<string> EnvironmentOpenRequested => _environmentOpenRequested;
-    public IObservable<string> NewEnvironmentCreated => _newEnvironmentCreated;
+    public IObservable<(string Name, string FilePath)> NewEnvironmentCreated => _newEnvironmentCreated;
     public IObservable<string> ActivateRequested => _activateRequested;
     public IObservable<(EnvironmentRef OldRef, EnvironmentRef NewRef)> EnvironmentRenamed => _environmentRenamed;
 
@@ -102,6 +103,18 @@ public class EnvironmentSidebarViewModel : ReactiveObject
         ApplyFilter();
     }
 
+    public void CommitEnvironment(string filePath, string name)
+    {
+        _pendingPaths.Remove(filePath);
+        if (!_allItems.Any(i => i.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
+        {
+            _allItems.Add(new EnvironmentRef(name, filePath));
+            ApplyFilter();
+        }
+    }
+
+    public void DiscardPendingEnvironment(string filePath) => _pendingPaths.Remove(filePath);
+
     private void ApplyFilter()
     {
         Items.Clear();
@@ -124,30 +137,27 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             return;
         }
 
-        // Generate a unique default name
+        var envDir = Path.Combine(root, "environments");
+        Directory.CreateDirectory(envDir);
+
         const string baseName = "New Environment";
         var name = baseName;
         var counter = 2;
-        while (_allItems.Any(i => i.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-            name = $"{baseName} {counter++}";
-
         var safeName = string.Concat(name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-        var envDir = Path.Combine(root, "environments");
-        Directory.CreateDirectory(envDir);
         var filePath = Path.Combine(envDir, $"{safeName}.toml");
 
-        var env = new Environment(name, filePath,
-            new Dictionary<string, string>(StringComparer.Ordinal));
-        await _store.SaveAsync(filePath, env);
-
-        var envRef = new EnvironmentRef(name, filePath);
-        if (!_allItems.Any(i => i.FilePath == filePath))
+        while (_allItems.Any(i => i.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+                                   i.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase))
+               || _pendingPaths.Contains(filePath)
+               || File.Exists(filePath))
         {
-            _allItems.Add(envRef);
-            ApplyFilter();
+            name = $"{baseName} {counter++}";
+            safeName = string.Concat(name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+            filePath = Path.Combine(envDir, $"{safeName}.toml");
         }
 
-        _newEnvironmentCreated.OnNext(filePath);
+        _pendingPaths.Add(filePath);
+        _newEnvironmentCreated.OnNext((name, filePath));
     }
 
     private async Task RenameEnvironmentAsync(EnvironmentRef envRef)
