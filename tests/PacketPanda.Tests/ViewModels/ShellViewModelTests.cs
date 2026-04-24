@@ -266,4 +266,17 @@ public class ShellViewModelTests
             e.Name == "Staging" && e.FilePath == "/tmp/envs/New Environment.toml");
         shell.EnvironmentsForPicker.Should().NotContain(e => e.Name == "New Environment");
     }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_WithAlreadyOpenPath_FocusesExistingTab()
+    {
+        var shell = CreateShell();
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.NewTabCommand.Execute(); // make a different tab active
+
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+
+        shell.Tabs.Should().ContainSingle(t => t.FilePath == "/tmp/envs/New Environment.toml");
+        shell.ActiveTab!.FilePath.Should().Be("/tmp/envs/New Environment.toml");
+    }
 }

@@ -200,10 +200,10 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
-    public async Task OpenNewEnvironmentInTabAsync(string name, string filePath)
+    public Task OpenNewEnvironmentInTabAsync(string name, string filePath)
     {
         var existing = Tabs.FirstOrDefault(t => t.FilePath == filePath);
-        if (existing is not null) { ActiveTab = existing; return; }
+        if (existing is not null) { ActiveTab = existing; return Task.CompletedTask; }
 
         var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog);
         var env = new Environment(name, filePath,
@@ -237,7 +237,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             savedSub);
         Tabs.Add(tab);
         ActiveTab = tab;
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     public async Task OpenEnvironmentInTabAsync(string filePath)
