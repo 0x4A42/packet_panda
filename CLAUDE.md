@@ -27,19 +27,7 @@ dotnet test --watch   # run tests in watch mode
 
 ## Architecture
 
-### Current state (vertical slice)
-
-The request-editor + response-viewer flow is implemented, plus a collections sidebar, multi-tab editor, and environments feature. Users can open a folder of `.toml` requests, click a request to open it in a tab, edit and save through Open/Save/Save As, and have their workspace auto-reopen on the next launch. Environments are live: each stored as a TOML file in an `environments/` folder at the workspace root, with `name`, a `[variables]` table, and an optional `[descriptions]` table for per-variable descriptions. The left panel uses a VS Code-style activity bar (52 px icon column) with stacked icon tabs for "Requests" (collections tree) and "Environments" (list + editor). A toolbar dropdown lets users select the active environment; the selection persists across restarts. The environment editor uses a spreadsheet-style DataGrid (Variable / Value / Description columns) with auto-trailing empty rows; variable names must be unique (enforced on save). Variable substitution (`{{var}}` syntax) happens at send time; unresolved variables block the send and are listed in the response panel. In the URL and body editors, `{{var}}` patterns are color-coded: **blue** when the name exists in the active environment, **red** when it does not, **amber** when no environment is selected. URL and body use AvaloniaEdit (`TextEditor`) with a `DocumentColorizingTransformer` for the highlighting; documents are assigned via `OnDataContextChanged`/`OnAttachedToVisualTree` in the view's code-behind. Tab navigation: middle-click or Ctrl+W closes tabs. Auth, scripting, and in-client tests remain future work per the parent design spec. Architectural seams in place: `PacketPanda.Core.Http.IHttpRequestSender`, `PacketPanda.Core.Persistence.IRequestFileStore`, `PacketPanda.Core.Persistence.IWorkspaceScanner`, `PacketPanda.Core.Persistence.ISettingsStore`, `PacketPanda.Core.Environments.IEnvironmentFileStore`, `PacketPanda.Core.Environments.IVariableResolver`, `PacketPanda.Desktop.Services.IFilePickerService`, `IFolderPickerService`, `IDialogService` — ViewModels depend on these and tests mock them with Moq.
-
-3-panel Avalonia desktop app following ReactiveUI MVVM conventions:
-
-- **Left panel** — Collections sidebar (vertical tabs: Requests tree + Environments list): folders and saved requests loaded from disk, environments from the workspace `environments/` folder
-- **Center panel** — Tab bar + request editor: method, URL, body. Multiple requests open in tabs with dirty indicators.
-- **Right panel** — Response viewer: syntax-highlighted body, headers, status/timing, per-request history
-
-**Data layer — filesystem only.** There is no database. Collections map to directories; individual requests are `.toml` files inside them. Environments map to a dedicated `environments/` folder at the workspace root; individual environments are `.toml` files. ViewModels read/write these files directly through an abstracted file service (mockable for tests).
-
-**Reactive core.** ViewModels expose `ReactiveCommand` for sending requests and `[Reactive]` properties for UI state. The async HTTP flow (send → await → update UI) is handled via ReactiveUI's command infrastructure rather than manual async/await wiring in code-behind.
+### Current state
 
 **Authentication** is modelled as a discriminated type on the request — one of: None, ApiKey, BearerToken, BasicAuth, OAuth2. The request editor switches its auth sub-panel based on the active type.
 
