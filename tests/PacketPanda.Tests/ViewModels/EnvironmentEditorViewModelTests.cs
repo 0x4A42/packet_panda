@@ -151,4 +151,42 @@ public class EnvironmentEditorViewModelTests
             "/ws/environments/dev.toml",
             It.Is<Environment>(e => e.Variables.Count == 0)), Times.Once);
     }
+
+    private static Environment BlankNewEnv() =>
+        new("New Environment", "/ws/environments/New Environment.toml",
+            new Dictionary<string, string>(StringComparer.Ordinal));
+
+    [Fact]
+    public void MarkAsNew_PristineState_IsDirtyFalse()
+    {
+        var vm = NewVm();
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+
+        vm.IsDirty.Should().BeFalse();
+    }
+
+    [Fact]
+    public void MarkAsNew_AfterNameChange_IsDirtyTrue()
+    {
+        var vm = NewVm();
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+
+        vm.EnvironmentName = "My Env";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void MarkAsNew_AfterAddingVariable_IsDirtyTrue()
+    {
+        var vm = NewVm();
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+
+        vm.Rows[0].Name = "myVar";
+
+        vm.IsDirty.Should().BeTrue();
+    }
 }

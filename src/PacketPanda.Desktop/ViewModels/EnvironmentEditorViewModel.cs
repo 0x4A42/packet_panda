@@ -18,7 +18,6 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     private string _savedName = string.Empty;
     private string? _currentFilePath;
     private bool _isDirty;
-    private bool _isNew;
     private string? _errorMessage;
     private List<(string Name, string Value, string Description, bool IsEnabled)> _savedSnapshot = new();
     private readonly Subject<Environment> _saved = new();
@@ -97,8 +96,9 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
     public void MarkAsNew()
     {
-        _isNew = true;
-        IsDirty = true;
+        _savedName = EnvironmentName;
+        _savedSnapshot = [];
+        IsDirty = false;
     }
 
     public void RevertName()
@@ -141,7 +141,6 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
     private void RecomputeDirty()
     {
-        if (_isNew) { IsDirty = true; return; }
         var currentRows = Rows
             .Where(r => !string.IsNullOrEmpty(r.Name))
             .Select(r => (r.Name, r.Value, r.Description, r.IsEnabled))
@@ -151,7 +150,6 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
     private void CaptureSnapshot()
     {
-        _isNew = false;
         _savedName = EnvironmentName;
         _savedSnapshot = Rows
             .Where(r => !string.IsNullOrEmpty(r.Name))
