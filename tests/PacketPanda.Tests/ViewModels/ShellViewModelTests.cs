@@ -201,4 +201,69 @@ public class ShellViewModelTests
 
         shell.Tabs.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_DoesNotLoadFromStore_OpensPristineTab()
+    {
+        var shell = CreateShell();
+
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+
+        _environmentStore.Verify(s => s.LoadAsync(It.IsAny<string>()), Times.Never);
+        shell.Tabs.Should().ContainSingle();
+        shell.ActiveTab!.IsDirty.Should().BeFalse();
+        shell.ActiveTab.DisplayTitle.Should().Be("New Environment");
+    }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_OnFirstSave_AddsToEnvironmentsForPicker()
+    {
+        var shell = CreateShell();
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        _environmentStore
+            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.toml", It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        var envEditor = (EnvironmentEditorViewModel)shell.ActiveTab!.Content;
+        await envEditor.SaveCommand.Execute();
+
+        shell.EnvironmentsForPicker.Should().Contain(e =>
+            e.Name == "New Environment" && e.FilePath == "/tmp/envs/New Environment.toml");
+    }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_OnCloseWithoutChanges_SilentlyDiscardsWithoutPrompt()
+    {
+        var shell = CreateShell();
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+
+        await shell.ActiveTab!.CloseCommand.Execute();
+
+        shell.Tabs.Should().BeEmpty();
+        // _dialog is MockBehavior.Strict — ConfirmDiscardAsync being called would throw here,
+        // so this assertion doubles as "no discard dialog was shown"
+        shell.EnvironmentsForPicker.Should().NotContain(e =>
+            e.FilePath == "/tmp/envs/New Environment.toml");
+    }
+
+    [Fact]
+    public async Task OpenNewEnvironmentInTabAsync_OnSecondSave_UpdatesPickerEntryViaSync()
+    {
+        var shell = CreateShell();
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        _environmentStore
+            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.toml", It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        var envEditor = (EnvironmentEditorViewModel)shell.ActiveTab!.Content;
+        // First save — adds to picker
+        await envEditor.SaveCommand.Execute();
+        // Rename and second save — picker entry name should update
+        envEditor.EnvironmentName = "Staging";
+        await envEditor.SaveCommand.Execute();
+
+        shell.EnvironmentsForPicker.Should().Contain(e =>
+            e.Name == "Staging" && e.FilePath == "/tmp/envs/New Environment.toml");
+        shell.EnvironmentsForPicker.Should().NotContain(e => e.Name == "New Environment");
+    }
 }

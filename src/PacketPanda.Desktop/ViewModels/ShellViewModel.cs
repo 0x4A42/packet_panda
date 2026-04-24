@@ -200,9 +200,43 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
-    private async Task OpenNewEnvironmentInTabAsync(string name, string filePath)
+    public async Task OpenNewEnvironmentInTabAsync(string name, string filePath)
     {
-        // stub — full implementation in Task 3
+        var existing = Tabs.FirstOrDefault(t => t.FilePath == filePath);
+        if (existing is not null) { ActiveTab = existing; return; }
+
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog);
+        var env = new Environment(name, filePath,
+            new Dictionary<string, string>(StringComparer.Ordinal));
+        envEditor.Load(env);
+        envEditor.MarkAsNew();
+
+        var isFirstSave = true;
+        var tab = new TabViewModel(envEditor, _dialog);
+        var savedSub = envEditor.Saved.Subscribe(savedEnv =>
+        {
+            if (isFirstSave)
+            {
+                isFirstSave = false;
+                EnvironmentSidebar.CommitEnvironment(savedEnv.FilePath, savedEnv.Name);
+                EnvironmentsForPicker.Add(new EnvironmentRef(savedEnv.Name, savedEnv.FilePath));
+            }
+            else
+            {
+                SyncEnvRefOnSave(savedEnv);
+            }
+            if (_globalsRef?.FilePath == savedEnv.FilePath) { _globals = savedEnv; _ = PublishMergedEnvAsync(); }
+            else if (SelectedEnvironment?.FilePath == savedEnv.FilePath) { _loadedActiveEnv = savedEnv; _ = PublishMergedEnvAsync(); }
+        });
+        _closeSubscriptions[tab] = new CompositeDisposable(
+            tab.CloseRequested.Subscribe(_ =>
+            {
+                if (isFirstSave) EnvironmentSidebar.DiscardPendingEnvironment(filePath);
+                CloseTab(tab);
+            }),
+            savedSub);
+        Tabs.Add(tab);
+        ActiveTab = tab;
         await Task.CompletedTask;
     }
 
