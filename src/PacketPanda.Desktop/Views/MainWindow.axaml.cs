@@ -29,9 +29,11 @@ public partial class MainWindow : Window
     private void CollectionTreeView_Tapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
         if (e.Source is Avalonia.Controls.Control ctrl &&
-            ctrl.DataContext is CollectionNodeViewModel vm)
+            ctrl.DataContext is CollectionNodeViewModel vm &&
+            !vm.IsFolder)
         {
             vm.Open();
+            e.Handled = true;
         }
     }
 }
