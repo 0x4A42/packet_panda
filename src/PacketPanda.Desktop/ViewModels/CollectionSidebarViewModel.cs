@@ -1,47 +1,50 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
-using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Persistence;
+using PacketPanda.Desktop.Services;
 using ReactiveUI;
+using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
 
 public class CollectionSidebarViewModel : ReactiveObject
 {
-    private readonly IWorkspaceScanner _scanner;
+    private readonly ICollectionFileStore _collectionStore;
     private readonly ISettingsStore _settings;
+    private readonly IFilePickerService _filePicker;
+    private readonly IDialogService _dialog;
     private readonly Subject<RequestNode> _requestOpened = new();
     private readonly Subject<IReadOnlyList<EnvironmentRef>> _environmentsScanned = new();
 
-    private string? _workspacePath;
+    private string? _filterText;
     private string? _errorMessage;
-    private CollectionNodeViewModel? _selectedNode;
-    private readonly IDisposable _selectedNodeSub;
 
-    public CollectionSidebarViewModel(IWorkspaceScanner scanner, ISettingsStore settings)
+    public CollectionSidebarViewModel(
+        ICollectionFileStore collectionStore,
+        ISettingsStore settings,
+        IFilePickerService filePicker,
+        IDialogService dialog)
     {
-        _scanner = scanner;
+        _collectionStore = collectionStore;
         _settings = settings;
+        _filePicker = filePicker;
+        _dialog = dialog;
 
-        RootNodes = new ObservableCollection<CollectionNodeViewModel>();
-        OpenRequestCommand = ReactiveCommand.CreateFromTask<CollectionNodeViewModel>(OpenRequestAsync);
+        Collections = new ObservableCollection<CollectionViewModel>();
 
-        var hasWorkspace = this.WhenAnyValue(x => x.WorkspacePath).Select(p => p is not null);
-        CloseWorkspaceCommand = ReactiveCommand.CreateFromTask(CloseWorkspaceAsync, hasWorkspace);
-
-        _selectedNodeSub = this.WhenAnyValue(x => x.SelectedNode)
-            .Where(n => n?.SourceNode is RequestNode)
-            .Subscribe(n => _requestOpened.OnNext((RequestNode)n!.SourceNode!));
+        NewCollectionCommand = ReactiveCommand.CreateFromTask(NewCollectionAsync);
+        OpenFilesCommand = ReactiveCommand.CreateFromTask(OpenFilesAsync);
+        OpenFolderCommand = ReactiveCommand.CreateFromTask(OpenFolderAsync);
     }
 
-    public ObservableCollection<CollectionNodeViewModel> RootNodes { get; }
+    public ObservableCollection<CollectionViewModel> Collections { get; }
 
-    public string? WorkspacePath
+    public string? FilterText
     {
-        get => _workspacePath;
-        private set => this.RaiseAndSetIfChanged(ref _workspacePath, value);
+        get => _filterText;
+        set => this.RaiseAndSetIfChanged(ref _filterText, value);
     }
 
     public string? ErrorMessage
@@ -50,64 +53,153 @@ public class CollectionSidebarViewModel : ReactiveObject
         private set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
     }
 
-    public ReactiveCommand<CollectionNodeViewModel, Unit> OpenRequestCommand { get; }
-    public ReactiveCommand<Unit, Unit> CloseWorkspaceCommand { get; }
+    public ReactiveCommand<Unit, Unit> NewCollectionCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenFilesCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenFolderCommand { get; }
 
     public IObservable<RequestNode> RequestOpened => _requestOpened;
     public IObservable<IReadOnlyList<EnvironmentRef>> EnvironmentsScanned => _environmentsScanned;
 
-    public IReadOnlyList<EnvironmentRef> LastScannedEnvironments { get; private set; } = Array.Empty<EnvironmentRef>();
-
-    public CollectionNodeViewModel? SelectedNode
+    public async Task LoadCollectionsAsync(IReadOnlyList<string> paths)
     {
-        get => _selectedNode;
-        set => this.RaiseAndSetIfChanged(ref _selectedNode, value);
+        foreach (var path in paths)
+            await AddCollectionFromPathAsync(path);
     }
 
-    public async Task LoadWorkspaceAsync(string path)
+    public void RemoveCollection(CollectionViewModel collection)
     {
-        ErrorMessage = null;
+        Collections.Remove(collection);
+        _ = PersistOpenPathsAsync();
+    }
+
+    private async Task NewCollectionAsync()
+    {
+        var path = await _filePicker.PickSaveCollectionAsync();
+        if (path is null) return;
+
+        var name = Path.GetFileNameWithoutExtension(path);
+        var root = new FolderNode(Guid.NewGuid().ToString(), name, []);
+        var collection = new Collection(name, path, root);
+
         try
         {
-            var scan = await _scanner.ScanAsync(path);
-            ReplaceRoots(scan.Collections);
-            LastScannedEnvironments = scan.Environments;
-            WorkspacePath = path;
-            _environmentsScanned.OnNext(scan.Environments);
+            await _collectionStore.SaveAsync(path, collection);
+            AddCollectionViewModel(collection);
+            await PersistOpenPathsAsync();
         }
         catch (Exception ex)
         {
-            RootNodes.Clear();
-            WorkspacePath = null;
-            ErrorMessage = $"Could not open workspace: {ex.Message}";
-            return;
+            ErrorMessage = $"Could not create collection: {ex.Message}";
         }
+    }
 
-        try { await _settings.SaveAsync(new AppSettings()); }
+    private async Task OpenFilesAsync()
+    {
+        var paths = await _filePicker.PickOpenMultipleAsync();
+        foreach (var path in paths)
+            await AddCollectionFromPathAsync(path);
+        if (paths.Count > 0)
+            await PersistOpenPathsAsync();
+    }
+
+    private async Task OpenFolderAsync()
+    {
+        var folder = await _filePicker.PickOpenFolderAsync();
+        if (folder is null) return;
+
+        var files = Directory.GetFiles(folder, "*.json", SearchOption.TopDirectoryOnly);
+        foreach (var file in files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+            await AddCollectionFromPathAsync(file);
+
+        if (files.Length > 0)
+            await PersistOpenPathsAsync();
+    }
+
+    private async Task AddCollectionFromPathAsync(string path)
+    {
+        if (Collections.Any(c => string.Equals(c.FilePath, path, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        try
+        {
+            var collection = await _collectionStore.LoadAsync(path);
+            AddCollectionViewModel(collection);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Could not open {Path.GetFileName(path)}: {ex.Message}";
+        }
+    }
+
+    private void AddCollectionViewModel(Collection collection)
+    {
+        var vm = new CollectionViewModel(collection, _collectionStore, _dialog, node => _requestOpened.OnNext(node));
+        Collections.Add(vm);
+    }
+
+    private async Task PersistOpenPathsAsync()
+    {
+        try
+        {
+            var current = await _settings.LoadAsync();
+            var paths = Collections.Select(c => c.FilePath).ToList();
+            await _settings.SaveAsync(current with { OpenCollectionPaths = paths });
+        }
         catch (SettingsException) { }
     }
+}
 
-    private async Task CloseWorkspaceAsync()
+public class CollectionViewModel : ReactiveObject
+{
+    private readonly ICollectionFileStore _store;
+    private readonly IDialogService _dialog;
+    private readonly Action<RequestNode> _onRequestOpened;
+    private Collection _collection;
+
+    public CollectionViewModel(
+        Collection collection,
+        ICollectionFileStore store,
+        IDialogService dialog,
+        Action<RequestNode> onRequestOpened)
     {
-        RootNodes.Clear();
-        WorkspacePath = null;
-        SelectedNode = null;
-        ErrorMessage = null;
-        try { await _settings.SaveAsync(new AppSettings()); }
-        catch (SettingsException) { }
+        _collection = collection;
+        _store = store;
+        _dialog = dialog;
+        _onRequestOpened = onRequestOpened;
+
+        Items = new ObservableCollection<CollectionNodeViewModel>(
+            collection.Root.Children.Select(c => CollectionNodeViewModel.From(c, onRequestOpened)));
+
+        NewRequestCommand = ReactiveCommand.CreateFromTask(AddNewRequestAsync);
+        NewFolderCommand = ReactiveCommand.CreateFromTask(AddNewFolderAsync);
     }
 
-    private Task OpenRequestAsync(CollectionNodeViewModel node)
+    public string Name => _collection.Name;
+    public string FilePath => _collection.FilePath;
+    public ObservableCollection<CollectionNodeViewModel> Items { get; }
+
+    public ReactiveCommand<Unit, Unit> NewRequestCommand { get; }
+    public ReactiveCommand<Unit, Unit> NewFolderCommand { get; }
+
+    private async Task AddNewRequestAsync()
     {
-        if (node.SourceNode is RequestNode rn)
-            _requestOpened.OnNext(rn);
-        return Task.CompletedTask;
+        var id = Guid.NewGuid().ToString();
+        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null);
+        var newChildren = _collection.Root.Children.Append(newNode).ToList();
+        _collection = _collection with { Root = _collection.Root with { Children = newChildren } };
+        await _store.SaveAsync(_collection.FilePath, _collection);
+        Items.Add(CollectionNodeViewModel.From(newNode, _onRequestOpened));
+        _onRequestOpened(newNode);
     }
 
-    private void ReplaceRoots(FolderNode tree)
+    private async Task AddNewFolderAsync()
     {
-        RootNodes.Clear();
-        foreach (var child in tree.Children)
-            RootNodes.Add(CollectionNodeViewModel.From(child));
+        var id = Guid.NewGuid().ToString();
+        var newFolder = new FolderNode(id, "New Folder", []);
+        var newChildren = _collection.Root.Children.Append(newFolder).ToList();
+        _collection = _collection with { Root = _collection.Root with { Children = newChildren } };
+        await _store.SaveAsync(_collection.FilePath, _collection);
+        var nodeVm = CollectionNodeViewModel.From(newFolder, _onRequestOpened);
+        Items.Add(nodeVm);
     }
 }
