@@ -28,11 +28,18 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private string? _currentFilePath;
     private bool _isDirty;
     private RequestSnapshot? _savedSnapshot;
+    private string? _requestName;
 
     private sealed record RequestSnapshot(HttpMethod Method, string Url, string? Body);
 
     public string? RequestId { get; set; }
-    public string? RequestName { get; set; }
+
+    public string? RequestName
+    {
+        get => _requestName;
+        set => this.RaiseAndSetIfChanged(ref _requestName, value);
+    }
+
     public string? CollectionFilePath { get; set; }
 
     public RequestEditorViewModel(

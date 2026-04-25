@@ -109,6 +109,24 @@ public class ShellViewModelTests
     }
 
     [Fact]
+    public async Task SidebarRequestOpened_WithAlreadyOpenRequest_FocusesExistingTab()
+    {
+        var sidebar = NewSidebar();
+        var shell = CreateShell(sidebar);
+        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null);
+        var nodeVm = CollectionNodeViewModel.From(rn);
+
+        await sidebar.OpenRequestCommand.Execute(nodeVm);
+        await shell.NewTabCommand.Execute(); // make a different tab active
+
+        await sidebar.OpenRequestCommand.Execute(nodeVm);
+
+        shell.Tabs.Should().HaveCount(2);
+        shell.ActiveTab!.FilePath.Should().Be("/ws/col.json");
+        ((RequestEditorViewModel)shell.ActiveTab.Content).RequestId.Should().Be("r1");
+    }
+
+    [Fact]
     public async Task CloseTab_CleanTab_RemovesTabAndActivatesAdjacent()
     {
         var shell = CreateShell();
