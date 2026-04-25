@@ -27,7 +27,7 @@ public class ShellViewModelTests
         new(_collectionStore.Object, _settings.Object, _picker.Object, _dialog.Object);
 
     private RequestEditorViewModel NewEditor() =>
-        new(_sender.Object, _store.Object, _picker.Object,
+        new(_sender.Object, _collectionStore.Object,
             new VariableResolver(),
             new BehaviorSubject<Environment?>(null));
 

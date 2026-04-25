@@ -43,8 +43,7 @@ public partial class App : Application
             ShellViewModel? shell = null;
             RequestEditorViewModel EditorFactory() => new(
                 sender,
-                store,
-                filePicker,
+                collectionStore,
                 new VariableResolver(),
                 shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<PacketPanda.Core.Environments.Environment?>(null));
 

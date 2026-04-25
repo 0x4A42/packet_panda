@@ -5,23 +5,20 @@ using Moq;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
-using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
 using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.ViewModels;
 
-public class RequestEditorViewModelTests
+public sealed class RequestEditorViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
-    private readonly Mock<IRequestFileStore> _store = new(MockBehavior.Strict);
-    private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
+    private readonly Mock<ICollectionFileStore> _collectionStore = new(MockBehavior.Strict);
 
     private RequestEditorViewModel CreateVm() => new(
         _sender.Object,
-        _store.Object,
-        _picker.Object,
+        _collectionStore.Object,
         new VariableResolver(),
         new BehaviorSubject<Environment?>(null));
 
@@ -128,93 +125,72 @@ public class RequestEditorViewModelTests
     }
 
     [Fact]
-    public async Task Open_PopulatesEditorFieldsAndSetsCurrentFilePath_OnSuccess()
+    public async Task Save_CallsUpdateRequestAsync_WithCorrectArgs()
     {
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/req.toml");
-        _store.Setup(s => s.LoadAsync("/tmp/req.toml"))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Post, "https://api.example.com", """{"a":1}"""));
-
-        var vm = CreateVm();
-        vm.StatusCode = 200;
-        vm.ResponseBody = "stale";
-        vm.ElapsedMilliseconds = 50;
-        vm.ErrorMessage = "old error";
-
-        await vm.OpenCommand.Execute();
-
-        vm.SelectedMethod.Should().Be(HttpMethod.Post);
-        vm.Url.Should().Be("https://api.example.com");
-        vm.RequestBody.Should().Be("""{"a":1}""");
-        vm.StatusCode.Should().BeNull();
-        vm.ResponseBody.Should().BeNull();
-        vm.ElapsedMilliseconds.Should().BeNull();
-        vm.ErrorMessage.Should().BeNull();
-        vm.CurrentFilePath.Should().Be("/tmp/req.toml");
-    }
-
-    [Fact]
-    public async Task Open_Cancelled_DoesNothing()
-    {
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync((string?)null);
-        var vm = CreateVm();
-        vm.Url = "https://original.com";
-
-        await vm.OpenCommand.Execute();
-
-        vm.Url.Should().Be("https://original.com");
-        vm.CurrentFilePath.Should().BeNull();
-        _store.Verify(s => s.LoadAsync(It.IsAny<string>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Open_Failure_SetsErrorMessageAndLeavesStateUnchanged()
-    {
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/bad.toml");
-        _store.Setup(s => s.LoadAsync("/tmp/bad.toml"))
-              .ThrowsAsync(new RequestFileException("Invalid TOML: unexpected token"));
-
-        var vm = CreateVm();
-        vm.Url = "https://original.com";
-
-        await vm.OpenCommand.Execute();
-
-        vm.ErrorMessage.Should().Be("Invalid TOML: unexpected token");
-        vm.Url.Should().Be("https://original.com");
-        vm.CurrentFilePath.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Save_WritesToCurrentFilePathWithoutPicker_WhenPathIsSet()
-    {
-        var vm = CreateVm();
-        vm.Url = "https://example.com";
-        vm.SelectedMethod = HttpMethod.Delete;
-        vm.CurrentFilePath = "/tmp/existing.toml";
-
-        _store.Setup(s => s.SaveAsync("/tmp/existing.toml",
-            It.Is<HttpRequest>(r => r.Url == "https://example.com" && r.Method == HttpMethod.Delete)))
+        _collectionStore
+            .Setup(s => s.UpdateRequestAsync("/col.json", "req-1",
+                It.Is<HttpRequest>(r => r.Url == "https://example.com" && r.Method == HttpMethod.Delete)))
             .Returns(Task.CompletedTask);
 
+        var vm = CreateVm();
+        vm.RequestId = "req-1";
+        vm.CollectionFilePath = "/col.json";
+        vm.Url = "https://example.com";
+        vm.SelectedMethod = HttpMethod.Delete;
+
         await vm.SaveCommand.Execute();
 
-        _store.Verify(s => s.SaveAsync("/tmp/existing.toml", It.IsAny<HttpRequest>()), Times.Once);
-        _picker.Verify(p => p.PickSaveAsync(), Times.Never);
+        _collectionStore.Verify(s => s.UpdateRequestAsync("/col.json", "req-1", It.IsAny<HttpRequest>()), Times.Once);
     }
 
     [Fact]
-    public async Task Save_InvokesPickerAndSaves_WhenCurrentFilePathIsNull()
+    public async Task Save_WhenRequestIdIsNull_DoesNothing()
     {
-        _picker.Setup(p => p.PickSaveAsync()).ReturnsAsync("/tmp/new.toml");
-        _store.Setup(s => s.SaveAsync("/tmp/new.toml", It.IsAny<HttpRequest>()))
-              .Returns(Task.CompletedTask);
-
         var vm = CreateVm();
+        vm.CollectionFilePath = "/col.json";
+        vm.RequestId = null;
         vm.Url = "https://example.com";
 
         await vm.SaveCommand.Execute();
 
-        vm.CurrentFilePath.Should().Be("/tmp/new.toml");
-        _store.Verify(s => s.SaveAsync("/tmp/new.toml", It.IsAny<HttpRequest>()), Times.Once);
+        _collectionStore.Verify(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Save_Success_ClearsErrorMessageAndMarksSaved()
+    {
+        _collectionStore
+            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()))
+            .Returns(Task.CompletedTask);
+
+        var vm = CreateVm();
+        vm.RequestId = "r1";
+        vm.CollectionFilePath = "/col.json";
+        vm.Url = "https://example.com";
+        vm.ErrorMessage = "previous error";
+
+        await vm.SaveCommand.Execute();
+
+        vm.ErrorMessage.Should().BeNull();
+        vm.IsDirty.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Save_Failure_SetsErrorMessage()
+    {
+        _collectionStore
+            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()))
+            .ThrowsAsync(new RequestFileException("Could not write file: access denied"));
+
+        var vm = CreateVm();
+        vm.RequestId = "r1";
+        vm.CollectionFilePath = "/col.json";
+        vm.Url = "https://example.com";
+
+        await vm.SaveCommand.Execute();
+
+        vm.ErrorMessage.Should().Be("Could not write file: access denied");
+        vm.IsDirty.Should().BeTrue();
     }
 
     [Fact]
@@ -226,81 +202,6 @@ public class RequestEditorViewModelTests
         var canExecute = await vm.SaveCommand.CanExecute.FirstAsync();
 
         canExecute.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task SaveAs_AlwaysInvokesPickerAndUpdatesCurrentFilePath()
-    {
-        _picker.Setup(p => p.PickSaveAsync()).ReturnsAsync("/tmp/saveas.toml");
-        _store.Setup(s => s.SaveAsync("/tmp/saveas.toml", It.IsAny<HttpRequest>()))
-              .Returns(Task.CompletedTask);
-
-        var vm = CreateVm();
-        vm.Url = "https://example.com";
-        vm.CurrentFilePath = "/tmp/old.toml";
-
-        await vm.SaveAsCommand.Execute();
-
-        vm.CurrentFilePath.Should().Be("/tmp/saveas.toml");
-        _picker.Verify(p => p.PickSaveAsync(), Times.Once);
-    }
-
-    [Fact]
-    public async Task SaveAs_Cancelled_LeavesCurrentFilePathUnchanged()
-    {
-        _picker.Setup(p => p.PickSaveAsync()).ReturnsAsync((string?)null);
-
-        var vm = CreateVm();
-        vm.Url = "https://example.com";
-        vm.CurrentFilePath = "/tmp/original.toml";
-
-        await vm.SaveAsCommand.Execute();
-
-        vm.CurrentFilePath.Should().Be("/tmp/original.toml");
-        _store.Verify(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<HttpRequest>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task SaveAsCommand_CanExecute_IsFalseWhenUrlIsEmpty()
-    {
-        var vm = CreateVm();
-        vm.Url = "";
-
-        var canExecute = await vm.SaveAsCommand.CanExecute.FirstAsync();
-
-        canExecute.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task Save_Success_ClearsErrorMessage()
-    {
-        _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
-              .Returns(Task.CompletedTask);
-
-        var vm = CreateVm();
-        vm.Url = "https://example.com";
-        vm.CurrentFilePath = "/tmp/req.toml";
-        vm.ErrorMessage = "previous error";
-
-        await vm.SaveCommand.Execute();
-
-        vm.ErrorMessage.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Save_Failure_SetsErrorMessageAndLeavesCurrentFilePathUnchanged()
-    {
-        _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
-              .ThrowsAsync(new RequestFileException("Could not write file: access denied"));
-
-        var vm = CreateVm();
-        vm.Url = "https://example.com";
-        vm.CurrentFilePath = "/tmp/req.toml";
-
-        await vm.SaveCommand.Execute();
-
-        vm.ErrorMessage.Should().Be("Could not write file: access denied");
-        vm.CurrentFilePath.Should().Be("/tmp/req.toml");
     }
 
     [Fact]
@@ -342,29 +243,16 @@ public class RequestEditorViewModelTests
     }
 
     [Fact]
-    public async Task IsDirty_IsFalseAfterSuccessfulOpen()
-    {
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync("/tmp/req.toml");
-        _store.Setup(s => s.LoadAsync("/tmp/req.toml"))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://example.com", null));
-
-        var vm = CreateVm();
-        vm.Url = "dirty";
-
-        await vm.OpenCommand.Execute();
-
-        vm.IsDirty.Should().BeFalse();
-    }
-
-    [Fact]
     public async Task IsDirty_IsFalseAfterSuccessfulSave()
     {
-        _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
-              .Returns(Task.CompletedTask);
+        _collectionStore
+            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()))
+            .Returns(Task.CompletedTask);
 
         var vm = CreateVm();
+        vm.RequestId = "r1";
+        vm.CollectionFilePath = "/col.json";
         vm.Url = "https://example.com";
-        vm.CurrentFilePath = "/tmp/req.toml";
 
         await vm.SaveCommand.Execute();
 
@@ -374,12 +262,14 @@ public class RequestEditorViewModelTests
     [Fact]
     public async Task IsDirty_StaysTrueAfterFailedSave()
     {
-        _store.Setup(s => s.SaveAsync("/tmp/req.toml", It.IsAny<HttpRequest>()))
-              .ThrowsAsync(new RequestFileException("disk full"));
+        _collectionStore
+            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()))
+            .ThrowsAsync(new RequestFileException("disk full"));
 
         var vm = CreateVm();
+        vm.RequestId = "r1";
+        vm.CollectionFilePath = "/col.json";
         vm.Url = "https://example.com";
-        vm.CurrentFilePath = "/tmp/req.toml";
 
         await vm.SaveCommand.Execute();
 
@@ -389,42 +279,37 @@ public class RequestEditorViewModelTests
     [Fact]
     public async Task Send_UnresolvedVariables_DoesNotCallSenderAndSetsError()
     {
-        var sender = new Mock<IHttpRequestSender>();
-        var activeEnv = new BehaviorSubject<Environment?>(null);
         var vm = new RequestEditorViewModel(
-            sender.Object,
-            Mock.Of<IRequestFileStore>(),
-            Mock.Of<IFilePickerService>(),
+            _sender.Object,
+            _collectionStore.Object,
             new VariableResolver(),
-            activeEnv);
+            new BehaviorSubject<Environment?>(null));
         vm.Url = "{{baseUrl}}/users";
 
         await vm.SendCommand.Execute();
 
         vm.ErrorMessage.Should().Contain("baseUrl");
-        sender.Verify(s => s.SendAsync(It.IsAny<HttpRequest>()), Times.Never);
+        _sender.Verify(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task Send_AllResolved_PassesResolvedUrlToSender()
     {
-        var sender = new Mock<IHttpRequestSender>();
-        sender.Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
+        _sender.Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
         var env = new Environment("dev", "/e.toml",
             new Dictionary<string, string> { ["baseUrl"] = "https://api" });
         var activeEnv = new BehaviorSubject<Environment?>(env);
         var vm = new RequestEditorViewModel(
-            sender.Object,
-            Mock.Of<IRequestFileStore>(),
-            Mock.Of<IFilePickerService>(),
+            _sender.Object,
+            _collectionStore.Object,
             new VariableResolver(),
             activeEnv);
         vm.Url = "{{baseUrl}}/users";
 
         await vm.SendCommand.Execute();
 
-        sender.Verify(s => s.SendAsync(
+        _sender.Verify(s => s.SendAsync(
             It.Is<HttpRequest>(r => r.Url == "https://api/users"),
             It.IsAny<CancellationToken>()), Times.Once);
         vm.ErrorMessage.Should().BeNull();

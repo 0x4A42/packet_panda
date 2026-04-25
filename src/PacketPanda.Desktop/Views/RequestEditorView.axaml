@@ -52,17 +52,6 @@
                         <TextBlock Text="Save" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
-                <Button Content="▾"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Padding="4,6"
-                        ToolTip.Tip="Save As…">
-                    <Button.Flyout>
-                        <MenuFlyout>
-                            <MenuItem Header="Save As…" Command="{Binding SaveAsCommand}" />
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
             </StackPanel>
         </Grid>
 
