@@ -14,17 +14,14 @@ namespace PacketPanda.Desktop.ViewModels;
 public class ShellViewModel : ViewModelBase, IDisposable
 {
     private static readonly EnvironmentRef NoEnvironmentSentinel = new("No environment", string.Empty);
-    private const string GlobalsFileName = "globals.toml";
 
     private readonly Func<RequestEditorViewModel> _editorFactory;
     private readonly IDialogService _dialog;
-    private readonly IRequestFileStore _store;
     private readonly IFilePickerService _filePicker;
     private readonly IEnvironmentFileStore _environmentStore;
     private readonly ISettingsStore _settings;
     private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
     private readonly BehaviorSubject<Environment?> _activeEnvSubject = new(null);
-    private readonly IDisposable _envScannedSub;
     private readonly IDisposable _envOpenSub;
     private readonly IDisposable _newEnvCreatedSub;
     private readonly IDisposable _activateEnvSub;
@@ -46,15 +43,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
         CollectionSidebarViewModel sidebar,
         Func<RequestEditorViewModel> editorFactory,
         IDialogService dialog,
-        IRequestFileStore store,
-        IFilePickerService filePicker,
         IEnvironmentFileStore environmentStore,
+        IFilePickerService filePicker,
         ISettingsStore settings)
     {
         Sidebar = sidebar;
         _editorFactory = editorFactory;
         _dialog = dialog;
-        _store = store;
         _filePicker = filePicker;
         _environmentStore = environmentStore;
         _settings = settings;
@@ -63,8 +58,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
         EnvironmentsForPicker = new ObservableCollection<EnvironmentRef> { NoEnvironmentSentinel };
 
         NewTabCommand = ReactiveCommand.Create(AddBlankTab);
-        OpenFileInTabCommand = ReactiveCommand.CreateFromTask<string>(OpenFileInTabAsync);
-        OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
         CloseActiveTabCommand = ReactiveCommand.Create(
             () =>
             {
@@ -82,9 +75,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
             () => null);
 
         _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
-
-        _envScannedSub = sidebar.EnvironmentsScanned.Subscribe(envs =>
-            _ = HandleEnvironmentsScanAsync(envs));
 
         _envOpenSub = EnvironmentSidebar.EnvironmentOpenRequested
             .Subscribe(path => _ = OpenEnvironmentInTabAsync(path));
@@ -146,12 +136,44 @@ public class ShellViewModel : ViewModelBase, IDisposable
     }
 
     public ReactiveCommand<Unit, Unit> NewTabCommand { get; }
-    public ReactiveCommand<string, Unit> OpenFileInTabCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
     public ReactiveCommand<Unit, Unit> CloseActiveTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetRequestsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetEnvironmentsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveActiveTabCommand { get; }
+
+    public async Task InitializeAsync(AppSettings settings)
+    {
+        SetPendingActiveEnvironmentName(settings.ActiveEnvironmentName);
+
+        var paths = settings.OpenCollectionPaths ?? [];
+        if (paths.Count > 0)
+            await Sidebar.LoadCollectionsAsync(paths);
+
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+        await EnsureGlobalsAsync(globalsPath);
+    }
+
+    private async Task EnsureGlobalsAsync(string globalsPath)
+    {
+        _globalsRef = new EnvironmentRef("Globals", globalsPath);
+        EnvironmentSidebar.SetGlobalsRef(_globalsRef);
+
+        if (!File.Exists(globalsPath))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath)!);
+            var empty = new Environment("Globals", globalsPath,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+            try { await _environmentStore.SaveAsync(globalsPath, empty); }
+            catch { /* best-effort */ }
+        }
+
+        try { _globals = await _environmentStore.LoadAsync(globalsPath); }
+        catch { _globals = null; }
+
+        await PublishMergedEnvAsync();
+    }
 
     private async Task SaveActiveTabAsync()
     {
@@ -162,50 +184,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
             await env.SaveCommand.Execute();
     }
 
-    private async Task OpenFileAsync()
-    {
-        var path = await _filePicker.PickOpenAsync();
-        if (path is null) return;
-
-        await OpenFileInTabAsync(path);
-    }
-
     private void AddBlankTab()
     {
         var editor = _editorFactory();
-        var tab = new TabViewModel(editor, _dialog);
-        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
-        Tabs.Add(tab);
-        ActiveTab = tab;
-    }
-
-    private async Task OpenFileInTabAsync(string path)
-    {
-        var existing = Tabs.FirstOrDefault(t => t.FilePath == path);
-        if (existing is not null)
-        {
-            ActiveTab = existing;
-            return;
-        }
-
-        var editor = _editorFactory();
-        try
-        {
-            var request = await _store.LoadAsync(path);
-            editor.SelectedMethod = request.Method;
-            editor.Url = request.Url;
-            editor.RequestBody = request.Body;
-            editor.CurrentFilePath = path;
-            editor.CollectionFilePath = path;
-            editor.MarkSaved();
-        }
-        catch (RequestFileException ex)
-        {
-            editor.ErrorMessage = ex.Message;
-            editor.CurrentFilePath = path;
-            editor.CollectionFilePath = path;
-        }
-
         var tab = new TabViewModel(editor, _dialog);
         _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
         Tabs.Add(tab);
@@ -317,43 +298,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
     }
 
     public void SetPendingActiveEnvironmentName(string? name) => _pendingActiveEnvName = name;
-
-    private async Task HandleEnvironmentsScanAsync(IReadOnlyList<EnvironmentRef> envs)
-    {
-        // WorkspacePath no longer exists on the new sidebar model; globals handling is deferred
-        var nonGlobals = envs
-            .Where(e => !IsGlobalsFile(e.FilePath))
-            .ToList();
-
-        EnvironmentSidebar.SetGlobalsRef(_globalsRef);
-        EnvironmentSidebar.SetEnvironments(nonGlobals);
-        SyncEnvironmentsForPicker(nonGlobals);
-        RestoreSelectedEnvironment();
-        await Task.CompletedTask;
-    }
-
-    private static bool IsGlobalsFile(string filePath) =>
-        Path.GetFileName(filePath).Equals(GlobalsFileName, StringComparison.OrdinalIgnoreCase);
-
-    private async Task EnsureGlobalsAsync(string workspaceRoot, IReadOnlyList<EnvironmentRef> scannedEnvs)
-    {
-        var globalsPath = Path.Combine(workspaceRoot, "environments", GlobalsFileName);
-
-        _globalsRef = scannedEnvs.FirstOrDefault(e => IsGlobalsFile(e.FilePath))
-            ?? new EnvironmentRef("Globals", globalsPath);
-
-        if (!File.Exists(globalsPath))
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath)!);
-            var empty = new Environment("Globals", globalsPath,
-                new Dictionary<string, string>(StringComparer.Ordinal));
-            try { await _environmentStore.SaveAsync(globalsPath, empty); }
-            catch { /* best-effort */ }
-        }
-
-        try { _globals = await _environmentStore.LoadAsync(globalsPath); }
-        catch { _globals = null; }
-    }
 
     private void SyncEnvironmentsForPicker(IReadOnlyList<EnvironmentRef> nonGlobals)
     {
@@ -493,7 +437,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     private void SyncEnvRefOnSave(PacketPanda.Core.Environments.Environment env)
     {
-        if (IsGlobalsFile(env.FilePath)) return;
+        if (_globalsRef?.FilePath == env.FilePath) return;
 
         EnvironmentSidebar.UpdateEnvironmentRef(env.FilePath, env.Name);
 
@@ -522,7 +466,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
-        _envScannedSub.Dispose();
         _envOpenSub.Dispose();
         _newEnvCreatedSub.Dispose();
         _activateEnvSub.Dispose();

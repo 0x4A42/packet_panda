@@ -27,7 +27,6 @@ public partial class App : Application
         {
             _httpClient = new HttpClient();
             var sender = new HttpRequestSender(_httpClient);
-            var store = new TomlRequestFileStore();
             var collectionStore = new JsonCollectionFileStore();
             var settingsStore = new TomlSettingsStore(TomlSettingsStore.DefaultPath);
 
@@ -47,12 +46,12 @@ public partial class App : Application
                 new VariableResolver(),
                 shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<PacketPanda.Core.Environments.Environment?>(null));
 
-            shell = new ShellViewModel(sidebar, EditorFactory, dialog, store, filePicker, environmentStore, settingsStore);
+            shell = new ShellViewModel(sidebar, EditorFactory, dialog, environmentStore, filePicker, settingsStore);
             mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;
 
-            _ = AutoReopenAsync(sidebar, settingsStore, shell);
+            _ = InitializeShellAsync(settingsStore, shell);
 
             desktop.Exit += (_, _) => { _httpClient?.Dispose(); shell.Dispose(); };
         }
@@ -60,17 +59,16 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static async Task AutoReopenAsync(CollectionSidebarViewModel sidebar, ISettingsStore settings, ShellViewModel shell)
+    private static async Task InitializeShellAsync(ISettingsStore settings, ShellViewModel shell)
     {
         try
         {
             var app = await settings.LoadAsync();
-            // Set pending env name BEFORE loading workspace so RestoreSelectedEnvironment picks it up
-            shell.SetPendingActiveEnvironmentName(app.ActiveEnvironmentName);
+            await shell.InitializeAsync(app);
         }
         catch (SettingsException)
         {
-            // Non-fatal — sidebar starts empty.
+            // Non-fatal — shell starts with defaults.
         }
     }
 }

@@ -81,23 +81,9 @@
             <Grid Grid.Column="1" Background="#F5F5F5">
 
                 <!-- Requests panel -->
-                <Grid RowDefinitions="Auto,*"
+                <Grid RowDefinitions="*"
                       IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}">
-                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                        <Button Grid.Column="0"
-                                Content="Open…"
-                                Background="White"
-                                Margin="8,8,4,8"
-                                HorizontalAlignment="Stretch"
-                                Command="{Binding OpenFileCommand}">
-                            <Button.Styles>
-                                <Style Selector="Button:pointerover /template/ ContentPresenter">
-                                    <Setter Property="Background" Value="#E8E8E8" />
-                                </Style>
-                            </Button.Styles>
-                        </Button>
-                    </Grid>
-                    <ScrollViewer Grid.Row="1">
+                    <ScrollViewer>
                         <ItemsControl ItemsSource="{Binding Sidebar.Collections}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:CollectionViewModel">

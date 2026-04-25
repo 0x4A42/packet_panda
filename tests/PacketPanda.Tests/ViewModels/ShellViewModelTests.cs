@@ -15,7 +15,6 @@ namespace PacketPanda.Tests.ViewModels;
 public class ShellViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
-    private readonly Mock<IRequestFileStore> _store = new(MockBehavior.Strict);
     private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
     private readonly Mock<IDialogService> _dialog = new(MockBehavior.Strict);
 
@@ -32,8 +31,8 @@ public class ShellViewModelTests
             new BehaviorSubject<Environment?>(null));
 
     private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null) =>
-        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object, _picker.Object,
-            _environmentStore.Object, _settings.Object);
+        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _environmentStore.Object, _picker.Object,
+            _settings.Object);
 
     [Fact]
     public async Task NewTabCommand_AddsUntitledTabAndSetsItActive()
@@ -45,53 +44,6 @@ public class ShellViewModelTests
         shell.Tabs.Should().ContainSingle();
         shell.ActiveTab.Should().Be(shell.Tabs[0]);
         shell.ActiveTab!.Title.Should().Be("Untitled");
-    }
-
-    [Fact]
-    public async Task OpenFileInTab_WithNewPath_LoadsFileAndAddsTab()
-    {
-        _store.Setup(s => s.LoadAsync("/tmp/a.toml"))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://example.com", null));
-
-        var shell = CreateShell();
-
-        await shell.OpenFileInTabCommand.Execute("/tmp/a.toml");
-
-        shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.FilePath.Should().Be("/tmp/a.toml");
-        ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://example.com");
-    }
-
-    [Fact]
-    public async Task OpenFileInTab_WithAlreadyOpenPath_FocusesExistingTab()
-    {
-        _store.Setup(s => s.LoadAsync("/tmp/a.toml"))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://example.com", null));
-
-        var shell = CreateShell();
-        await shell.OpenFileInTabCommand.Execute("/tmp/a.toml");
-        await shell.NewTabCommand.Execute(); // active tab is now the blank one
-
-        await shell.OpenFileInTabCommand.Execute("/tmp/a.toml");
-
-        shell.Tabs.Should().HaveCount(2);
-        shell.ActiveTab!.FilePath.Should().Be("/tmp/a.toml");
-        _store.Verify(s => s.LoadAsync("/tmp/a.toml"), Times.Once);
-    }
-
-    [Fact]
-    public async Task OpenFileInTab_LoadFailure_AddsTabWithErrorMessage()
-    {
-        _store.Setup(s => s.LoadAsync("/tmp/bad.toml"))
-              .ThrowsAsync(new RequestFileException("Invalid TOML: bad"));
-
-        var shell = CreateShell();
-
-        await shell.OpenFileInTabCommand.Execute("/tmp/bad.toml");
-
-        shell.Tabs.Should().ContainSingle();
-        ((RequestEditorViewModel)shell.ActiveTab!.Content).ErrorMessage.Should().Be("Invalid TOML: bad");
-        shell.ActiveTab.FilePath.Should().Be("/tmp/bad.toml");
     }
 
     [Fact]
@@ -193,36 +145,6 @@ public class ShellViewModelTests
         await shell.Tabs[0].CloseCommand.Execute();
 
         shell.Tabs.Should().ContainSingle();
-    }
-
-    [Fact]
-    public async Task OpenFileCommand_PickerReturnsPath_OpensFileInTab()
-    {
-        const string pickedPath = "/tmp/picked.toml";
-
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync(pickedPath);
-        _store.Setup(s => s.LoadAsync(pickedPath))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://picked.com", null));
-
-        var shell = CreateShell();
-
-        await shell.OpenFileCommand.Execute();
-
-        shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.FilePath.Should().Be(pickedPath);
-        ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://picked.com");
-    }
-
-    [Fact]
-    public async Task OpenFileCommand_PickerCancelled_DoesNotAddTab()
-    {
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync((string?)null);
-
-        var shell = CreateShell();
-
-        await shell.OpenFileCommand.Execute();
-
-        shell.Tabs.Should().BeEmpty();
     }
 
     [Fact]
