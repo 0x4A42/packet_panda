@@ -168,7 +168,7 @@ public class CollectionViewModel : ReactiveObject
         _onRequestOpened = onRequestOpened;
 
         Items = new ObservableCollection<CollectionNodeViewModel>(
-            collection.Root.Children.Select(c => CollectionNodeViewModel.From(c, onRequestOpened)));
+            collection.Root.Children.Select(BuildNodeVm));
 
         NewRequestCommand = ReactiveCommand.CreateFromTask(AddNewRequestAsync);
         NewFolderCommand = ReactiveCommand.CreateFromTask(AddNewFolderAsync);
@@ -181,6 +181,28 @@ public class CollectionViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> NewRequestCommand { get; }
     public ReactiveCommand<Unit, Unit> NewFolderCommand { get; }
 
+    private CollectionNodeViewModel BuildNodeVm(CollectionNode node)
+    {
+        return node switch
+        {
+            FolderNode f => new CollectionNodeViewModel(
+                f.Id, f.Name, isFolder: true, method: null,
+                f.Children.Select(BuildNodeVm), sourceNode: f)
+            {
+                NewRequestCommand = ReactiveCommand.CreateFromTask(() => AddNewRequestToFolderAsync(f.Id)),
+                NewFolderCommand = ReactiveCommand.CreateFromTask(() => AddNewFolderToFolderAsync(f.Id)),
+            },
+            RequestNode r => new CollectionNodeViewModel(
+                r.Id, r.Name, isFolder: false,
+                method: r.Method.ToString().ToUpperInvariant(),
+                children: [], sourceNode: r)
+            {
+                RequestOpenedCallback = _onRequestOpened
+            },
+            _ => throw new InvalidOperationException($"Unknown node type: {node.GetType().Name}")
+        };
+    }
+
     private async Task AddNewRequestAsync()
     {
         var id = Guid.NewGuid().ToString();
@@ -189,7 +211,7 @@ public class CollectionViewModel : ReactiveObject
         var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
         await _store.SaveAsync(candidate.FilePath, candidate);
         _collection = candidate;
-        Items.Add(CollectionNodeViewModel.From(newNode, _onRequestOpened));
+        Items.Add(BuildNodeVm(newNode));
         _onRequestOpened(newNode);
     }
 
@@ -201,6 +223,61 @@ public class CollectionViewModel : ReactiveObject
         var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
         await _store.SaveAsync(candidate.FilePath, candidate);
         _collection = candidate;
-        Items.Add(CollectionNodeViewModel.From(newFolder, _onRequestOpened));
+        Items.Add(BuildNodeVm(newFolder));
+    }
+
+    private async Task AddNewRequestToFolderAsync(string folderId)
+    {
+        var id = Guid.NewGuid().ToString();
+        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null);
+        var (newRoot, found) = InsertIntoFolder(_collection.Root, folderId, newNode);
+        if (!found) return;
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+        FindNodeVm(Items, folderId)?.Children.Add(BuildNodeVm(newNode));
+        _onRequestOpened(newNode);
+    }
+
+    private async Task AddNewFolderToFolderAsync(string folderId)
+    {
+        var id = Guid.NewGuid().ToString();
+        var newFolder = new FolderNode(id, "New Folder", []);
+        var (newRoot, found) = InsertIntoFolder(_collection.Root, folderId, newFolder);
+        if (!found) return;
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+        FindNodeVm(Items, folderId)?.Children.Add(BuildNodeVm(newFolder));
+    }
+
+    private static (FolderNode Root, bool Found) InsertIntoFolder(
+        FolderNode current, string targetId, CollectionNode newNode)
+    {
+        if (current.Id == targetId)
+            return (current with { Children = current.Children.Append(newNode).ToList() }, true);
+
+        var changed = false;
+        var newChildren = current.Children.Select(child =>
+        {
+            if (changed || child is not FolderNode f) return child;
+            var (updated, found) = InsertIntoFolder(f, targetId, newNode);
+            if (!found) return child;
+            changed = true;
+            return (CollectionNode)updated;
+        }).ToList();
+
+        return changed ? (current with { Children = newChildren }, true) : (current, false);
+    }
+
+    private static CollectionNodeViewModel? FindNodeVm(IEnumerable<CollectionNodeViewModel> nodes, string id)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Id == id) return node;
+            var found = FindNodeVm(node.Children, id);
+            if (found is not null) return found;
+        }
+        return null;
     }
 }

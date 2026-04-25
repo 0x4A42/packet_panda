@@ -179,35 +179,14 @@ public class EnvironmentSidebarViewModel : ReactiveObject
 
     private async Task NewEnvironmentAsync()
     {
-        var root = _getWorkspaceRoot();
-        if (root is null)
-        {
-            await _dialog.ConfirmAsync("No workspace open",
-                "Open a workspace folder first by clicking 'Open…' in the Requests tab.");
-            return;
-        }
+        var path = await _picker.PickSaveEnvironmentAsync();
+        if (path is null) return;
 
-        var envDir = Path.Combine(root, "environments");
-        Directory.CreateDirectory(envDir);
+        var name = Path.GetFileNameWithoutExtension(path);
+        if (string.IsNullOrWhiteSpace(name)) name = "New Environment";
 
-        const string baseName = "New Environment";
-        var name = baseName;
-        var counter = 2;
-        var safeName = string.Concat(name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-        var filePath = Path.Combine(envDir, $"{safeName}.toml");
-
-        while (_allItems.Any(i => i.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
-                                   i.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase))
-               || _pendingPaths.Contains(filePath)
-               || File.Exists(filePath))
-        {
-            name = $"{baseName} {counter++}";
-            safeName = string.Concat(name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-            filePath = Path.Combine(envDir, $"{safeName}.toml");
-        }
-
-        _pendingPaths.Add(filePath);
-        _newEnvironmentCreated.OnNext((name, filePath));
+        _pendingPaths.Add(path);
+        _newEnvironmentCreated.OnNext((name, path));
     }
 
     private async Task CommitRenameAsync(EnvironmentItemViewModel item)
@@ -225,7 +204,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
 
         var lastSep = envRef.FilePath.LastIndexOfAny(new[] { '/', '\\' });
         var dirPrefix = lastSep >= 0 ? envRef.FilePath[..(lastSep + 1)] : string.Empty;
-        var newPath = dirPrefix + safeName + ".toml";
+        var newPath = dirPrefix + safeName + ".json";
 
         try
         {
@@ -265,7 +244,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
         var safeName = string.Concat(newName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
         var lastSep = envRef.FilePath.LastIndexOfAny(new[] { '/', '\\' });
         var dirPrefix = lastSep >= 0 ? envRef.FilePath[..(lastSep + 1)] : string.Empty;
-        var newPath = dirPrefix + safeName + ".toml";
+        var newPath = dirPrefix + safeName + ".json";
 
         try
         {

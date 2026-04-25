@@ -1,5 +1,7 @@
 using System;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using Avalonia;
 using Avalonia.ReactiveUI;
 using PacketPanda.Desktop.Highlighting;
 using PacketPanda.Desktop.ViewModels;
@@ -41,8 +43,9 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         _colorizer = new VariableColorizer();
         BodyEditor.TextArea.TextView.LineTransformers.Add(_colorizer);
 
-        // Sync RequestBody → TextEditor
+        // Sync RequestBody → TextEditor (on UI thread in case it fires from background)
         vm.WhenAnyValue(x => x.RequestBody)
+            .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(body =>
             {
                 if (BodyEditor.Text != (body ?? string.Empty))
@@ -60,13 +63,25 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         };
         BodyEditor.TextChanged += _textChangedHandler;
 
-        // Update colorizer when active environment changes
+        // Update colorizer when active environment changes (must run on UI thread for Redraw)
         vm.WhenAnyValue(x => x.ActiveEnvironmentVariables)
+            .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(vars =>
             {
                 _colorizer.UpdateEnvironment(vars);
                 BodyEditor.TextArea.TextView.Redraw();
             })
             .DisposeWith(_subs);
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        if (DataContext is RequestEditorViewModel vm)
+        {
+            var body = vm.RequestBody ?? string.Empty;
+            if (BodyEditor.Text != body)
+                BodyEditor.Text = body;
+        }
     }
 }

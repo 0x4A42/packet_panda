@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Reactive.Linq;
 using FluentAssertions;
 using Moq;
@@ -12,21 +13,39 @@ namespace PacketPanda.Tests.ViewModels;
 
 public class EnvironmentSidebarViewModelTests
 {
-    private static EnvironmentSidebarViewModel NewVm(IFilePickerService? picker = null) =>
-        new(new Mock<IEnvironmentFileStore>().Object,
-            new Mock<IDialogService>().Object,
-            picker ?? new Mock<IFilePickerService>().Object,
-            () => System.IO.Path.GetTempPath());
+    private static EnvironmentSidebarViewModel NewVm(IFilePickerService? picker = null)
+    {
+        if (picker is null)
+        {
+            var mockPicker = new Mock<IFilePickerService>();
+            var callCount = 0;
+            mockPicker
+                .Setup(p => p.PickSaveEnvironmentAsync())
+                .ReturnsAsync(() =>
+                {
+                    callCount++;
+                    var name = callCount == 1 ? "New Environment" : $"New Environment {callCount}";
+                    return Path.Combine(Path.GetTempPath(), "environments", $"{name}.json");
+                });
+            picker = mockPicker.Object;
+        }
+        return new(new Mock<IEnvironmentFileStore>().Object,
+                   new Mock<IDialogService>().Object,
+                   picker,
+                   () => Path.GetTempPath());
+    }
 
     [Fact]
-    public async Task NewEnvironment_DoesNotSaveFileToDisk_AndDoesNotAddToItems()
+    public async Task NewEnvironment_PickerCancelled_DoesNotSaveOrAddToItems()
     {
         var store = new Mock<IEnvironmentFileStore>();
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync()).ReturnsAsync((string?)null);
         var vm = new EnvironmentSidebarViewModel(
             store.Object,
             new Mock<IDialogService>().Object,
-            new Mock<IFilePickerService>().Object,
-            () => System.IO.Path.GetTempPath());
+            picker.Object,
+            () => Path.GetTempPath());
 
         await vm.NewEnvironmentCommand.Execute();
 
@@ -35,7 +54,7 @@ public class EnvironmentSidebarViewModelTests
     }
 
     [Fact]
-    public async Task NewEnvironment_FiresNewEnvironmentCreated_WithNameAndPath()
+    public async Task NewEnvironment_FiresNewEnvironmentCreated_WithNameFromPickedPath()
     {
         var vm = NewVm();
         (string Name, string FilePath)? received = null;
@@ -45,7 +64,7 @@ public class EnvironmentSidebarViewModelTests
 
         received.Should().NotBeNull();
         received!.Value.Name.Should().Be("New Environment");
-        received.Value.FilePath.Should().EndWith("New Environment.toml");
+        received.Value.FilePath.Should().EndWith("New Environment.json");
     }
 
     [Fact]
@@ -90,9 +109,12 @@ public class EnvironmentSidebarViewModelTests
     }
 
     [Fact]
-    public async Task DiscardPendingEnvironment_AllowsReuseOfSameNameAndPath()
+    public async Task DiscardPendingEnvironment_AllowsReusingTheSamePath()
     {
-        var vm = NewVm();
+        var samePath = Path.Combine(Path.GetTempPath(), "environments", "My Env.json");
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync()).ReturnsAsync(samePath);
+        var vm = NewVm(picker.Object);
         var events = new List<(string Name, string FilePath)>();
         vm.NewEnvironmentCreated.Subscribe(ev => events.Add(ev));
 

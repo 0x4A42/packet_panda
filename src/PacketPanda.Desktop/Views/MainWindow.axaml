@@ -167,6 +167,21 @@
                                                    Foreground="White" />
                                     </Border>
                                     <TextBlock Text="{Binding Name}" Foreground="#1E1E1E" VerticalAlignment="Center" />
+                                    <Button IsVisible="{Binding IsFolder}"
+                                            Content="⚙"
+                                            Padding="4,0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            FontSize="10">
+                                        <Button.Flyout>
+                                            <MenuFlyout>
+                                                <MenuItem Header="New request"
+                                                          Command="{Binding NewRequestCommand}" />
+                                                <MenuItem Header="New folder"
+                                                          Command="{Binding NewFolderCommand}" />
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
                                 </StackPanel>
                             </TreeDataTemplate>
 

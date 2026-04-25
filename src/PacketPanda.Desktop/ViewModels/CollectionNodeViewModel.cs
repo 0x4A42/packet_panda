@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reactive;
 using PacketPanda.Core.Persistence;
 using ReactiveUI;
 
@@ -30,6 +31,8 @@ public class CollectionNodeViewModel : ReactiveObject
     public string? Method { get; }
     public CollectionNode? SourceNode { get; }
     public Action<RequestNode>? RequestOpenedCallback { get; init; }
+    public ReactiveCommand<Unit, Unit>? NewRequestCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? NewFolderCommand { get; init; }
     public ObservableCollection<CollectionNodeViewModel> Children { get; }
 
     public string DisplayName => !IsFolder && Method is not null ? $"{Method} {Name}" : Name;

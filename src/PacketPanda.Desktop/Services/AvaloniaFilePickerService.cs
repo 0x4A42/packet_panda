@@ -7,25 +7,27 @@ public sealed class AvaloniaFilePickerService(Window window) : IFilePickerServic
 {
     private static readonly FilePickerFileType JsonCollection =
         new("JSON collection") { Patterns = ["*.json"] };
+    private static readonly FilePickerFileType JsonEnvironment =
+        new("JSON environment") { Patterns = ["*.json"] };
 
     public async Task<string?> PickOpenAsync()
     {
         var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open Request",
+            Title = "Open Environment",
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("TOML request") { Patterns = ["*.toml"] }]
+            FileTypeFilter = [JsonEnvironment]
         });
         return files.Count == 1 ? files[0].Path.LocalPath : null;
     }
 
-    public async Task<string?> PickSaveAsync()
+    public async Task<string?> PickSaveEnvironmentAsync()
     {
         var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save Request",
-            DefaultExtension = "toml",
-            FileTypeChoices = [new FilePickerFileType("TOML request") { Patterns = ["*.toml"] }]
+            Title = "New Environment",
+            DefaultExtension = "json",
+            FileTypeChoices = [JsonEnvironment]
         });
         return file?.Path.LocalPath;
     }
