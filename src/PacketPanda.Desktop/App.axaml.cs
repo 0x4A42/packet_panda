@@ -28,14 +28,13 @@ public partial class App : Application
             _httpClient = new HttpClient();
             var sender = new HttpRequestSender(_httpClient);
             var collectionStore = new JsonCollectionFileStore();
-            var settingsStore = new TomlSettingsStore(TomlSettingsStore.DefaultPath);
+            var settingsStore = new JsonSettingsStore(JsonSettingsStore.DefaultPath);
+            var environmentStore = new JsonEnvironmentFileStore();
 
             var mainWindow = new MainWindow();
 
             var filePicker = new AvaloniaFilePickerService(mainWindow);
             var dialog = new AvaloniaDialogService(mainWindow);
-
-            var environmentStore = new TomlEnvironmentFileStore();
 
             var sidebar = new CollectionSidebarViewModel(collectionStore, settingsStore, filePicker, dialog);
 
