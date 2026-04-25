@@ -205,7 +205,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
             var safeName = string.Concat(EnvironmentName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
             var lastSep = CurrentFilePath!.LastIndexOfAny(new[] { '/', '\\' });
             var dirPrefix = lastSep >= 0 ? CurrentFilePath[..(lastSep + 1)] : string.Empty;
-            CurrentFilePath = dirPrefix + safeName + ".toml";
+            CurrentFilePath = dirPrefix + safeName + ".json";
         }
 
         var env = new Environment(EnvironmentName, CurrentFilePath!, vars, descs,

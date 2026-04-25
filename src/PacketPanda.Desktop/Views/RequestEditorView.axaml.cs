@@ -43,9 +43,8 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         _colorizer = new VariableColorizer();
         BodyEditor.TextArea.TextView.LineTransformers.Add(_colorizer);
 
-        // Sync RequestBody → TextEditor (on UI thread in case it fires from background)
+        // Sync RequestBody → TextEditor
         vm.WhenAnyValue(x => x.RequestBody)
-            .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(body =>
             {
                 if (BodyEditor.Text != (body ?? string.Empty))

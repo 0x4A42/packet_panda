@@ -152,7 +152,7 @@ public class ShellViewModelTests
     {
         var shell = CreateShell();
 
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
 
         _environmentStore.Verify(s => s.LoadAsync(It.IsAny<string>()), Times.Never);
         shell.Tabs.Should().ContainSingle();
@@ -164,23 +164,23 @@ public class ShellViewModelTests
     public async Task OpenNewEnvironmentInTabAsync_OnFirstSave_AddsToEnvironmentsForPicker()
     {
         var shell = CreateShell();
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
         _environmentStore
-            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.toml", It.IsAny<Environment>()))
+            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.json", It.IsAny<Environment>()))
             .Returns(Task.CompletedTask);
 
         var envEditor = (EnvironmentEditorViewModel)shell.ActiveTab!.Content;
         await envEditor.SaveCommand.Execute();
 
         shell.EnvironmentsForPicker.Should().Contain(e =>
-            e.Name == "New Environment" && e.FilePath == "/tmp/envs/New Environment.toml");
+            e.Name == "New Environment" && e.FilePath == "/tmp/envs/New Environment.json");
     }
 
     [Fact]
     public async Task OpenNewEnvironmentInTabAsync_OnCloseWithoutChanges_SilentlyDiscardsWithoutPrompt()
     {
         var shell = CreateShell();
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
 
         await shell.ActiveTab!.CloseCommand.Execute();
 
@@ -188,16 +188,16 @@ public class ShellViewModelTests
         // _dialog is MockBehavior.Strict — ConfirmDiscardAsync being called would throw here,
         // so this assertion doubles as "no discard dialog was shown"
         shell.EnvironmentsForPicker.Should().NotContain(e =>
-            e.FilePath == "/tmp/envs/New Environment.toml");
+            e.FilePath == "/tmp/envs/New Environment.json");
     }
 
     [Fact]
     public async Task OpenNewEnvironmentInTabAsync_OnSecondSave_UpdatesPickerEntryViaSync()
     {
         var shell = CreateShell();
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
         _environmentStore
-            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.toml", It.IsAny<Environment>()))
+            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.json", It.IsAny<Environment>()))
             .Returns(Task.CompletedTask);
 
         var envEditor = (EnvironmentEditorViewModel)shell.ActiveTab!.Content;
@@ -208,7 +208,7 @@ public class ShellViewModelTests
         await envEditor.SaveCommand.Execute();
 
         shell.EnvironmentsForPicker.Should().Contain(e =>
-            e.Name == "Staging" && e.FilePath == "/tmp/envs/New Environment.toml");
+            e.Name == "Staging" && e.FilePath == "/tmp/envs/New Environment.json");
         shell.EnvironmentsForPicker.Should().NotContain(e => e.Name == "New Environment");
     }
 
@@ -216,22 +216,22 @@ public class ShellViewModelTests
     public async Task OpenNewEnvironmentInTabAsync_WithAlreadyOpenPath_FocusesExistingTab()
     {
         var shell = CreateShell();
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
         await shell.NewTabCommand.Execute(); // make a different tab active
 
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
 
-        shell.Tabs.Should().ContainSingle(t => t.FilePath == "/tmp/envs/New Environment.toml");
-        shell.ActiveTab!.FilePath.Should().Be("/tmp/envs/New Environment.toml");
+        shell.Tabs.Should().ContainSingle(t => t.FilePath == "/tmp/envs/New Environment.json");
+        shell.ActiveTab!.FilePath.Should().Be("/tmp/envs/New Environment.json");
     }
 
     [Fact]
     public async Task DuplicateEnvironment_AddsEntryToEnvironmentsForPicker()
     {
         _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
-        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
-        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.toml"))
-            .ReturnsAsync(new Environment("Dev", "/tmp/dev.toml",
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.json");
+        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.json"))
+            .ReturnsAsync(new Environment("Dev", "/tmp/dev.json",
                 new Dictionary<string, string>(StringComparer.Ordinal)));
         _environmentStore.Setup(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Environment>()))
             .Returns(Task.CompletedTask);
@@ -250,28 +250,28 @@ public class ShellViewModelTests
         _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
 
         var shell = CreateShell();
-        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.json");
         shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
         shell.EnvironmentsForPicker.Add(envRef);
 
         await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
 
-        shell.EnvironmentsForPicker.Should().NotContain(e => e.FilePath == "/tmp/dev.toml");
+        shell.EnvironmentsForPicker.Should().NotContain(e => e.FilePath == "/tmp/dev.json");
     }
 
     [Fact]
     public async Task DeleteEnvironment_ClosesOpenTab()
     {
         _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
-        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.toml"))
-            .ReturnsAsync(new Environment("Dev", "/tmp/dev.toml",
+        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.json"))
+            .ReturnsAsync(new Environment("Dev", "/tmp/dev.json",
                 new Dictionary<string, string>(StringComparer.Ordinal)));
 
         var shell = CreateShell();
-        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.json");
         shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
         shell.EnvironmentsForPicker.Add(envRef);
-        await shell.OpenEnvironmentInTabAsync("/tmp/dev.toml");
+        await shell.OpenEnvironmentInTabAsync("/tmp/dev.json");
         shell.Tabs.Should().ContainSingle();
 
         await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
@@ -287,7 +287,7 @@ public class ShellViewModelTests
             .ThrowsAsync(new EnvironmentFileException("gone"));
 
         var shell = CreateShell();
-        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.json");
         shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
         shell.EnvironmentsForPicker.Add(envRef);
         shell.SelectedEnvironment = envRef;

@@ -177,16 +177,31 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             _environmentOpenRequested.OnNext(path);
     }
 
-    private async Task NewEnvironmentAsync()
+    private Task NewEnvironmentAsync()
     {
-        var path = await _picker.PickSaveEnvironmentAsync();
-        if (path is null) return;
+        var envDir = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "environments");
 
-        var name = Path.GetFileNameWithoutExtension(path);
-        if (string.IsNullOrWhiteSpace(name)) name = "New Environment";
+        try { Directory.CreateDirectory(envDir); } catch { /* best-effort */ }
 
-        _pendingPaths.Add(path);
-        _newEnvironmentCreated.OnNext((name, path));
+        const string baseName = "New Environment";
+        var name = baseName;
+        var counter = 2;
+        var filePath = Path.Combine(envDir, $"{name}.json");
+
+        while (_allItems.Any(i => i.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+                                   i.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase))
+               || _pendingPaths.Contains(filePath)
+               || File.Exists(filePath))
+        {
+            name = $"{baseName} {counter++}";
+            filePath = Path.Combine(envDir, $"{name}.json");
+        }
+
+        _pendingPaths.Add(filePath);
+        _newEnvironmentCreated.OnNext((name, filePath));
+        return Task.CompletedTask;
     }
 
     private async Task CommitRenameAsync(EnvironmentItemViewModel item)

@@ -28,18 +28,18 @@ public class EnvironmentEditorViewModelTests
         new((store ?? NewStore()).Object, (dialog ?? NewDialog()).Object);
 
     private static Environment DevEnv(params (string k, string v)[] vars) =>
-        new("dev", "/ws/environments/dev.toml",
+        new("dev", "/ws/environments/dev.json",
             vars.ToDictionary(p => p.k, p => p.v));
 
     private static Environment DevEnvWithDescs(
         (string k, string v, string d)[] vars) =>
-        new("dev", "/ws/environments/dev.toml",
+        new("dev", "/ws/environments/dev.json",
             vars.ToDictionary(p => p.k, p => p.v),
             vars.Where(p => !string.IsNullOrEmpty(p.d))
                 .ToDictionary(p => p.k, p => p.d));
 
     private static Environment BlankNewEnv() =>
-        new("New Environment", "/ws/environments/New Environment.toml",
+        new("New Environment", "/ws/environments/New Environment.json",
             new Dictionary<string, string>(StringComparer.Ordinal));
 
     [Fact]
@@ -118,7 +118,7 @@ public class EnvironmentEditorViewModelTests
         await vm.SaveCommand.Execute();
 
         store.Verify(s => s.SaveAsync(
-            "/ws/environments/dev.toml",
+            "/ws/environments/dev.json",
             It.Is<Environment>(e => e.Variables["a"] == "1")), Times.Once);
         vm.IsDirty.Should().BeFalse();
         vm.ErrorMessage.Should().BeNull();
@@ -137,7 +137,7 @@ public class EnvironmentEditorViewModelTests
         await vm.SaveCommand.Execute();
 
         store.Verify(s => s.SaveAsync(
-            "/ws/environments/dev.toml",
+            "/ws/environments/dev.json",
             It.Is<Environment>(e => e.Descriptions!["token"] == "Auth token")), Times.Once);
     }
 
@@ -152,7 +152,7 @@ public class EnvironmentEditorViewModelTests
         await vm.SaveCommand.Execute();
 
         store.Verify(s => s.SaveAsync(
-            "/ws/environments/dev.toml",
+            "/ws/environments/dev.json",
             It.Is<Environment>(e => e.Variables.Count == 0)), Times.Once);
     }
 
@@ -213,8 +213,8 @@ public class EnvironmentEditorViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        store.Verify(s => s.SaveAsync("/ws/environments/New Environment.toml", It.IsAny<Environment>()), Times.Once);
-        vm.CurrentFilePath.Should().Be("/ws/environments/New Environment.toml");
+        store.Verify(s => s.SaveAsync("/ws/environments/New Environment.json", It.IsAny<Environment>()), Times.Once);
+        vm.CurrentFilePath.Should().Be("/ws/environments/New Environment.json");
     }
 
     [Fact]
@@ -228,8 +228,8 @@ public class EnvironmentEditorViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        store.Verify(s => s.SaveAsync("/ws/environments/Staging.toml", It.IsAny<Environment>()), Times.Once);
-        vm.CurrentFilePath.Should().Be("/ws/environments/Staging.toml");
+        store.Verify(s => s.SaveAsync("/ws/environments/Staging.json", It.IsAny<Environment>()), Times.Once);
+        vm.CurrentFilePath.Should().Be("/ws/environments/Staging.json");
     }
 
     [Fact]
@@ -240,11 +240,11 @@ public class EnvironmentEditorViewModelTests
         vm.Load(BlankNewEnv());
         vm.MarkAsNew();
         vm.EnvironmentName = "Staging";
-        await vm.SaveCommand.Execute();  // first save → path becomes Staging.toml
+        await vm.SaveCommand.Execute();  // first save → path becomes Staging.json
 
         vm.EnvironmentName = "Production";
-        await vm.SaveCommand.Execute();  // second save → stays Staging.toml (rename is a separate action)
+        await vm.SaveCommand.Execute();  // second save → stays Staging.json (rename is a separate action)
 
-        store.Verify(s => s.SaveAsync("/ws/environments/Staging.toml", It.IsAny<Environment>()), Times.Exactly(2));
+        store.Verify(s => s.SaveAsync("/ws/environments/Staging.json", It.IsAny<Environment>()), Times.Exactly(2));
     }
 }
