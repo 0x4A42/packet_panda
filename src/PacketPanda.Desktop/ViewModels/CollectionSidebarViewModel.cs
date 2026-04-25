@@ -16,7 +16,6 @@ public class CollectionSidebarViewModel : ReactiveObject
     private readonly IFilePickerService _filePicker;
     private readonly IDialogService _dialog;
     private readonly Subject<RequestNode> _requestOpened = new();
-    private readonly Subject<IReadOnlyList<EnvironmentRef>> _environmentsScanned = new();
 
     private string? _filterText;
     private string? _errorMessage;
@@ -60,7 +59,6 @@ public class CollectionSidebarViewModel : ReactiveObject
     public ReactiveCommand<CollectionViewModel, Unit> RemoveCollectionCommand { get; }
 
     public IObservable<RequestNode> RequestOpened => _requestOpened;
-    public IObservable<IReadOnlyList<EnvironmentRef>> EnvironmentsScanned => _environmentsScanned;
 
     public async Task LoadCollectionsAsync(IReadOnlyList<string> paths)
     {
@@ -188,8 +186,9 @@ public class CollectionViewModel : ReactiveObject
         var id = Guid.NewGuid().ToString();
         var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null);
         var newChildren = _collection.Root.Children.Append(newNode).ToList();
-        _collection = _collection with { Root = _collection.Root with { Children = newChildren } };
-        await _store.SaveAsync(_collection.FilePath, _collection);
+        var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
         Items.Add(CollectionNodeViewModel.From(newNode, _onRequestOpened));
         _onRequestOpened(newNode);
     }
@@ -199,9 +198,9 @@ public class CollectionViewModel : ReactiveObject
         var id = Guid.NewGuid().ToString();
         var newFolder = new FolderNode(id, "New Folder", []);
         var newChildren = _collection.Root.Children.Append(newFolder).ToList();
-        _collection = _collection with { Root = _collection.Root with { Children = newChildren } };
-        await _store.SaveAsync(_collection.FilePath, _collection);
-        var nodeVm = CollectionNodeViewModel.From(newFolder, _onRequestOpened);
-        Items.Add(nodeVm);
+        var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+        Items.Add(CollectionNodeViewModel.From(newFolder, _onRequestOpened));
     }
 }

@@ -299,14 +299,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     public void SetPendingActiveEnvironmentName(string? name) => _pendingActiveEnvName = name;
 
-    private void SyncEnvironmentsForPicker(IReadOnlyList<EnvironmentRef> nonGlobals)
-    {
-        EnvironmentsForPicker.Clear();
-        EnvironmentsForPicker.Add(NoEnvironmentSentinel);
-        foreach (var e in nonGlobals)
-            EnvironmentsForPicker.Add(e);
-    }
-
     private void HandleEnvironmentRenamed(EnvironmentRef oldRef, EnvironmentRef newRef)
     {
         // Update picker
@@ -341,34 +333,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var openTab = Tabs.FirstOrDefault(t => t.FilePath == deleted.FilePath);
         if (openTab is not null)
             CloseTab(openTab);
-    }
-
-    private void RestoreSelectedEnvironment()
-    {
-        var nameToRestore = _pendingActiveEnvName ?? _selectedEnvironment?.Name;
-        var isPendingRestore = _pendingActiveEnvName is not null;
-        _pendingActiveEnvName = null;
-
-        EnvironmentRef match;
-        if (nameToRestore is null || nameToRestore == NoEnvironmentSentinel.Name)
-        {
-            match = NoEnvironmentSentinel;
-        }
-        else
-        {
-            match = EnvironmentsForPicker.FirstOrDefault(e => e.Name == nameToRestore)
-                ?? NoEnvironmentSentinel;
-        }
-
-        if (isPendingRestore)
-        {
-            SelectedEnvironment = match;
-        }
-        else
-        {
-            _selectedEnvironment = match;
-            this.RaisePropertyChanged(nameof(SelectedEnvironment));
-        }
     }
 
     private async Task OnSelectedEnvironmentChangedAsync(EnvironmentRef? envRef)

@@ -15,6 +15,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private readonly IVariableResolver _resolver;
     private Environment? _activeEnv;
     private IDisposable? _activeEnvSub;
+    private IDisposable? _dirtySub;
 
     private HttpMethod _selectedMethod = HttpMethod.Get;
     private string _url = string.Empty;
@@ -51,7 +52,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SendCommand = ReactiveCommand.CreateFromTask(SendAsync, canSend);
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
 
-        this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RequestBody)
+        _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RequestBody)
             .Subscribe(_ => RecomputeDirty());
 
         CaptureSnapshot();
@@ -188,7 +189,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
     }
 
-    public void Dispose() => _activeEnvSub?.Dispose();
+    public void Dispose()
+    {
+        _activeEnvSub?.Dispose();
+        _dirtySub?.Dispose();
+    }
 
     private void RecomputeDirty()
     {
