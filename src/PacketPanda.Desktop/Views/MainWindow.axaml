@@ -60,7 +60,7 @@
                             ToolTip.Tip="Requests">
                         <StackPanel Orientation="Vertical" Spacing="3" HorizontalAlignment="Center">
                             <TextBlock Text="📁" FontSize="18" HorizontalAlignment="Center" Foreground="White" />
-                            <TextBlock Text="Files" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
+                            <TextBlock Text="Collections" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
                         </StackPanel>
                     </Button>
 
@@ -81,43 +81,97 @@
             <Grid Grid.Column="1" Background="#F5F5F5">
 
                 <!-- Requests panel -->
-                <Grid RowDefinitions="*"
+                <Grid RowDefinitions="Auto,Auto,*"
                       IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}">
-                    <ScrollViewer>
-                        <ItemsControl ItemsSource="{Binding Sidebar.Collections}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="vm:CollectionViewModel">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Name}"
+
+                    <!-- Toolbar -->
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="8,8,8,4">
+                        <Button Grid.Column="0"
+                                Content="+"
+                                Padding="8,4"
+                                ToolTip.Tip="New collection"
+                                Command="{Binding Sidebar.NewCollectionCommand}" />
+                        <DropDownButton Grid.Column="1"
+                                        Margin="4,0,0,0"
+                                        Padding="8,4"
+                                        ToolTip.Tip="Open…">
+                            <DropDownButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuItem Header="Open file(s)…"
+                                              Command="{Binding Sidebar.OpenFilesCommand}" />
+                                    <MenuItem Header="Open folder…"
+                                              Command="{Binding Sidebar.OpenFolderCommand}" />
+                                </MenuFlyout>
+                            </DropDownButton.Flyout>
+                            <TextBlock Text="🗁" />
+                        </DropDownButton>
+                        <TextBox Grid.Column="2"
+                                 Margin="4,0,0,0"
+                                 Watermark="Search…"
+                                 Text="{Binding Sidebar.FilterText}" />
+                    </Grid>
+
+                    <!-- Error message -->
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding Sidebar.ErrorMessage}"
+                               IsVisible="{Binding Sidebar.ErrorMessage, Converter={StaticResource IsNotNullConverter}}"
+                               Foreground="Red"
+                               Margin="8,0,8,4"
+                               TextWrapping="Wrap" />
+
+                    <!-- Collections tree -->
+                    <TreeView Grid.Row="2"
+                              Background="Transparent"
+                              ItemsSource="{Binding Sidebar.Collections}"
+                              Tapped="CollectionTreeView_Tapped">
+                        <TreeView.DataTemplates>
+
+                            <!-- CollectionViewModel (top-level) -->
+                            <TreeDataTemplate DataType="vm:CollectionViewModel"
+                                              ItemsSource="{Binding Items}">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="📁" FontSize="11" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Button Content="⚙"
+                                            Padding="4,0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            FontSize="10">
+                                        <Button.Flyout>
+                                            <MenuFlyout>
+                                                <MenuItem Header="New request"
+                                                          Command="{Binding NewRequestCommand}" />
+                                                <MenuItem Header="New folder"
+                                                          Command="{Binding NewFolderCommand}" />
+                                                <MenuItem Header="Remove from sidebar"
+                                                          Command="{Binding $parent[TreeView].DataContext.Sidebar.RemoveCollectionCommand}"
+                                                          CommandParameter="{Binding}" />
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                </StackPanel>
+                            </TreeDataTemplate>
+
+                            <!-- CollectionNodeViewModel (folders and requests) -->
+                            <TreeDataTemplate DataType="vm:CollectionNodeViewModel"
+                                              ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                    <Border IsVisible="{Binding Method, Converter={StaticResource IsNotNullConverter}}"
+                                            Background="{Binding Method, Converter={StaticResource MethodBrushConverter}}"
+                                            CornerRadius="2"
+                                            Padding="4,1"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Method}"
+                                                   FontSize="9"
                                                    FontWeight="Bold"
-                                                   Margin="8,4"
-                                                   Foreground="#1E1E1E" />
-                                        <TreeView Background="Transparent"
-                                                  ItemsSource="{Binding Items}">
-                                            <TreeView.DataTemplates>
-                                                <TreeDataTemplate DataType="vm:CollectionNodeViewModel"
-                                                                  ItemsSource="{Binding Children}">
-                                                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                                        <Border IsVisible="{Binding Method, Converter={StaticResource IsNotNullConverter}}"
-                                                                Background="{Binding Method, Converter={StaticResource MethodBrushConverter}}"
-                                                                CornerRadius="2"
-                                                                Padding="4,1"
-                                                                VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding Method}"
-                                                                       FontSize="9"
-                                                                       FontWeight="Bold"
-                                                                       Foreground="White" />
-                                                        </Border>
-                                                        <TextBlock Text="{Binding Name}" Foreground="#1E1E1E" VerticalAlignment="Center" />
-                                                    </StackPanel>
-                                                </TreeDataTemplate>
-                                            </TreeView.DataTemplates>
-                                        </TreeView>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                                                   Foreground="White" />
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" Foreground="#1E1E1E" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </TreeDataTemplate>
+
+                        </TreeView.DataTemplates>
+                    </TreeView>
                 </Grid>
 
                 <!-- Environments panel -->
@@ -132,37 +186,47 @@
 
         <Grid Grid.Column="2" RowDefinitions="Auto,*">
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="4">
-                <TabStrip ItemsSource="{Binding Tabs}"
-                          SelectedItem="{Binding ActiveTab}">
-                    <TabStrip.ItemTemplate>
-                        <DataTemplate DataType="vm:TabViewModel">
-                            <StackPanel Orientation="Horizontal" Spacing="4"
-                                        PointerPressed="TabItem_PointerPressed">
-                                <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
-                                        CornerRadius="2"
-                                        Padding="4,1"
-                                        VerticalAlignment="Center"
-                                        IsVisible="{Binding MethodLabel, Converter={StaticResource IsNotNullConverter}}">
-                                    <TextBlock Text="{Binding MethodLabel}"
-                                               FontSize="9"
-                                               FontWeight="Bold"
-                                               Foreground="White" />
-                                </Border>
-                                <TextBlock Text="{Binding DisplayTitle}" VerticalAlignment="Center" />
-                                <TextBlock Text="●"
-                                           FontSize="7"
-                                           Foreground="#999"
-                                           VerticalAlignment="Center"
-                                           IsVisible="{Binding ShowDirtyIndicator}" />
-                                <Button Content="×"
-                                        Command="{Binding CloseCommand}"
-                                        Padding="4,0"
-                                        Background="Transparent"
-                                        BorderThickness="0" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </TabStrip.ItemTemplate>
-                </TabStrip>
+                <ScrollViewer Grid.Column="0"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled">
+                    <TabStrip ItemsSource="{Binding Tabs}"
+                              SelectedItem="{Binding ActiveTab}">
+                        <TabStrip.ItemContainerTheme>
+                            <ControlTheme TargetType="TabStripItem">
+                                <Setter Property="MinWidth" Value="80" />
+                                <Setter Property="MaxWidth" Value="200" />
+                            </ControlTheme>
+                        </TabStrip.ItemContainerTheme>
+                        <TabStrip.ItemTemplate>
+                            <DataTemplate DataType="vm:TabViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="4"
+                                            PointerPressed="TabItem_PointerPressed">
+                                    <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
+                                            CornerRadius="2"
+                                            Padding="4,1"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding MethodLabel, Converter={StaticResource IsNotNullConverter}}">
+                                        <TextBlock Text="{Binding MethodLabel}"
+                                                   FontSize="9"
+                                                   FontWeight="Bold"
+                                                   Foreground="White" />
+                                    </Border>
+                                    <TextBlock Text="{Binding DisplayTitle}" VerticalAlignment="Center" />
+                                    <TextBlock Text="●"
+                                               FontSize="7"
+                                               Foreground="#999"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding ShowDirtyIndicator}" />
+                                    <Button Content="×"
+                                            Command="{Binding CloseCommand}"
+                                            Padding="4,0"
+                                            Background="Transparent"
+                                            BorderThickness="0" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </TabStrip.ItemTemplate>
+                    </TabStrip>
+                </ScrollViewer>
 
                 <Button Grid.Column="1"
                         Content="+"

@@ -37,6 +37,7 @@ public class CollectionSidebarViewModel : ReactiveObject
         NewCollectionCommand = ReactiveCommand.CreateFromTask(NewCollectionAsync);
         OpenFilesCommand = ReactiveCommand.CreateFromTask(OpenFilesAsync);
         OpenFolderCommand = ReactiveCommand.CreateFromTask(OpenFolderAsync);
+        RemoveCollectionCommand = ReactiveCommand.Create<CollectionViewModel>(RemoveCollection);
     }
 
     public ObservableCollection<CollectionViewModel> Collections { get; }
@@ -56,6 +57,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> NewCollectionCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenFilesCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenFolderCommand { get; }
+    public ReactiveCommand<CollectionViewModel, Unit> RemoveCollectionCommand { get; }
 
     public IObservable<RequestNode> RequestOpened => _requestOpened;
     public IObservable<IReadOnlyList<EnvironmentRef>> EnvironmentsScanned => _environmentsScanned;

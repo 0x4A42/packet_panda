@@ -25,4 +25,13 @@ public partial class MainWindow : Window
             e.Handled = true;
         }
     }
+
+    private void CollectionTreeView_Tapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (e.Source is Avalonia.Controls.Control ctrl &&
+            ctrl.DataContext is CollectionNodeViewModel vm)
+        {
+            vm.Open();
+        }
+    }
 }
