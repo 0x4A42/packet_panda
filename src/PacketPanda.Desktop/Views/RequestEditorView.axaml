@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
              xmlns:conv="using:PacketPanda.Desktop.Converters"
+             xmlns:ae="using:AvaloniaEdit"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
              x:Class="PacketPanda.Desktop.Views.RequestEditorView"
              x:DataType="vm:RequestEditorViewModel">
@@ -57,15 +58,15 @@
 
         <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
 
-        <TextBox Grid.Row="2"
-                 Text="{Binding RequestBody, Mode=TwoWay}"
-                 AcceptsReturn="True"
-                 TextWrapping="NoWrap"
-                 FontFamily="Consolas,Menlo,monospace"
-                 FontSize="13"
-                 Height="120"
-                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+        <ae:TextEditor Grid.Row="2"
+                       x:Name="BodyEditor"
+                       FontFamily="Consolas,Menlo,monospace"
+                       FontSize="13"
+                       Height="120"
+                       HorizontalScrollBarVisibility="Auto"
+                       VerticalScrollBarVisibility="Auto"
+                       ShowLineNumbers="False"
+                       WordWrap="False" />
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"

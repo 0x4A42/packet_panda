@@ -7,38 +7,44 @@ namespace PacketPanda.Desktop.Highlighting;
 
 public sealed partial class VariableColorizer : DocumentColorizingTransformer
 {
-    private static readonly SolidColorBrush ResolvedBrush =
-        new(Color.FromRgb(0x20, 0x7A, 0xC1));   // blue
-    private static readonly SolidColorBrush UnresolvedBrush =
-        new(Color.FromRgb(0xCC, 0x33, 0x33));    // red
-    private static readonly SolidColorBrush NeutralBrush =
-        new(Color.FromRgb(0xE5, 0x9A, 0x00));    // amber (no active env)
+    private static readonly SolidColorBrush BlueBrush =
+        new(Color.FromRgb(0x20, 0x7A, 0xC1));   // resolved
+    private static readonly SolidColorBrush RedBrush =
+        new(Color.FromRgb(0xCC, 0x33, 0x33));    // unresolved
+    private static readonly SolidColorBrush GrayBrush =
+        new(Color.FromRgb(0xAA, 0xAA, 0xAA));   // no active env
 
-    private HashSet<string>? _resolvedNames;
+    private HashSet<string>? _knownKeys;
+    private bool _hasActiveEnv;
 
     [GeneratedRegex(@"\{\{([^}]+)\}\}")]
-    private static partial Regex Pattern();
+    private static partial Regex VarPattern();
 
-    public void UpdateEnvironment(IReadOnlyDictionary<string, string>? vars)
+    public void UpdateEnvironment(IReadOnlyDictionary<string, string>? variables)
     {
-        _resolvedNames = vars is null
-            ? null
-            : new HashSet<string>(vars.Keys, StringComparer.Ordinal);
+        _hasActiveEnv = variables is not null;
+        _knownKeys = variables is not null
+            ? new HashSet<string>(variables.Keys, StringComparer.Ordinal)
+            : null;
     }
 
     protected override void ColorizeLine(AvaloniaEdit.Document.DocumentLine line)
     {
         var text = CurrentContext.Document.GetText(line);
-        foreach (Match m in Pattern().Matches(text))
+        foreach (Match match in VarPattern().Matches(text))
         {
-            var varName = m.Groups[1].Value.Trim();
-            var brush = _resolvedNames is null
-                ? NeutralBrush
-                : (_resolvedNames.Contains(varName) ? ResolvedBrush : UnresolvedBrush);
+            var varName = match.Groups[1].Value.Trim();
+            SolidColorBrush brush;
+            if (!_hasActiveEnv)
+                brush = GrayBrush;
+            else if (_knownKeys!.Contains(varName))
+                brush = BlueBrush;
+            else
+                brush = RedBrush;
 
             ChangeLinePart(
-                line.Offset + m.Index,
-                line.Offset + m.Index + m.Length,
+                line.Offset + match.Index,
+                line.Offset + match.Index + match.Length,
                 el => el.TextRunProperties.SetForegroundBrush(brush));
         }
     }
