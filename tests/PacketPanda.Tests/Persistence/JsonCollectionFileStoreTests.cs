@@ -5,7 +5,7 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.Persistence;
 
-public class JsonCollectionFileStoreTests : IDisposable
+public sealed class JsonCollectionFileStoreTests : IDisposable
 {
     private readonly string _tempPath = Path.GetTempFileName() + ".json";
     private readonly ICollectionFileStore _store = new JsonCollectionFileStore();
@@ -195,5 +195,64 @@ public class JsonCollectionFileStoreTests : IDisposable
 
         var r2 = reloaded.Root.Children.OfType<RequestNode>().First(r => r.Id == "r2");
         r2.Url.Should().Be("http://b");
+    }
+
+    [Fact]
+    public async Task Load_InvalidJson_ThrowsRequestFileException()
+    {
+        await File.WriteAllTextAsync(_tempPath, "not valid json {{{{");
+
+        var act = async () => await _store.LoadAsync(_tempPath);
+
+        await act.Should().ThrowAsync<RequestFileException>();
+    }
+
+    [Fact]
+    public async Task Load_StringUrlFormat_ParsesUrl()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1",
+                "name": "Plain URL",
+                "request": {
+                  "method": "GET",
+                  "header": [],
+                  "url": "https://example.com/path",
+                  "body": null
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Url.Should().Be("https://example.com/path");
+    }
+
+    [Fact]
+    public async Task UpdateRequestAsync_TargetInNestedFolder_UpdatesCorrectly()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "f1",
+                "name": "Auth",
+                "item": [
+                  { "id": "r1", "name": "Login", "request": { "method": "GET", "header": [], "url": { "raw": "http://old" }, "body": null }, "response": [] }
+                ]
+              }
+            ]
+            """));
+
+        await _store.UpdateRequestAsync(_tempPath, "r1", new HttpRequest(HttpMethod.Post, "http://new", null));
+        var reloaded = await _store.LoadAsync(_tempPath);
+
+        var folder = reloaded.Root.Children.Single().Should().BeOfType<FolderNode>().Subject;
+        var req = folder.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Method.Should().Be(HttpMethod.Post);
+        req.Url.Should().Be("http://new");
     }
 }

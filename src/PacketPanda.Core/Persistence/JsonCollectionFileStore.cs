@@ -13,11 +13,11 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
     {
         string json;
         try { json = await File.ReadAllTextAsync(path); }
-        catch (Exception ex) { throw new RequestFileException($"Could not read file: {ex.Message}", ex); }
+        catch (IOException ex) { throw new RequestFileException($"Could not read file: {ex.Message}", ex); }
 
         JsonDocument doc;
         try { doc = JsonDocument.Parse(json); }
-        catch (Exception ex) { throw new RequestFileException($"Invalid JSON: {ex.Message}", ex); }
+        catch (JsonException ex) { throw new RequestFileException($"Invalid JSON: {ex.Message}", ex); }
 
         using (doc)
         {
@@ -52,6 +52,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
             writer.WriteEndArray();
 
             writer.WriteEndObject();
+            writer.Flush();
         }
 
         var json = Encoding.UTF8.GetString(ms.ToArray());
@@ -127,7 +128,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
             {
                 writer.WriteStartObject("request");
                 writer.WriteString("method", req.Method.ToString().ToUpperInvariant());
-                writer.WriteStartArray("header");
+                writer.WriteStartArray("header"); // TODO: custom headers not yet persisted
                 writer.WriteEndArray();
                 writer.WriteStartObject("url");
                 writer.WriteString("raw", req.Url);
@@ -164,6 +165,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
         {
             RequestNode req when req.Id == requestId =>
                 req with { Method = updated.Method, Url = updated.Url, Body = updated.Body },
+            RequestNode => child,
             FolderNode f => UpdateInTree(f, requestId, updated),
             _ => child
         }).ToList();
