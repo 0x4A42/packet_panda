@@ -167,6 +167,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         ? Path.GetFileNameWithoutExtension(CurrentFilePath ?? "Untitled")
         : EnvironmentName;
 
+    string? ITabContent.RequestId => null;
     string? ITabContent.MethodLabel => null;
 
     private async Task SaveAsync()

@@ -58,7 +58,7 @@ public class TabViewModelTests
     public void FilePath_ForwardsFromEditor()
     {
         var editor = NewEditor();
-        editor.CurrentFilePath = "/tmp/x.toml";
+        editor.CollectionFilePath = "/tmp/x.toml";
 
         var tab = new TabViewModel(editor, _dialog.Object);
 

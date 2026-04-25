@@ -68,8 +68,6 @@ public partial class App : Application
             var app = await settings.LoadAsync();
             // Set pending env name BEFORE loading workspace so RestoreSelectedEnvironment picks it up
             shell.SetPendingActiveEnvironmentName(app.ActiveEnvironmentName);
-            if (!string.IsNullOrEmpty(app.LastWorkspacePath) && Directory.Exists(app.LastWorkspacePath))
-                await sidebar.LoadWorkspaceAsync(app.LastWorkspacePath);
         }
         catch (SettingsException)
         {

@@ -1,5 +1,5 @@
 namespace PacketPanda.Core.Persistence;
 
 public sealed record AppSettings(
-    string? LastWorkspacePath = null,
+    IReadOnlyList<string>? OpenCollectionPaths = null,
     string? ActiveEnvironmentName = null);

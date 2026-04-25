@@ -42,15 +42,11 @@ public sealed class TomlSettingsStore : ISettingsStore
             throw new SettingsException($"Invalid settings TOML: {ex.Message}", ex);
         }
 
-        string? workspace = null;
-        if (table.TryGetValue("last_workspace_path", out var v) && v is string s)
-            workspace = s;
-
         string? activeEnv = null;
         if (table.TryGetValue("active_environment_name", out var a) && a is string aStr)
             activeEnv = aStr;
 
-        return new AppSettings(workspace, activeEnv);
+        return new AppSettings(ActiveEnvironmentName: activeEnv);
     }
 
     public async Task SaveAsync(AppSettings settings)
@@ -60,8 +56,6 @@ public sealed class TomlSettingsStore : ISettingsStore
             Directory.CreateDirectory(dir);
 
         var table = new TomlTable();
-        if (!string.IsNullOrEmpty(settings.LastWorkspacePath))
-            table["last_workspace_path"] = settings.LastWorkspacePath;
         if (!string.IsNullOrEmpty(settings.ActiveEnvironmentName))
             table["active_environment_name"] = settings.ActiveEnvironmentName;
 

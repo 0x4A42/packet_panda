@@ -95,19 +95,17 @@ public class ShellViewModelTests
     }
 
     [Fact]
-    public async Task SidebarRequestOpened_TriggersOpenFileInTab()
+    public async Task SidebarRequestOpened_TriggersOpenRequestNodeInTab()
     {
-        _store.Setup(s => s.LoadAsync("/ws/x.toml"))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://x.com", null));
-
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
-        var node = new CollectionNodeViewModel("x.toml", "/ws/x.toml", isFolder: false, method: null, []);
+        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null);
+        var nodeVm = CollectionNodeViewModel.From(rn);
 
-        await sidebar.OpenRequestCommand.Execute(node);
+        await sidebar.OpenRequestCommand.Execute(nodeVm);
 
         shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.FilePath.Should().Be("/ws/x.toml");
+        ((RequestEditorViewModel)shell.ActiveTab!.Content).CollectionFilePath.Should().Be("/ws/col.json");
     }
 
     [Fact]

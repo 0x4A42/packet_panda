@@ -31,6 +31,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     private sealed record RequestSnapshot(HttpMethod Method, string Url, string? Body);
 
+    public string? RequestId { get; set; }
+    public string? RequestName { get; set; }
+    public string? CollectionFilePath { get; set; }
+
     public RequestEditorViewModel(
         IHttpRequestSender sender,
         IRequestFileStore store,
@@ -263,9 +267,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     }
 
     // ITabContent
-    string ITabContent.DisplayTitle => CurrentFilePath is null
+    string? ITabContent.CurrentFilePath => CollectionFilePath;
+    string? ITabContent.RequestId => RequestId;
+    string ITabContent.DisplayTitle => RequestName ?? (CurrentFilePath is null
         ? "Untitled"
-        : Path.GetFileNameWithoutExtension(CurrentFilePath);
-
+        : Path.GetFileNameWithoutExtension(CurrentFilePath));
     string? ITabContent.MethodLabel => SelectedMethod.ToString().ToUpperInvariant();
 }

@@ -12,7 +12,7 @@ public class CollectionSidebarViewModel : ReactiveObject
 {
     private readonly IWorkspaceScanner _scanner;
     private readonly ISettingsStore _settings;
-    private readonly Subject<string> _requestOpened = new();
+    private readonly Subject<RequestNode> _requestOpened = new();
     private readonly Subject<IReadOnlyList<EnvironmentRef>> _environmentsScanned = new();
 
     private string? _workspacePath;
@@ -20,9 +20,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private CollectionNodeViewModel? _selectedNode;
     private readonly IDisposable _selectedNodeSub;
 
-    public CollectionSidebarViewModel(
-        IWorkspaceScanner scanner,
-        ISettingsStore settings)
+    public CollectionSidebarViewModel(IWorkspaceScanner scanner, ISettingsStore settings)
     {
         _scanner = scanner;
         _settings = settings;
@@ -34,8 +32,8 @@ public class CollectionSidebarViewModel : ReactiveObject
         CloseWorkspaceCommand = ReactiveCommand.CreateFromTask(CloseWorkspaceAsync, hasWorkspace);
 
         _selectedNodeSub = this.WhenAnyValue(x => x.SelectedNode)
-            .Where(n => n != null && !n.IsFolder)
-            .Subscribe(n => _requestOpened.OnNext(n!.Path));
+            .Where(n => n?.SourceNode is RequestNode)
+            .Subscribe(n => _requestOpened.OnNext((RequestNode)n!.SourceNode!));
     }
 
     public ObservableCollection<CollectionNodeViewModel> RootNodes { get; }
@@ -55,7 +53,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     public ReactiveCommand<CollectionNodeViewModel, Unit> OpenRequestCommand { get; }
     public ReactiveCommand<Unit, Unit> CloseWorkspaceCommand { get; }
 
-    public IObservable<string> RequestOpened => _requestOpened;
+    public IObservable<RequestNode> RequestOpened => _requestOpened;
     public IObservable<IReadOnlyList<EnvironmentRef>> EnvironmentsScanned => _environmentsScanned;
 
     public IReadOnlyList<EnvironmentRef> LastScannedEnvironments { get; private set; } = Array.Empty<EnvironmentRef>();
@@ -85,7 +83,7 @@ public class CollectionSidebarViewModel : ReactiveObject
             return;
         }
 
-        try { await _settings.SaveAsync(new AppSettings(path)); }
+        try { await _settings.SaveAsync(new AppSettings()); }
         catch (SettingsException) { }
     }
 
@@ -101,9 +99,8 @@ public class CollectionSidebarViewModel : ReactiveObject
 
     private Task OpenRequestAsync(CollectionNodeViewModel node)
     {
-        if (!node.IsFolder)
-            _requestOpened.OnNext(node.Path);
-
+        if (node.SourceNode is RequestNode rn)
+            _requestOpened.OnNext(rn);
         return Task.CompletedTask;
     }
 

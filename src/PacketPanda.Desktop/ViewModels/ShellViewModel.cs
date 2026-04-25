@@ -31,6 +31,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _envRenamedSub;
     private readonly IDisposable _envDeletedSub;
     private readonly IDisposable _envAddedSub;
+    private readonly IDisposable _requestOpenedSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -80,7 +81,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             filePicker,
             () => Sidebar.WorkspacePath);
 
-        Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
+        _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
 
         _envScannedSub = sidebar.EnvironmentsScanned.Subscribe(envs =>
             _ = HandleEnvironmentsScanAsync(envs));
@@ -199,18 +200,41 @@ public class ShellViewModel : ViewModelBase, IDisposable
             editor.Url = request.Url;
             editor.RequestBody = request.Body;
             editor.CurrentFilePath = path;
+            editor.CollectionFilePath = path;
             editor.MarkSaved();
         }
         catch (RequestFileException ex)
         {
             editor.ErrorMessage = ex.Message;
             editor.CurrentFilePath = path;
+            editor.CollectionFilePath = path;
         }
 
         var tab = new TabViewModel(editor, _dialog);
         _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
         Tabs.Add(tab);
         ActiveTab = tab;
+    }
+
+    private Task OpenRequestNodeInTabAsync(RequestNode node)
+    {
+        var existing = Tabs.FirstOrDefault(t => t.Content is RequestEditorViewModel r && r.RequestId == node.Id);
+        if (existing is not null) { ActiveTab = existing; return Task.CompletedTask; }
+
+        var editor = _editorFactory();
+        editor.RequestId = node.Id;
+        editor.RequestName = node.Name;
+        editor.CollectionFilePath = node.CollectionFilePath;
+        editor.SelectedMethod = node.Method;
+        editor.Url = node.Url;
+        editor.RequestBody = node.Body;
+        editor.MarkSaved();
+
+        var tab = new TabViewModel(editor, _dialog);
+        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+        Tabs.Add(tab);
+        ActiveTab = tab;
+        return Task.CompletedTask;
     }
 
     public Task OpenNewEnvironmentInTabAsync(string name, string filePath)
@@ -511,6 +535,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _envRenamedSub.Dispose();
         _envDeletedSub.Dispose();
         _envAddedSub.Dispose();
+        _requestOpenedSub.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

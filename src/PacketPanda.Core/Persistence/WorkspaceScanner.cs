@@ -1,6 +1,7 @@
 using PacketPanda.Core.Environments;
+using PacketPanda.Core.Http;
 using Tomlyn;
-using Tomlyn.Model;
+using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Core.Persistence;
 
@@ -35,20 +36,27 @@ public sealed class WorkspaceScanner : IWorkspaceScanner
             .Select(BuildRequestNode)
             .Cast<CollectionNode>();
 
-        return new FolderNode(Path.GetFileName(path), path, dirs.Concat(files).ToList());
+        return new FolderNode(Guid.NewGuid().ToString(), Path.GetFileName(path), dirs.Concat(files).ToList());
     }
 
     private static RequestNode BuildRequestNode(string path)
     {
-        string? method = null;
+        var method = HttpMethod.Get;
         try
         {
             var table = Toml.ToModel(File.ReadAllText(path));
-            if (table.TryGetValue("method", out var v) && v is string m)
-                method = m.ToUpperInvariant();
+            if (table.TryGetValue("method", out var v) && v is string m &&
+                Enum.TryParse<HttpMethod>(m, ignoreCase: true, out var parsed))
+                method = parsed;
         }
         catch { }
-        return new RequestNode(Path.GetFileName(path), path, method);
+        return new RequestNode(
+            Guid.NewGuid().ToString(),
+            Path.GetFileNameWithoutExtension(path),
+            string.Empty,
+            method,
+            string.Empty,
+            null);
     }
 
     private static EnvironmentRef BuildEnvRef(string path)
