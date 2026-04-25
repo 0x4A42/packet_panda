@@ -19,12 +19,12 @@ public class ShellViewModelTests
     private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
     private readonly Mock<IDialogService> _dialog = new(MockBehavior.Strict);
 
-    private readonly Mock<IWorkspaceScanner> _scanner = new(MockBehavior.Strict);
+    private readonly Mock<ICollectionFileStore> _collectionStore = new(MockBehavior.Strict);
     private readonly Mock<ISettingsStore> _settings = new(MockBehavior.Strict);
     private readonly Mock<IEnvironmentFileStore> _environmentStore = new(MockBehavior.Strict);
 
     private CollectionSidebarViewModel NewSidebar() =>
-        new(_scanner.Object, _settings.Object);
+        new(_collectionStore.Object, _settings.Object, _picker.Object, _dialog.Object);
 
     private RequestEditorViewModel NewEditor() =>
         new(_sender.Object, _store.Object, _picker.Object,
@@ -100,9 +100,17 @@ public class ShellViewModelTests
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
         var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null);
-        var nodeVm = CollectionNodeViewModel.From(rn);
 
-        await sidebar.OpenRequestCommand.Execute(nodeVm);
+        // Load a fake collection so the sidebar wires up the callback -> RequestOpened
+        var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
+            new FolderNode("root", "root", [rn]));
+        _collectionStore.Setup(s => s.LoadAsync("/ws/col.json")).ReturnsAsync(collection);
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        await sidebar.LoadCollectionsAsync(["/ws/col.json"]);
+
+        // Open the request node via its view-model callback
+        sidebar.Collections[0].Items[0].Open();
 
         shell.Tabs.Should().ContainSingle();
         ((RequestEditorViewModel)shell.ActiveTab!.Content).CollectionFilePath.Should().Be("/ws/col.json");
@@ -114,12 +122,18 @@ public class ShellViewModelTests
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
         var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null);
-        var nodeVm = CollectionNodeViewModel.From(rn);
 
-        await sidebar.OpenRequestCommand.Execute(nodeVm);
+        var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
+            new FolderNode("root", "root", [rn]));
+        _collectionStore.Setup(s => s.LoadAsync("/ws/col.json")).ReturnsAsync(collection);
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        await sidebar.LoadCollectionsAsync(["/ws/col.json"]);
+
+        sidebar.Collections[0].Items[0].Open();
         await shell.NewTabCommand.Execute(); // make a different tab active
 
-        await sidebar.OpenRequestCommand.Execute(nodeVm);
+        sidebar.Collections[0].Items[0].Open();
 
         shell.Tabs.Should().HaveCount(2);
         shell.ActiveTab!.FilePath.Should().Be("/ws/col.json");
@@ -182,19 +196,13 @@ public class ShellViewModelTests
     }
 
     [Fact]
-    public async Task OpenFileCommand_PickerReturnsPath_OpensFileInTabAndLoadsWorkspace()
+    public async Task OpenFileCommand_PickerReturnsPath_OpensFileInTab()
     {
         const string pickedPath = "/tmp/picked.toml";
 
         _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync(pickedPath);
         _store.Setup(s => s.LoadAsync(pickedPath))
               .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://picked.com", null));
-        _scanner.Setup(s => s.ScanAsync(It.IsAny<string>()))
-                .ReturnsAsync(new WorkspaceScan(
-                    new FolderNode("dir", "dir", Array.Empty<CollectionNode>()),
-                    Array.Empty<PacketPanda.Core.Environments.EnvironmentRef>()));
-        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>()))
-                 .Returns(Task.CompletedTask);
 
         var shell = CreateShell();
 
@@ -203,7 +211,6 @@ public class ShellViewModelTests
         shell.Tabs.Should().ContainSingle();
         shell.ActiveTab!.FilePath.Should().Be(pickedPath);
         ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://picked.com");
-        shell.Sidebar.WorkspacePath.Should().NotBeNull();
     }
 
     [Fact]

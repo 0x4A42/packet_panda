@@ -79,7 +79,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             environmentStore,
             dialog,
             filePicker,
-            () => Sidebar.WorkspacePath);
+            () => null);
 
         _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
 
@@ -166,10 +166,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
     {
         var path = await _filePicker.PickOpenAsync();
         if (path is null) return;
-
-        var dir = Path.GetDirectoryName(path);
-        if (dir is not null)
-            await Sidebar.LoadWorkspaceAsync(dir);
 
         await OpenFileInTabAsync(path);
     }
@@ -324,10 +320,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     private async Task HandleEnvironmentsScanAsync(IReadOnlyList<EnvironmentRef> envs)
     {
-        var root = Sidebar.WorkspacePath;
-        if (root is not null)
-            await EnsureGlobalsAsync(root, envs);
-
+        // WorkspacePath no longer exists on the new sidebar model; globals handling is deferred
         var nonGlobals = envs
             .Where(e => !IsGlobalsFile(e.FilePath))
             .ToList();
@@ -336,6 +329,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         EnvironmentSidebar.SetEnvironments(nonGlobals);
         SyncEnvironmentsForPicker(nonGlobals);
         RestoreSelectedEnvironment();
+        await Task.CompletedTask;
     }
 
     private static bool IsGlobalsFile(string filePath) =>

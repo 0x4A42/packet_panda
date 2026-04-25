@@ -28,7 +28,7 @@ public partial class App : Application
             _httpClient = new HttpClient();
             var sender = new HttpRequestSender(_httpClient);
             var store = new TomlRequestFileStore();
-            var scanner = new WorkspaceScanner();
+            var collectionStore = new JsonCollectionFileStore();
             var settingsStore = new TomlSettingsStore(TomlSettingsStore.DefaultPath);
 
             var mainWindow = new MainWindow();
@@ -38,7 +38,7 @@ public partial class App : Application
 
             var environmentStore = new TomlEnvironmentFileStore();
 
-            var sidebar = new CollectionSidebarViewModel(scanner, settingsStore);
+            var sidebar = new CollectionSidebarViewModel(collectionStore, settingsStore, filePicker, dialog);
 
             ShellViewModel? shell = null;
             RequestEditorViewModel EditorFactory() => new(
