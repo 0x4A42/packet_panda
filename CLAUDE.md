@@ -4,14 +4,14 @@ This file provides guidance to Claude Code when working in this repository.
 
 # PacketPanda
 
-A free, lightweight, cross-platform desktop API client for exploring, testing, and debugging HTTP APIs. Requests and environments are stored as TOML files on disk — no database, no export step.
+A free, lightweight, cross-platform desktop API client for exploring, testing, and debugging HTTP APIs. Requests are stored as Postman v2.1 JSON collections on disk — no database, no export step.
 
 ## Stack
 
 - **Language:** C# / .NET 10
 - **UI:** Avalonia UI
 - **MVVM:** ReactiveUI
-- **TOML parsing:** Tomlyn
+- **JSON persistence:** System.Text.Json (built-in)
 - **Syntax highlighting:** AvaloniaEdit
 - **JS scripting:** Jint
 - **Tests:** xUnit + Moq + FluentAssertions
