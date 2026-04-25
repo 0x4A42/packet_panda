@@ -1,17 +1,18 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using AvaloniaEdit.Rendering;
 
 namespace PacketPanda.Desktop.Highlighting;
 
 public sealed partial class VariableColorizer : DocumentColorizingTransformer
 {
-    private static readonly SolidColorBrush BlueBrush =
+    private static readonly ImmutableSolidColorBrush BlueBrush =
         new(Color.FromRgb(0x20, 0x7A, 0xC1));   // resolved
-    private static readonly SolidColorBrush RedBrush =
+    private static readonly ImmutableSolidColorBrush RedBrush =
         new(Color.FromRgb(0xCC, 0x33, 0x33));    // unresolved
-    private static readonly SolidColorBrush GrayBrush =
+    private static readonly ImmutableSolidColorBrush GrayBrush =
         new(Color.FromRgb(0xAA, 0xAA, 0xAA));   // no active env
 
     private HashSet<string>? _knownKeys;
@@ -34,7 +35,7 @@ public sealed partial class VariableColorizer : DocumentColorizingTransformer
         foreach (Match match in VarPattern().Matches(text))
         {
             var varName = match.Groups[1].Value.Trim();
-            SolidColorBrush brush;
+            IBrush brush;
             if (!_hasActiveEnv)
                 brush = GrayBrush;
             else if (_knownKeys!.Contains(varName))

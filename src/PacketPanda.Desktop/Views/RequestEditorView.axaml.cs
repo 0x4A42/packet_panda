@@ -1,5 +1,5 @@
 using System;
-using System.Reactive.Linq;
+using System.Reactive.Disposables;
 using Avalonia.ReactiveUI;
 using PacketPanda.Desktop.Highlighting;
 using PacketPanda.Desktop.ViewModels;
@@ -10,6 +10,8 @@ namespace PacketPanda.Desktop.Views;
 public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewModel>
 {
     private VariableColorizer? _colorizer;
+    private CompositeDisposable? _subs;
+    private EventHandler? _textChangedHandler;
 
     public RequestEditorView()
     {
@@ -19,7 +21,19 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+
+        _subs?.Dispose();
+        _subs = null;
+
+        if (_textChangedHandler is not null)
+        {
+            BodyEditor.TextChanged -= _textChangedHandler;
+            _textChangedHandler = null;
+        }
+
         if (DataContext is not RequestEditorViewModel vm) return;
+
+        _subs = new CompositeDisposable();
 
         if (_colorizer is not null)
             BodyEditor.TextArea.TextView.LineTransformers.Remove(_colorizer);
@@ -27,20 +41,24 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         _colorizer = new VariableColorizer();
         BodyEditor.TextArea.TextView.LineTransformers.Add(_colorizer);
 
-        // Sync RequestBody ↔ TextEditor (two-way)
+        // Sync RequestBody → TextEditor
         vm.WhenAnyValue(x => x.RequestBody)
             .Subscribe(body =>
             {
                 if (BodyEditor.Text != (body ?? string.Empty))
                     BodyEditor.Text = body ?? string.Empty;
-            });
+            })
+            .DisposeWith(_subs);
 
-        BodyEditor.TextChanged += (_, _) =>
+        // Sync TextEditor → RequestBody
+        _textChangedHandler = (_, _) =>
         {
             var text = BodyEditor.Text;
-            if (vm.RequestBody != (string.IsNullOrEmpty(text) ? null : text))
-                vm.RequestBody = string.IsNullOrEmpty(text) ? null : text;
+            var normalized = string.IsNullOrEmpty(text) ? null : text;
+            if (vm.RequestBody != normalized)
+                vm.RequestBody = normalized;
         };
+        BodyEditor.TextChanged += _textChangedHandler;
 
         // Update colorizer when active environment changes
         vm.WhenAnyValue(x => x.ActiveEnvironmentVariables)
@@ -48,6 +66,7 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
             {
                 _colorizer.UpdateEnvironment(vars);
                 BodyEditor.TextArea.TextView.Redraw();
-            });
+            })
+            .DisposeWith(_subs);
     }
 }
