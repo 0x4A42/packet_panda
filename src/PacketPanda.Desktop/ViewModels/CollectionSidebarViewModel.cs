@@ -74,10 +74,23 @@ public class CollectionSidebarViewModel : ReactiveObject
 
     private async Task NewCollectionAsync()
     {
-        var path = await _filePicker.PickSaveCollectionAsync();
-        if (path is null) return;
+        var colDir = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "collections");
+        try { Directory.CreateDirectory(colDir); } catch { /* best-effort */ }
 
-        var name = Path.GetFileNameWithoutExtension(path);
+        const string baseName = "New Collection";
+        var name = baseName;
+        var counter = 2;
+        var path = Path.Combine(colDir, $"{name}.json");
+        while (Collections.Any(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)
+                                  || c.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase))
+               || File.Exists(path))
+        {
+            name = $"{baseName} {counter++}";
+            path = Path.Combine(colDir, $"{name}.json");
+        }
+
         var root = new FolderNode(Guid.NewGuid().ToString(), name, []);
         var collection = new Collection(name, path, root);
 

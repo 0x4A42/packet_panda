@@ -3,6 +3,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.ReactiveUI;
+using Avalonia.Threading;
 using PacketPanda.Desktop.Highlighting;
 using PacketPanda.Desktop.ViewModels;
 using ReactiveUI;
@@ -78,8 +79,13 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         base.OnAttachedToVisualTree(e);
         if (DataContext is RequestEditorViewModel vm)
         {
+            // Set text immediately (populates the document before first layout pass)
             BodyEditor.Text = vm.RequestBody ?? string.Empty;
-            BodyEditor.TextArea.TextView.Redraw();
+            // Redraw must happen AFTER the first layout pass completes so AvaloniaEdit's
+            // visual-line cache is rebuilt against a control that has a real measured size.
+            Dispatcher.UIThread.Post(
+                () => BodyEditor.TextArea.TextView.Redraw(),
+                DispatcherPriority.Loaded);
         }
     }
 }

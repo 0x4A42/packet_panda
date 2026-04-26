@@ -176,8 +176,18 @@ public class EnvironmentSidebarViewModel : ReactiveObject
     private async Task OpenEnvironmentFileAsync()
     {
         var path = await _picker.PickOpenAsync();
-        if (path is not null)
-            _environmentOpenRequested.OnNext(path);
+        if (path is null) return;
+
+        string name;
+        try { name = (await _store.LoadAsync(path)).Name; }
+        catch { name = Path.GetFileNameWithoutExtension(path); }
+
+        var isNew = !_allItems.Any(i => i.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase));
+        CommitEnvironment(path, name);
+        if (isNew)
+            _environmentAdded.OnNext(new EnvironmentRef(name, path));
+
+        _environmentOpenRequested.OnNext(path);
     }
 
     private Task NewEnvironmentAsync()

@@ -132,6 +132,13 @@
                                 <StackPanel Orientation="Horizontal" Spacing="4">
                                     <TextBlock Text="📁" FontSize="11" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Button Content="+"
+                                            Command="{Binding NewRequestCommand}"
+                                            Padding="4,0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            FontSize="13"
+                                            ToolTip.Tip="New request" />
                                     <Button Content="⚙"
                                             Padding="4,0"
                                             Background="Transparent"
@@ -139,8 +146,6 @@
                                             FontSize="10">
                                         <Button.Flyout>
                                             <MenuFlyout>
-                                                <MenuItem Header="New request"
-                                                          Command="{Binding NewRequestCommand}" />
                                                 <MenuItem Header="New folder"
                                                           Command="{Binding NewFolderCommand}" />
                                                 <MenuItem Header="Remove from sidebar"
@@ -168,6 +173,14 @@
                                     </Border>
                                     <TextBlock Text="{Binding Name}" Foreground="#1E1E1E" VerticalAlignment="Center" />
                                     <Button IsVisible="{Binding IsFolder}"
+                                            Content="+"
+                                            Command="{Binding NewRequestCommand}"
+                                            Padding="4,0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            FontSize="13"
+                                            ToolTip.Tip="New request" />
+                                    <Button IsVisible="{Binding IsFolder}"
                                             Content="⚙"
                                             Padding="4,0"
                                             Background="Transparent"
@@ -175,8 +188,6 @@
                                             FontSize="10">
                                         <Button.Flyout>
                                             <MenuFlyout>
-                                                <MenuItem Header="New request"
-                                                          Command="{Binding NewRequestCommand}" />
                                                 <MenuItem Header="New folder"
                                                           Command="{Binding NewFolderCommand}" />
                                             </MenuFlyout>
