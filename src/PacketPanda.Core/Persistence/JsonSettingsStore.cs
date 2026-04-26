@@ -43,7 +43,8 @@ public sealed class JsonSettingsStore : ISettingsStore
                 ?? new SettingsDto();
             return new AppSettings(
                 OpenCollectionPaths: dto.OpenCollectionPaths,
-                ActiveEnvironmentName: dto.ActiveEnvironmentName);
+                ActiveEnvironmentName: dto.ActiveEnvironmentName,
+                KnownEnvironmentPaths: dto.KnownEnvironmentPaths);
         }
         catch (JsonException ex)
         {
@@ -62,7 +63,10 @@ public sealed class JsonSettingsStore : ISettingsStore
             OpenCollectionPaths = settings.OpenCollectionPaths is { Count: > 0 }
                 ? settings.OpenCollectionPaths.ToList()
                 : null,
-            ActiveEnvironmentName = settings.ActiveEnvironmentName
+            ActiveEnvironmentName = settings.ActiveEnvironmentName,
+            KnownEnvironmentPaths = settings.KnownEnvironmentPaths is { Count: > 0 }
+                ? settings.KnownEnvironmentPaths.ToList()
+                : null
         };
 
         var json = JsonSerializer.Serialize(dto, Options);
@@ -74,5 +78,6 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         public List<string>? OpenCollectionPaths { get; set; }
         public string? ActiveEnvironmentName { get; set; }
+        public List<string>? KnownEnvironmentPaths { get; set; }
     }
 }

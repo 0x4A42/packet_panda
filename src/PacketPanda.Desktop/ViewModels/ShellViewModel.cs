@@ -99,7 +99,10 @@ public class ShellViewModel : ViewModelBase, IDisposable
             .Subscribe(added =>
             {
                 if (!EnvironmentsForPicker.Any(e => e.FilePath == added.FilePath))
+                {
                     EnvironmentsForPicker.Add(added);
+                    _ = PersistKnownEnvironmentPathsAsync();
+                }
             });
     }
 
@@ -148,6 +151,31 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var paths = settings.OpenCollectionPaths ?? [];
         if (paths.Count > 0)
             await Sidebar.LoadCollectionsAsync(paths);
+
+        var envPaths = settings.KnownEnvironmentPaths ?? [];
+        if (envPaths.Count > 0)
+        {
+            var refs = new List<EnvironmentRef>();
+            foreach (var p in envPaths.Where(File.Exists))
+            {
+                try
+                {
+                    var env = await _environmentStore.LoadAsync(p);
+                    refs.Add(new EnvironmentRef(env.Name, p));
+                }
+                catch
+                {
+                    refs.Add(new EnvironmentRef(Path.GetFileNameWithoutExtension(p), p));
+                }
+            }
+            if (refs.Count > 0)
+            {
+                EnvironmentSidebar.SetEnvironments(refs);
+                foreach (var r in refs)
+                    if (!EnvironmentsForPicker.Any(e => e.FilePath == r.FilePath))
+                        EnvironmentsForPicker.Add(r);
+            }
+        }
 
         var globalsPath = Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
@@ -219,7 +247,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var existing = Tabs.FirstOrDefault(t => t.FilePath == filePath);
         if (existing is not null) { ActiveTab = existing; return Task.CompletedTask; }
 
-        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog);
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog, _filePicker);
         var env = new Environment(name, filePath,
             new Dictionary<string, string>(StringComparer.Ordinal));
         envEditor.Load(env);
@@ -235,6 +263,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
                 EnvironmentSidebar.DiscardPendingEnvironment(filePath);
                 EnvironmentSidebar.CommitEnvironment(savedEnv.FilePath, savedEnv.Name);
                 EnvironmentsForPicker.Add(new EnvironmentRef(savedEnv.Name, savedEnv.FilePath));
+                _ = PersistKnownEnvironmentPathsAsync();
             }
             else
             {
@@ -264,7 +293,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog);
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog, _filePicker);
         try
         {
             var env = await _environmentStore.LoadAsync(filePath);
@@ -325,7 +354,10 @@ public class ShellViewModel : ViewModelBase, IDisposable
     {
         var pickerEntry = EnvironmentsForPicker.FirstOrDefault(e => e.FilePath == deleted.FilePath);
         if (pickerEntry is not null)
+        {
             EnvironmentsForPicker.Remove(pickerEntry);
+            _ = PersistKnownEnvironmentPathsAsync();
+        }
 
         if (_selectedEnvironment?.FilePath == deleted.FilePath)
             SelectedEnvironment = NoEnvironmentSentinel;
@@ -416,6 +448,20 @@ public class ShellViewModel : ViewModelBase, IDisposable
                 this.RaisePropertyChanged(nameof(SelectedEnvironment));
             }
         }
+    }
+
+    private async Task PersistKnownEnvironmentPathsAsync()
+    {
+        try
+        {
+            var paths = EnvironmentsForPicker
+                .Where(e => !string.IsNullOrEmpty(e.FilePath))
+                .Select(e => e.FilePath)
+                .ToList();
+            var current = await _settings.LoadAsync();
+            await _settings.SaveAsync(current with { KnownEnvironmentPaths = paths });
+        }
+        catch (SettingsException) { }
     }
 
     private async Task PersistActiveEnvNameAsync(string? name)

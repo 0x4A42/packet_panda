@@ -165,6 +165,8 @@ public class ShellViewModelTests
     {
         var shell = CreateShell();
         await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
+        _picker.Setup(p => p.PickSaveEnvironmentAsync("New Environment"))
+            .ReturnsAsync("/tmp/envs/New Environment.json");
         _environmentStore
             .Setup(s => s.SaveAsync("/tmp/envs/New Environment.json", It.IsAny<Environment>()))
             .Returns(Task.CompletedTask);
@@ -196,6 +198,8 @@ public class ShellViewModelTests
     {
         var shell = CreateShell();
         await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
+        _picker.Setup(p => p.PickSaveEnvironmentAsync("New Environment"))
+            .ReturnsAsync("/tmp/envs/New Environment.json");
         _environmentStore
             .Setup(s => s.SaveAsync("/tmp/envs/New Environment.json", It.IsAny<Environment>()))
             .Returns(Task.CompletedTask);

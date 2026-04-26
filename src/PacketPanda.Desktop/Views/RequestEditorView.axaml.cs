@@ -78,9 +78,8 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         base.OnAttachedToVisualTree(e);
         if (DataContext is RequestEditorViewModel vm)
         {
-            var body = vm.RequestBody ?? string.Empty;
-            if (BodyEditor.Text != body)
-                BodyEditor.Text = body;
+            BodyEditor.Text = vm.RequestBody ?? string.Empty;
+            BodyEditor.TextArea.TextView.Redraw();
         }
     }
 }

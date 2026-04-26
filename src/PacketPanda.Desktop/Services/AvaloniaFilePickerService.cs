@@ -21,12 +21,13 @@ public sealed class AvaloniaFilePickerService(Window window) : IFilePickerServic
         return files.Count == 1 ? files[0].Path.LocalPath : null;
     }
 
-    public async Task<string?> PickSaveEnvironmentAsync()
+    public async Task<string?> PickSaveEnvironmentAsync(string? suggestedName = null)
     {
         var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "New Environment",
+            Title = "Save Environment",
             DefaultExtension = "json",
+            SuggestedFileName = suggestedName,
             FileTypeChoices = [JsonEnvironment]
         });
         return file?.Path.LocalPath;

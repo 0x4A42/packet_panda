@@ -24,8 +24,10 @@ public class EnvironmentEditorViewModelTests
 
     private static EnvironmentEditorViewModel NewVm(
         Mock<IEnvironmentFileStore>? store = null,
-        Mock<IDialogService>? dialog = null) =>
-        new((store ?? NewStore()).Object, (dialog ?? NewDialog()).Object);
+        Mock<IDialogService>? dialog = null,
+        Mock<IFilePickerService>? picker = null) =>
+        new((store ?? NewStore()).Object, (dialog ?? NewDialog()).Object,
+            (picker ?? new Mock<IFilePickerService>()).Object);
 
     private static Environment DevEnv(params (string k, string v)[] vars) =>
         new("dev", "/ws/environments/dev.json",
@@ -204,47 +206,70 @@ public class EnvironmentEditorViewModelTests
     }
 
     [Fact]
-    public async Task Save_WhenNew_AndNameUnchanged_SavesToOriginalPath()
+    public async Task Save_WhenNew_PickerCancelled_DoesNotSave()
     {
         var store = NewStore();
-        var vm = NewVm(store);
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync(It.IsAny<string>())).ReturnsAsync((string?)null);
+        var vm = NewVm(store, picker: picker);
         vm.Load(BlankNewEnv());
         vm.MarkAsNew();
 
         await vm.SaveCommand.Execute();
 
-        store.Verify(s => s.SaveAsync("/ws/environments/New Environment.json", It.IsAny<Environment>()), Times.Once);
-        vm.CurrentFilePath.Should().Be("/ws/environments/New Environment.json");
+        store.Verify(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Environment>()), Times.Never);
     }
 
     [Fact]
-    public async Task Save_WhenNew_AndNameChanged_SavesWithDerivedPath()
+    public async Task Save_WhenNew_SavesWithPickedPath()
+    {
+        const string pickedPath = "/ws/environments/New Environment.json";
+        var store = NewStore();
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync(It.IsAny<string>())).ReturnsAsync(pickedPath);
+        var vm = NewVm(store, picker: picker);
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+
+        await vm.SaveCommand.Execute();
+
+        store.Verify(s => s.SaveAsync(pickedPath, It.IsAny<Environment>()), Times.Once);
+        vm.CurrentFilePath.Should().Be(pickedPath);
+    }
+
+    [Fact]
+    public async Task Save_WhenNew_SuggestsCurrentNameToFilePicker()
     {
         var store = NewStore();
-        var vm = NewVm(store);
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync("Staging")).ReturnsAsync("/ws/environments/Staging.json");
+        var vm = NewVm(store, picker: picker);
         vm.Load(BlankNewEnv());
         vm.MarkAsNew();
         vm.EnvironmentName = "Staging";
 
         await vm.SaveCommand.Execute();
 
-        store.Verify(s => s.SaveAsync("/ws/environments/Staging.json", It.IsAny<Environment>()), Times.Once);
-        vm.CurrentFilePath.Should().Be("/ws/environments/Staging.json");
+        picker.Verify(p => p.PickSaveEnvironmentAsync("Staging"), Times.Once);
     }
 
     [Fact]
-    public async Task Save_WhenNew_SecondSave_DoesNotRederivePath()
+    public async Task Save_WhenNew_SecondSave_DoesNotReopenPicker()
     {
+        const string pickedPath = "/ws/environments/Staging.json";
         var store = NewStore();
-        var vm = NewVm(store);
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync(It.IsAny<string>())).ReturnsAsync(pickedPath);
+        var vm = NewVm(store, picker: picker);
         vm.Load(BlankNewEnv());
         vm.MarkAsNew();
         vm.EnvironmentName = "Staging";
-        await vm.SaveCommand.Execute();  // first save → path becomes Staging.json
+        await vm.SaveCommand.Execute();  // first save → picks path, clears _isNew
 
         vm.EnvironmentName = "Production";
-        await vm.SaveCommand.Execute();  // second save → stays Staging.json (rename is a separate action)
+        await vm.SaveCommand.Execute();  // second save → uses stored path, no picker
 
-        store.Verify(s => s.SaveAsync("/ws/environments/Staging.json", It.IsAny<Environment>()), Times.Exactly(2));
+        picker.Verify(p => p.PickSaveEnvironmentAsync(It.IsAny<string>()), Times.Once);
+        store.Verify(s => s.SaveAsync(pickedPath, It.IsAny<Environment>()), Times.Exactly(2));
     }
 }

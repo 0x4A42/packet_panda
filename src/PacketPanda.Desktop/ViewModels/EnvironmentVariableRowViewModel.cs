@@ -27,7 +27,7 @@ public class EnvironmentVariableRowViewModel : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref _description, value);
     }
 
-    public bool IsEnabled
+    public bool Enabled
     {
         get => _isEnabled;
         set => this.RaiseAndSetIfChanged(ref _isEnabled, value);

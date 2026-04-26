@@ -13,11 +13,15 @@ namespace PacketPanda.Tests.ViewModels;
 
 public class EnvironmentSidebarViewModelTests
 {
+    private static string NewTempEnvDir() =>
+        Path.Combine(Path.GetTempPath(), "panda-test-" + Guid.NewGuid().ToString("N"));
+
     private static EnvironmentSidebarViewModel NewVm(IFilePickerService? picker = null) =>
         new(new Mock<IEnvironmentFileStore>().Object,
             new Mock<IDialogService>().Object,
             picker ?? new Mock<IFilePickerService>().Object,
-            () => Path.GetTempPath());
+            () => Path.GetTempPath(),
+            NewTempEnvDir());
 
     [Fact]
     public async Task NewEnvironment_DoesNotSaveFileToDisk_AndDoesNotAddToItems()
@@ -27,7 +31,8 @@ public class EnvironmentSidebarViewModelTests
             store.Object,
             new Mock<IDialogService>().Object,
             new Mock<IFilePickerService>().Object,
-            () => Path.GetTempPath());
+            () => Path.GetTempPath(),
+            NewTempEnvDir());
 
         await vm.NewEnvironmentCommand.Execute();
 

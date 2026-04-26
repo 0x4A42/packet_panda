@@ -13,8 +13,8 @@ public class EnvironmentSidebarViewModel : ReactiveObject
 {
     private readonly IEnvironmentFileStore _store;
     private readonly IDialogService _dialog;
-    private readonly Func<string?> _getWorkspaceRoot;
     private readonly IFilePickerService _picker;
+    private readonly string _envBaseDir;
     private readonly Dictionary<string, EnvironmentItemViewModel> _itemVmCache =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -82,12 +82,15 @@ public class EnvironmentSidebarViewModel : ReactiveObject
         IEnvironmentFileStore store,
         IDialogService dialog,
         IFilePickerService picker,
-        Func<string?> getWorkspaceRoot)
+        Func<string?> getWorkspaceRoot,
+        string? envBaseDir = null)
     {
         _store = store;
         _dialog = dialog;
         _picker = picker;
-        _getWorkspaceRoot = getWorkspaceRoot;
+        _envBaseDir = envBaseDir ?? Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "environments");
 
         NewEnvironmentCommand = ReactiveCommand.CreateFromTask(NewEnvironmentAsync);
         DeleteEnvironmentCommand = ReactiveCommand.CreateFromTask<EnvironmentRef>(DeleteEnvironmentAsync);
@@ -179,10 +182,7 @@ public class EnvironmentSidebarViewModel : ReactiveObject
 
     private Task NewEnvironmentAsync()
     {
-        var envDir = Path.Combine(
-            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
-            "PacketPanda", "environments");
-
+        var envDir = _envBaseDir;
         try { Directory.CreateDirectory(envDir); } catch { /* best-effort */ }
 
         const string baseName = "New Environment";

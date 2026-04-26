@@ -41,9 +41,15 @@
                   CanUserResizeColumns="True"
                   CanUserSortColumns="False">
             <DataGrid.Columns>
-                <DataGridCheckBoxColumn Header="On"
-                                        Binding="{Binding IsEnabled}"
-                                        Width="36" />
+                <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Variable"
                                     Binding="{Binding Name}"
                                     Width="2*" />
