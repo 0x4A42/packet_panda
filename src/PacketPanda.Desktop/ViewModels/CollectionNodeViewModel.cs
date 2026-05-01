@@ -18,21 +18,35 @@ public class CollectionNodeViewModel : ReactiveObject
         CollectionNode? sourceNode = null)
     {
         Id = id;
-        Name = name;
+        _name = name;
         IsFolder = isFolder;
         Method = method;
         Children = new ObservableCollection<CollectionNodeViewModel>(children);
         SourceNode = sourceNode;
     }
 
+    private string _name;
+
     public string Id { get; }
-    public string Name { get; }
+
+    public string Name
+    {
+        get => _name;
+        set => this.RaiseAndSetIfChanged(ref _name, value);
+    }
+
     public bool IsFolder { get; }
     public string? Method { get; }
     public CollectionNode? SourceNode { get; }
     public Action<RequestNode>? RequestOpenedCallback { get; init; }
     public ReactiveCommand<Unit, Unit>? NewRequestCommand { get; init; }
     public ReactiveCommand<Unit, Unit>? NewFolderCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? RenameFolderCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? CopyFolderCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? DeleteFolderCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? RenameRequestCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? DuplicateRequestCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? DeleteRequestCommand { get; init; }
     public ObservableCollection<CollectionNodeViewModel> Children { get; }
 
     public string DisplayName => !IsFolder && Method is not null ? $"{Method} {Name}" : Name;

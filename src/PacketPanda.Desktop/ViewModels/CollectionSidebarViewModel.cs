@@ -146,7 +146,19 @@ public class CollectionSidebarViewModel : ReactiveObject
 
     private void AddCollectionViewModel(Collection collection)
     {
-        var vm = new CollectionViewModel(collection, _collectionStore, _dialog, node => _requestOpened.OnNext(node));
+        var vm = new CollectionViewModel(
+            collection, _collectionStore, _dialog,
+            node => _requestOpened.OnNext(node),
+            onDuplicated: dup =>
+            {
+                AddCollectionViewModel(dup);
+                _ = PersistOpenPathsAsync();
+            },
+            onDeleted: v =>
+            {
+                Collections.Remove(v);
+                _ = PersistOpenPathsAsync();
+            });
         Collections.Add(vm);
     }
 
@@ -167,24 +179,35 @@ public class CollectionViewModel : ReactiveObject
     private readonly ICollectionFileStore _store;
     private readonly IDialogService _dialog;
     private readonly Action<RequestNode> _onRequestOpened;
+    private readonly Action<Collection>? _onDuplicated;
+    private readonly Action<CollectionViewModel>? _onDeleted;
     private Collection _collection;
 
     public CollectionViewModel(
         Collection collection,
         ICollectionFileStore store,
         IDialogService dialog,
-        Action<RequestNode> onRequestOpened)
+        Action<RequestNode> onRequestOpened,
+        Action<Collection>? onDuplicated = null,
+        Action<CollectionViewModel>? onDeleted = null)
     {
         _collection = collection;
         _store = store;
         _dialog = dialog;
         _onRequestOpened = onRequestOpened;
+        _onDuplicated = onDuplicated;
+        _onDeleted = onDeleted;
 
         Items = new ObservableCollection<CollectionNodeViewModel>(
-            collection.Root.Children.Select(BuildNodeVm));
+            collection.Root.Children
+                .OrderBy(c => c is FolderNode ? 0 : 1)
+                .Select(BuildNodeVm));
 
         NewRequestCommand = ReactiveCommand.CreateFromTask(AddNewRequestAsync);
         NewFolderCommand = ReactiveCommand.CreateFromTask(AddNewFolderAsync);
+        RenameCommand = ReactiveCommand.CreateFromTask(RenameCollectionAsync);
+        DuplicateCommand = ReactiveCommand.CreateFromTask(DuplicateCollectionAsync);
+        DeleteCommand = ReactiveCommand.CreateFromTask(DeleteCollectionAsync);
     }
 
     public string Name => _collection.Name;
@@ -193,6 +216,9 @@ public class CollectionViewModel : ReactiveObject
 
     public ReactiveCommand<Unit, Unit> NewRequestCommand { get; }
     public ReactiveCommand<Unit, Unit> NewFolderCommand { get; }
+    public ReactiveCommand<Unit, Unit> RenameCommand { get; }
+    public ReactiveCommand<Unit, Unit> DuplicateCommand { get; }
+    public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
 
     private CollectionNodeViewModel BuildNodeVm(CollectionNode node)
     {
@@ -200,17 +226,23 @@ public class CollectionViewModel : ReactiveObject
         {
             FolderNode f => new CollectionNodeViewModel(
                 f.Id, f.Name, isFolder: true, method: null,
-                f.Children.Select(BuildNodeVm), sourceNode: f)
+                f.Children.OrderBy(c => c is FolderNode ? 0 : 1).Select(BuildNodeVm), sourceNode: f)
             {
                 NewRequestCommand = ReactiveCommand.CreateFromTask(() => AddNewRequestToFolderAsync(f.Id)),
                 NewFolderCommand = ReactiveCommand.CreateFromTask(() => AddNewFolderToFolderAsync(f.Id)),
+                RenameFolderCommand = ReactiveCommand.CreateFromTask(() => RenameFolderAsync(f.Id)),
+                CopyFolderCommand = ReactiveCommand.CreateFromTask(() => CopyFolderAsync(f.Id)),
+                DeleteFolderCommand = ReactiveCommand.CreateFromTask(() => DeleteFolderAsync(f.Id)),
             },
             RequestNode r => new CollectionNodeViewModel(
                 r.Id, r.Name, isFolder: false,
                 method: r.Method.ToString().ToUpperInvariant(),
                 children: [], sourceNode: r)
             {
-                RequestOpenedCallback = _onRequestOpened
+                RequestOpenedCallback = _onRequestOpened,
+                RenameRequestCommand = ReactiveCommand.CreateFromTask(() => RenameRequestAsync(r.Id)),
+                DuplicateRequestCommand = ReactiveCommand.CreateFromTask(() => DuplicateRequestAsync(r.Id)),
+                DeleteRequestCommand = ReactiveCommand.CreateFromTask(() => DeleteRequestAsync(r.Id)),
             },
             _ => throw new InvalidOperationException($"Unknown node type: {node.GetType().Name}")
         };
@@ -224,7 +256,7 @@ public class CollectionViewModel : ReactiveObject
         var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
         await _store.SaveAsync(candidate.FilePath, candidate);
         _collection = candidate;
-        Items.Add(BuildNodeVm(newNode));
+        InsertNodeVmSorted(Items, BuildNodeVm(newNode));
         _onRequestOpened(newNode);
     }
 
@@ -236,7 +268,7 @@ public class CollectionViewModel : ReactiveObject
         var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
         await _store.SaveAsync(candidate.FilePath, candidate);
         _collection = candidate;
-        Items.Add(BuildNodeVm(newFolder));
+        InsertNodeVmSorted(Items, BuildNodeVm(newFolder));
     }
 
     private async Task AddNewRequestToFolderAsync(string folderId)
@@ -248,7 +280,8 @@ public class CollectionViewModel : ReactiveObject
         var candidate = _collection with { Root = newRoot };
         await _store.SaveAsync(candidate.FilePath, candidate);
         _collection = candidate;
-        FindNodeVm(Items, folderId)?.Children.Add(BuildNodeVm(newNode));
+        var folderVm = FindNodeVm(Items, folderId);
+        if (folderVm is not null) InsertNodeVmSorted(folderVm.Children, BuildNodeVm(newNode));
         _onRequestOpened(newNode);
     }
 
@@ -261,7 +294,319 @@ public class CollectionViewModel : ReactiveObject
         var candidate = _collection with { Root = newRoot };
         await _store.SaveAsync(candidate.FilePath, candidate);
         _collection = candidate;
-        FindNodeVm(Items, folderId)?.Children.Add(BuildNodeVm(newFolder));
+        var folderVm = FindNodeVm(Items, folderId);
+        if (folderVm is not null) InsertNodeVmSorted(folderVm.Children, BuildNodeVm(newFolder));
+    }
+
+    private async Task RenameFolderAsync(string folderId)
+    {
+        var current = FindFolderNode(_collection.Root, folderId);
+        if (current is null) return;
+
+        var newName = await _dialog.PromptTextAsync("Rename Folder", current.Name);
+        if (string.IsNullOrWhiteSpace(newName) || newName == current.Name) return;
+
+        var (newRoot, found) = RenameNodeInTree(_collection.Root, folderId, newName);
+        if (!found) return;
+
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+
+        if (FindNodeVm(Items, folderId) is { } vm)
+            vm.Name = newName;
+    }
+
+    private async Task CopyFolderAsync(string folderId)
+    {
+        var source = FindFolderNode(_collection.Root, folderId);
+        if (source is null) return;
+
+        var copyName = source.Name + " - copy";
+        var copy = DeepCopyFolder(source, copyName);
+
+        var parentId = FindParentId(_collection.Root, folderId);
+        if (parentId is null) return;
+
+        var (newRoot, found) = InsertIntoFolder(_collection.Root, parentId, copy);
+        if (!found) return;
+
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+
+        var copyVm = BuildNodeVm(copy);
+        if (parentId == _collection.Root.Id)
+            InsertNodeVmSorted(Items, copyVm);
+        else
+        {
+            var parentVm = FindNodeVm(Items, parentId);
+            if (parentVm is not null) InsertNodeVmSorted(parentVm.Children, copyVm);
+        }
+    }
+
+    private async Task DeleteFolderAsync(string folderId)
+    {
+        var folder = FindFolderNode(_collection.Root, folderId);
+        if (folder is null) return;
+
+        var confirmed = await _dialog.ConfirmAsync("Delete Folder", $"Delete '{folder.Name}' and all its contents?");
+        if (!confirmed) return;
+
+        var (newRoot, found) = RemoveFromTree(_collection.Root, folderId);
+        if (!found) return;
+
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+
+        RemoveNodeVm(Items, folderId);
+    }
+
+    private async Task RenameRequestAsync(string requestId)
+    {
+        var node = FindRequestNode(_collection.Root, requestId);
+        if (node is null) return;
+
+        var newName = await _dialog.PromptTextAsync("Rename Request", node.Name);
+        if (string.IsNullOrWhiteSpace(newName) || newName == node.Name) return;
+
+        var (newRoot, found) = RenameNodeInTree(_collection.Root, requestId, newName);
+        if (!found) return;
+
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+
+        if (FindNodeVm(Items, requestId) is { } vm)
+            vm.Name = newName;
+    }
+
+    private async Task DuplicateRequestAsync(string requestId)
+    {
+        var original = FindRequestNode(_collection.Root, requestId);
+        if (original is null) return;
+
+        var copy = original with { Id = Guid.NewGuid().ToString(), Name = original.Name + " - copy" };
+        var parentId = FindParentId(_collection.Root, requestId);
+        if (parentId is null) return;
+
+        var (newRoot, found) = InsertIntoFolder(_collection.Root, parentId, copy);
+        if (!found) return;
+
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+
+        var copyVm = BuildNodeVm(copy);
+        if (parentId == _collection.Root.Id)
+            InsertNodeVmSorted(Items, copyVm);
+        else
+        {
+            var parentVm = FindNodeVm(Items, parentId);
+            if (parentVm is not null) InsertNodeVmSorted(parentVm.Children, copyVm);
+        }
+
+        _onRequestOpened(copy);
+    }
+
+    private async Task DeleteRequestAsync(string requestId)
+    {
+        var node = FindRequestNode(_collection.Root, requestId);
+        if (node is null) return;
+
+        var confirmed = await _dialog.ConfirmAsync("Delete Request", $"Delete '{node.Name}'?");
+        if (!confirmed) return;
+
+        var (newRoot, found) = RemoveFromTree(_collection.Root, requestId);
+        if (!found) return;
+
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+
+        RemoveNodeVm(Items, requestId);
+    }
+
+    private async Task RenameCollectionAsync()
+    {
+        var newName = await _dialog.PromptTextAsync("Rename Collection", _collection.Name);
+        if (string.IsNullOrWhiteSpace(newName) || newName == _collection.Name) return;
+
+        var safeName = string.Concat(newName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+        if (string.IsNullOrWhiteSpace(safeName)) return;
+
+        var dirPath = Path.GetDirectoryName(_collection.FilePath) ?? string.Empty;
+        var newPath = Path.Combine(dirPath, safeName + ".json");
+
+        var candidate = _collection with { Name = newName, FilePath = newPath };
+        await _store.SaveAsync(newPath, candidate);
+        if (!string.Equals(_collection.FilePath, newPath, StringComparison.OrdinalIgnoreCase))
+            try { File.Delete(_collection.FilePath); } catch { /* best-effort */ }
+
+        _collection = candidate;
+        this.RaisePropertyChanged(nameof(Name));
+        this.RaisePropertyChanged(nameof(FilePath));
+    }
+
+    private async Task DuplicateCollectionAsync()
+    {
+        var copyName = _collection.Name + " - copy";
+        var dirPath = Path.GetDirectoryName(_collection.FilePath) ?? string.Empty;
+        var safeName = string.Concat(copyName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+        var newPath = Path.Combine(dirPath, safeName + ".json");
+
+        var newRoot = DeepCopyCollectionTree(_collection.Root, newPath);
+        var copy = new Collection(copyName, newPath, newRoot);
+        await _store.SaveAsync(newPath, copy);
+
+        _onDuplicated?.Invoke(copy);
+    }
+
+    private async Task DeleteCollectionAsync()
+    {
+        var confirmed = await _dialog.ConfirmAsync(
+            "Delete Collection",
+            $"Delete '{_collection.Name}'? This permanently deletes the file.");
+        if (!confirmed) return;
+
+        try { File.Delete(_collection.FilePath); } catch { /* best-effort */ }
+        _onDeleted?.Invoke(this);
+    }
+
+    private static RequestNode? FindRequestNode(FolderNode current, string id)
+    {
+        foreach (var child in current.Children)
+        {
+            if (child is RequestNode r && r.Id == id) return r;
+            if (child is FolderNode f)
+            {
+                var found = FindRequestNode(f, id);
+                if (found is not null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static FolderNode DeepCopyCollectionTree(FolderNode source, string newCollectionPath)
+    {
+        var newChildren = source.Children.Select<CollectionNode, CollectionNode>(child => child switch
+        {
+            FolderNode f => DeepCopyCollectionTree(f, newCollectionPath),
+            RequestNode r => r with { Id = Guid.NewGuid().ToString(), CollectionFilePath = newCollectionPath },
+            _ => child
+        }).ToList();
+        return new FolderNode(Guid.NewGuid().ToString(), source.Name, newChildren);
+    }
+
+    private static void InsertNodeVmSorted(ObservableCollection<CollectionNodeViewModel> items, CollectionNodeViewModel vm)
+    {
+        if (vm.IsFolder)
+        {
+            var idx = 0;
+            while (idx < items.Count && items[idx].IsFolder) idx++;
+            items.Insert(idx, vm);
+        }
+        else
+        {
+            items.Add(vm);
+        }
+    }
+
+    private static FolderNode? FindFolderNode(FolderNode current, string id)
+    {
+        if (current.Id == id) return current;
+        foreach (var child in current.Children)
+        {
+            if (child is FolderNode f)
+            {
+                var found = FindFolderNode(f, id);
+                if (found is not null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static string? FindParentId(FolderNode current, string targetId)
+    {
+        foreach (var child in current.Children)
+        {
+            if (child.Id == targetId) return current.Id;
+            if (child is FolderNode f)
+            {
+                var found = FindParentId(f, targetId);
+                if (found is not null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static (FolderNode Root, bool Found) RenameNodeInTree(FolderNode current, string targetId, string newName)
+    {
+        if (current.Id == targetId)
+            return (current with { Name = newName }, true);
+
+        var changed = false;
+        var newChildren = current.Children.Select(child =>
+        {
+            if (changed) return child;
+            if (child.Id == targetId)
+            {
+                changed = true;
+                return child switch
+                {
+                    FolderNode f => (CollectionNode)(f with { Name = newName }),
+                    RequestNode r => (CollectionNode)(r with { Name = newName }),
+                    _ => child
+                };
+            }
+            if (child is FolderNode folder)
+            {
+                var (updated, found) = RenameNodeInTree(folder, targetId, newName);
+                if (found) { changed = true; return (CollectionNode)updated; }
+            }
+            return child;
+        }).ToList();
+
+        return changed ? (current with { Children = newChildren }, true) : (current, false);
+    }
+
+    private static (FolderNode Root, bool Found) RemoveFromTree(FolderNode current, string targetId)
+    {
+        var directRemoval = current.Children.Any(c => c.Id == targetId);
+        if (directRemoval)
+            return (current with { Children = current.Children.Where(c => c.Id != targetId).ToList() }, true);
+
+        var changed = false;
+        var newChildren = current.Children.Select(child =>
+        {
+            if (changed || child is not FolderNode f) return child;
+            var (updated, found) = RemoveFromTree(f, targetId);
+            if (!found) return child;
+            changed = true;
+            return (CollectionNode)updated;
+        }).ToList();
+
+        return changed ? (current with { Children = newChildren }, true) : (current, false);
+    }
+
+    private static FolderNode DeepCopyFolder(FolderNode source, string newName)
+    {
+        var newChildren = source.Children.Select<CollectionNode, CollectionNode>(child => child switch
+        {
+            FolderNode f => DeepCopyFolder(f, f.Name),
+            RequestNode r => r with { Id = Guid.NewGuid().ToString() },
+            _ => child
+        }).ToList();
+        return new FolderNode(Guid.NewGuid().ToString(), newName, newChildren);
+    }
+
+    private static void RemoveNodeVm(ObservableCollection<CollectionNodeViewModel> nodes, string id)
+    {
+        var target = nodes.FirstOrDefault(n => n.Id == id);
+        if (target is not null) { nodes.Remove(target); return; }
+        foreach (var node in nodes)
+            RemoveNodeVm(node.Children, id);
     }
 
     private static (FolderNode Root, bool Found) InsertIntoFolder(

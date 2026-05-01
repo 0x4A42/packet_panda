@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reactive.Linq;
 using FluentAssertions;
 using Moq;
@@ -19,6 +20,9 @@ public sealed class CollectionSidebarViewModelTests
 
     private static Collection FakeCollection(string name, string path) =>
         new(name, path, new FolderNode(Guid.NewGuid().ToString(), name, []));
+
+    private CollectionViewModel FakeCollectionVm(Collection col) =>
+        new(col, _storeMock.Object, _dialogMock.Object, _ => { });
 
     [Fact]
     public async Task LoadCollections_AppendsToCollectionsList()
@@ -58,6 +62,103 @@ public sealed class CollectionSidebarViewModelTests
         vm.RemoveCollection(colVm);
 
         vm.Collections.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RenameFolder_UpdatesNameInVmAndPersists()
+    {
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "OldName", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _storeMock.Setup(s => s.SaveAsync("/col.json", It.IsAny<Collection>())).Returns(Task.CompletedTask);
+        _dialogMock.Setup(d => d.PromptTextAsync("Rename Folder", "OldName")).ReturnsAsync("NewName");
+        var vm = FakeCollectionVm(col);
+        var folderVm = vm.Items.Single(i => i.Id == folderId);
+
+        await folderVm.RenameFolderCommand!.Execute();
+
+        vm.Items.Should().ContainSingle(i => i.Name == "NewName");
+        _storeMock.Verify(s => s.SaveAsync("/col.json",
+            It.Is<Collection>(c => ContainsFolder(c.Root, folderId, "NewName"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task RenameFolder_BlankInput_DoesNotSave()
+    {
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "OldName", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _dialogMock.Setup(d => d.PromptTextAsync("Rename Folder", "OldName")).ReturnsAsync("   ");
+        var vm = FakeCollectionVm(col);
+
+        await vm.Items.Single(i => i.Id == folderId).RenameFolderCommand!.Execute();
+
+        _storeMock.Verify(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Collection>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CopyFolder_AddsCopyWithDifferentIdAndSameName()
+    {
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "MyFolder", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _storeMock.Setup(s => s.SaveAsync("/col.json", It.IsAny<Collection>())).Returns(Task.CompletedTask);
+        var vm = FakeCollectionVm(col);
+
+        await vm.Items.Single(i => i.Id == folderId).CopyFolderCommand!.Execute();
+
+        vm.Items.Should().HaveCount(2);
+        vm.Items.Should().Contain(i => i.Name == "MyFolder - copy");
+        vm.Items.Select(i => i.Id).Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public async Task DeleteFolder_Confirmed_RemovesFolderFromVmAndPersists()
+    {
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "ToDelete", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _storeMock.Setup(s => s.SaveAsync("/col.json", It.IsAny<Collection>())).Returns(Task.CompletedTask);
+        _dialogMock.Setup(d => d.ConfirmAsync("Delete Folder", It.IsAny<string>())).ReturnsAsync(true);
+        var vm = FakeCollectionVm(col);
+
+        await vm.Items.Single(i => i.Id == folderId).DeleteFolderCommand!.Execute();
+
+        vm.Items.Should().BeEmpty();
+        _storeMock.Verify(s => s.SaveAsync("/col.json",
+            It.Is<Collection>(c => !ContainsAnyFolder(c.Root, folderId))), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteFolder_Cancelled_DoesNotRemoveOrSave()
+    {
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "ToDelete", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _dialogMock.Setup(d => d.ConfirmAsync("Delete Folder", It.IsAny<string>())).ReturnsAsync(false);
+        var vm = FakeCollectionVm(col);
+
+        await vm.Items.Single(i => i.Id == folderId).DeleteFolderCommand!.Execute();
+
+        vm.Items.Should().ContainSingle();
+        _storeMock.Verify(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Collection>()), Times.Never);
+    }
+
+    private static bool ContainsFolder(FolderNode root, string id, string name)
+    {
+        if (root.Id == id) return root.Name == name;
+        return root.Children.OfType<FolderNode>().Any(f => ContainsFolder(f, id, name));
+    }
+
+    private static bool ContainsAnyFolder(FolderNode root, string id)
+    {
+        if (root.Id == id) return true;
+        return root.Children.OfType<FolderNode>().Any(f => ContainsAnyFolder(f, id));
     }
 
     [Fact]

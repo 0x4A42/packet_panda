@@ -393,6 +393,62 @@ public class ShellViewModel : ViewModelBase, IDisposable
         await PublishMergedEnvAsync();
     }
 
+    /// <summary>
+    /// Updates a variable in whichever source environment currently provides it
+    /// (active env wins over globals because it shadows it in the merged view), then
+    /// republishes the merged environment so colorizers and the variable resolver pick
+    /// up the new value.  If the variable isn't defined anywhere, it's added to the
+    /// active env (or globals if no active env is selected).
+    /// </summary>
+    public async Task UpdateActiveEnvironmentVariableAsync(string name, string value)
+    {
+        Environment? source;
+        bool isGlobals;
+
+        if (_loadedActiveEnv is not null && _loadedActiveEnv.Variables.ContainsKey(name))
+        {
+            source = _loadedActiveEnv;
+            isGlobals = false;
+        }
+        else if (_globals is not null && _globals.Variables.ContainsKey(name))
+        {
+            source = _globals;
+            isGlobals = true;
+        }
+        else if (_loadedActiveEnv is not null)
+        {
+            source = _loadedActiveEnv;
+            isGlobals = false;
+        }
+        else if (_globals is not null)
+        {
+            source = _globals;
+            isGlobals = true;
+        }
+        else
+        {
+            return;
+        }
+
+        var newVars = new Dictionary<string, string>(source.Variables, StringComparer.Ordinal)
+        {
+            [name] = value,
+        };
+        var updated = source with { Variables = newVars };
+
+        try
+        {
+            await _environmentStore.SaveAsync(updated.FilePath, updated);
+            if (isGlobals) _globals = updated;
+            else _loadedActiveEnv = updated;
+            await PublishMergedEnvAsync();
+        }
+        catch (EnvironmentFileException)
+        {
+            // best-effort — leave in-memory state alone if save failed
+        }
+    }
+
     private Task PublishMergedEnvAsync()
     {
         var merged = MergeEnvironments(_globals, _loadedActiveEnv);

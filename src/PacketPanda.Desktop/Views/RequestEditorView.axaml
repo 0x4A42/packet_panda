@@ -4,7 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
              xmlns:conv="using:PacketPanda.Desktop.Converters"
-             xmlns:ae="using:AvaloniaEdit"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
              x:Class="PacketPanda.Desktop.Views.RequestEditorView"
              x:DataType="vm:RequestEditorViewModel">
@@ -12,6 +11,19 @@
     <UserControl.Resources>
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
     </UserControl.Resources>
+
+    <!-- Force the inner text-presenter foreground to transparent so the FluentTheme
+         doesn't paint white characters over the colored TextBlock overlay when focused. -->
+    <UserControl.Styles>
+        <Style Selector="TextBox#UrlEditor /template/ TextPresenter#PART_TextPresenter">
+            <Setter Property="TextElement.Foreground" Value="Transparent" />
+            <Setter Property="CaretBrush" Value="#1E1E1E" />
+        </Style>
+        <Style Selector="TextBox#BodyEditor /template/ TextPresenter#PART_TextPresenter">
+            <Setter Property="TextElement.Foreground" Value="Transparent" />
+            <Setter Property="CaretBrush" Value="#1E1E1E" />
+        </Style>
+    </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8" Margin="12">
 
@@ -30,12 +42,24 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <TextBox Grid.Column="1"
-                     Text="{Binding Url, Mode=TwoWay}"
-                     AcceptsReturn="False"
-                     FontFamily="Consolas,Menlo,monospace"
-                     FontSize="13"
-                     VerticalContentAlignment="Center" />
+            <Panel Grid.Column="1">
+                <TextBox x:Name="UrlEditor"
+                         Text="{Binding Url, Mode=TwoWay}"
+                         AcceptsReturn="False"
+                         Foreground="Transparent"
+                         Background="White"
+                         CaretBrush="#1E1E1E"
+                         FontFamily="Consolas,Menlo,monospace"
+                         FontSize="13"
+                         VerticalContentAlignment="Center" />
+                <TextBlock x:Name="UrlOverlay"
+                           Foreground="#1E1E1E"
+                           FontFamily="Consolas,Menlo,monospace"
+                           FontSize="13"
+                           VerticalAlignment="Center"
+                           Padding="9,0,9,0"
+                           IsHitTestVisible="False" />
+            </Panel>
 
             <Button Grid.Column="2"
                     Content="Send"
@@ -58,15 +82,28 @@
 
         <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
 
-        <ae:TextEditor Grid.Row="2"
-                       x:Name="BodyEditor"
+        <Panel Grid.Row="2" Height="120" Background="White">
+            <TextBox x:Name="BodyEditor"
+                     Text="{Binding RequestBody}"
+                     AcceptsReturn="True"
+                     AcceptsTab="True"
+                     Foreground="Transparent"
+                     Background="Transparent"
+                     CaretBrush="#1E1E1E"
+                     FontFamily="Consolas,Menlo,monospace"
+                     FontSize="13"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     TextWrapping="NoWrap"
+                     Padding="9,5,9,5" />
+            <TextBlock x:Name="BodyOverlay"
+                       Foreground="#1E1E1E"
                        FontFamily="Consolas,Menlo,monospace"
                        FontSize="13"
-                       Height="120"
-                       HorizontalScrollBarVisibility="Auto"
-                       VerticalScrollBarVisibility="Auto"
-                       ShowLineNumbers="False"
-                       WordWrap="False" />
+                       Padding="9,5,9,5"
+                       TextWrapping="NoWrap"
+                       IsHitTestVisible="False" />
+        </Panel>
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"

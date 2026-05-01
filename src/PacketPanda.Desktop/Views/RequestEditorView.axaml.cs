@@ -1,9 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using Avalonia;
 using Avalonia.ReactiveUI;
-using Avalonia.Threading;
 using PacketPanda.Desktop.Highlighting;
 using PacketPanda.Desktop.ViewModels;
 using ReactiveUI;
@@ -12,9 +11,7 @@ namespace PacketPanda.Desktop.Views;
 
 public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewModel>
 {
-    private VariableColorizer? _colorizer;
     private CompositeDisposable? _subs;
-    private EventHandler? _textChangedHandler;
 
     public RequestEditorView()
     {
@@ -28,64 +25,20 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         _subs?.Dispose();
         _subs = null;
 
-        if (_textChangedHandler is not null)
-        {
-            BodyEditor.TextChanged -= _textChangedHandler;
-            _textChangedHandler = null;
-        }
-
         if (DataContext is not RequestEditorViewModel vm) return;
 
         _subs = new CompositeDisposable();
 
-        if (_colorizer is not null)
-            BodyEditor.TextArea.TextView.LineTransformers.Remove(_colorizer);
-
-        _colorizer = new VariableColorizer();
-        BodyEditor.TextArea.TextView.LineTransformers.Add(_colorizer);
-
-        // Sync RequestBody → TextEditor
-        vm.WhenAnyValue(x => x.RequestBody)
-            .Subscribe(body =>
-            {
-                if (BodyEditor.Text != (body ?? string.Empty))
-                    BodyEditor.Text = body ?? string.Empty;
-            })
-            .DisposeWith(_subs);
-
-        // Sync TextEditor → RequestBody
-        _textChangedHandler = (_, _) =>
-        {
-            var text = BodyEditor.Text;
-            var normalized = string.IsNullOrEmpty(text) ? null : text;
-            if (vm.RequestBody != normalized)
-                vm.RequestBody = normalized;
-        };
-        BodyEditor.TextChanged += _textChangedHandler;
-
-        // Update colorizer when active environment changes (must run on UI thread for Redraw)
-        vm.WhenAnyValue(x => x.ActiveEnvironmentVariables)
+        // Repaint URL overlay whenever the URL or active environment changes.
+        vm.WhenAnyValue(x => x.Url, x => x.ActiveEnvironmentVariables)
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(vars =>
-            {
-                _colorizer.UpdateEnvironment(vars);
-                BodyEditor.TextArea.TextView.Redraw();
-            })
+            .Subscribe(t => VariableTextHighlighter.Apply(UrlOverlay, t.Item1, t.Item2))
             .DisposeWith(_subs);
-    }
 
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        if (DataContext is RequestEditorViewModel vm)
-        {
-            // Set text immediately (populates the document before first layout pass)
-            BodyEditor.Text = vm.RequestBody ?? string.Empty;
-            // Redraw must happen AFTER the first layout pass completes so AvaloniaEdit's
-            // visual-line cache is rebuilt against a control that has a real measured size.
-            Dispatcher.UIThread.Post(
-                () => BodyEditor.TextArea.TextView.Redraw(),
-                DispatcherPriority.Loaded);
-        }
+        // Repaint body overlay whenever the body or active environment changes.
+        vm.WhenAnyValue(x => x.RequestBody, x => x.ActiveEnvironmentVariables)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(t => VariableTextHighlighter.Apply(BodyOverlay, t.Item1, t.Item2))
+            .DisposeWith(_subs);
     }
 }

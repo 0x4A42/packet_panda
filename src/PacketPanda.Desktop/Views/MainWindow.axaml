@@ -148,9 +148,16 @@
                                             <MenuFlyout>
                                                 <MenuItem Header="New folder"
                                                           Command="{Binding NewFolderCommand}" />
+                                                <MenuItem Header="Rename"
+                                                          Command="{Binding RenameCommand}" />
+                                                <MenuItem Header="Duplicate"
+                                                          Command="{Binding DuplicateCommand}" />
+                                                <Separator />
                                                 <MenuItem Header="Remove from sidebar"
                                                           Command="{Binding $parent[TreeView].DataContext.Sidebar.RemoveCollectionCommand}"
                                                           CommandParameter="{Binding}" />
+                                                <MenuItem Header="Delete"
+                                                          Command="{Binding DeleteCommand}" />
                                             </MenuFlyout>
                                         </Button.Flyout>
                                     </Button>
@@ -190,6 +197,29 @@
                                             <MenuFlyout>
                                                 <MenuItem Header="New folder"
                                                           Command="{Binding NewFolderCommand}" />
+                                                <MenuItem Header="Rename"
+                                                          Command="{Binding RenameFolderCommand}" />
+                                                <MenuItem Header="Copy"
+                                                          Command="{Binding CopyFolderCommand}" />
+                                                <MenuItem Header="Delete"
+                                                          Command="{Binding DeleteFolderCommand}" />
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                    <Button IsVisible="{Binding !IsFolder}"
+                                            Content="⚙"
+                                            Padding="4,0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            FontSize="10">
+                                        <Button.Flyout>
+                                            <MenuFlyout>
+                                                <MenuItem Header="Rename"
+                                                          Command="{Binding RenameRequestCommand}" />
+                                                <MenuItem Header="Duplicate"
+                                                          Command="{Binding DuplicateRequestCommand}" />
+                                                <MenuItem Header="Delete"
+                                                          Command="{Binding DeleteRequestCommand}" />
                                             </MenuFlyout>
                                         </Button.Flyout>
                                     </Button>
@@ -211,7 +241,7 @@
         <GridSplitter Grid.Column="1" Background="#CCCCCC" ResizeDirection="Columns" />
 
         <Grid Grid.Column="2" RowDefinitions="Auto,*">
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="4">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="4">
                 <ScrollViewer Grid.Column="0"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled">
@@ -254,13 +284,7 @@
                     </TabStrip>
                 </ScrollViewer>
 
-                <Button Grid.Column="1"
-                        Content="+"
-                        Command="{Binding NewTabCommand}"
-                        Margin="4,0,0,0"
-                        Padding="8,2" />
-
-                <ComboBox Grid.Column="2"
+                <ComboBox Grid.Column="1"
                           ItemsSource="{Binding AvailableEnvironments}"
                           SelectedItem="{Binding SelectedEnvironment}"
                           PlaceholderText="No environment"

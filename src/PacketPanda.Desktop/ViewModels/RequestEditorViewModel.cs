@@ -13,6 +13,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private readonly IHttpRequestSender _sender;
     private readonly ICollectionFileStore _collectionStore;
     private readonly IVariableResolver _resolver;
+    private readonly Func<string, string, Task>? _updateVariable;
     private Environment? _activeEnv;
     private IDisposable? _activeEnvSub;
     private IDisposable? _dirtySub;
