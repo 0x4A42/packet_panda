@@ -303,6 +303,43 @@ public class ShellViewModelTests
     }
 
     [Fact]
+    public async Task InitializeAsync_WithActiveEnvironmentName_RestoresSelectedEnvironment()
+    {
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        // InitializeAsync gates on File.Exists, so we need a real path on disk.
+        var devPath = Path.GetTempFileName();
+        try
+        {
+            var devEnv = new Environment("dev", devPath,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+            var globals = new Environment("Globals", globalsPath,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+
+            _environmentStore.Setup(s => s.LoadAsync(devPath)).ReturnsAsync(devEnv);
+            _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+            _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+            _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+            var shell = CreateShell();
+            await shell.InitializeAsync(new AppSettings
+            {
+                ActiveEnvironmentName = "dev",
+                KnownEnvironmentPaths = [devPath],
+            });
+
+            shell.SelectedEnvironment.Should().NotBeNull();
+            shell.SelectedEnvironment!.Name.Should().Be("dev");
+        }
+        finally
+        {
+            File.Delete(devPath);
+        }
+    }
+
+    [Fact]
     public async Task UpdateActiveEnvironmentVariableAsync_Globals_WritesToGlobalsRegardlessOfActiveEnv()
     {
         var globalsPath = Path.Combine(

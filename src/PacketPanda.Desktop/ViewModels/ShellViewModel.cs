@@ -177,6 +177,14 @@ public class ShellViewModel : ViewModelBase, IDisposable
             }
         }
 
+        if (_pendingActiveEnvName is not null)
+        {
+            var match = EnvironmentsForPicker.FirstOrDefault(e => e.Name == _pendingActiveEnvName);
+            if (match is not null)
+                SelectedEnvironment = match;
+            _pendingActiveEnvName = null;
+        }
+
         var globalsPath = Path.Combine(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
             "PacketPanda", "globals.json");
