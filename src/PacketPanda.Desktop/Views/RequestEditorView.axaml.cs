@@ -46,6 +46,10 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
     {
         base.OnDataContextChanged(e);
 
+        _popupCloseTimer?.Stop();
+        _popupCloseTimer = null;
+        ClosePopup();
+
         _subs?.Dispose();
         _subs = null;
 
@@ -85,11 +89,10 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         }
 
         _popupCloseTimer?.Stop();
-
         if (_hoveredVarName == varSpan.Value.Name && VarPopup.IsOpen) return;
-
         _hoveredVarName = varSpan.Value.Name;
         PopulatePopup(varSpan.Value.Name, vm);
+        if (VarPopup.IsOpen) VarPopup.IsOpen = false;  // force re-placement at new pointer position
         VarPopup.IsOpen = true;
     }
 

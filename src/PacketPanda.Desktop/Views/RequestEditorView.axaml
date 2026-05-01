@@ -167,7 +167,6 @@
                                   MinWidth="140" />
                     </StackPanel>
                     <TextBlock x:Name="PopupHint"
-                               Text="Enter to save · Esc to cancel"
                                FontSize="11"
                                Opacity="0.6" />
                     <Separator />
