@@ -38,8 +38,11 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         PopupValueBox.KeyDown += OnPopupValueBoxKeyDown;
         PopupEnvLink.Click += (_, _) => OnPopupEnvLinkClick();
 
-        VarPopup.PointerEntered += (_, _) => _popupCloseTimer?.Stop();
-        VarPopup.PointerExited += (_, _) => StartPopupCloseTimer();
+        // PopupContent (the Border inside the PopupRoot) fires reliable pointer events;
+        // VarPopup.PointerEntered/Exited are on the parent-window control and never fire for popup content.
+        PopupContent.PointerEntered += (_, _) => _popupCloseTimer?.Stop();
+        PopupContent.PointerPressed += (_, _) => _popupCloseTimer?.Stop();
+        PopupContent.PointerExited += (_, _) => StartPopupCloseTimer();
     }
 
     protected override void OnDataContextChanged(EventArgs e)

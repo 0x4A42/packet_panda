@@ -136,7 +136,8 @@
                IsOpen="False"
                Placement="Pointer"
                IsLightDismissEnabled="False">
-            <Border Background="White"
+            <Border x:Name="PopupContent"
+                    Background="White"
                     BorderBrush="#CCCCCC"
                     BorderThickness="1"
                     CornerRadius="4"
