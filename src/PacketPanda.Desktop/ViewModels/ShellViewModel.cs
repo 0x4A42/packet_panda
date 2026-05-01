@@ -400,34 +400,44 @@ public class ShellViewModel : ViewModelBase, IDisposable
     /// up the new value.  If the variable isn't defined anywhere, it's added to the
     /// active env (or globals if no active env is selected).
     /// </summary>
-    public async Task UpdateActiveEnvironmentVariableAsync(string name, string value)
+    public async Task UpdateActiveEnvironmentVariableAsync(string name, string value, VariableTarget target = VariableTarget.ActiveEnv)
     {
         Environment? source;
         bool isGlobals;
 
-        if (_loadedActiveEnv is not null && _loadedActiveEnv.Variables.ContainsKey(name))
+        if (target == VariableTarget.Globals)
         {
-            source = _loadedActiveEnv;
-            isGlobals = false;
-        }
-        else if (_globals is not null && _globals.Variables.ContainsKey(name))
-        {
-            source = _globals;
-            isGlobals = true;
-        }
-        else if (_loadedActiveEnv is not null)
-        {
-            source = _loadedActiveEnv;
-            isGlobals = false;
-        }
-        else if (_globals is not null)
-        {
+            if (_globals is null) return;
             source = _globals;
             isGlobals = true;
         }
         else
         {
-            return;
+            // Auto-detect: active env shadows globals
+            if (_loadedActiveEnv is not null && _loadedActiveEnv.Variables.ContainsKey(name))
+            {
+                source = _loadedActiveEnv;
+                isGlobals = false;
+            }
+            else if (_globals is not null && _globals.Variables.ContainsKey(name))
+            {
+                source = _globals;
+                isGlobals = true;
+            }
+            else if (_loadedActiveEnv is not null)
+            {
+                source = _loadedActiveEnv;
+                isGlobals = false;
+            }
+            else if (_globals is not null)
+            {
+                source = _globals;
+                isGlobals = true;
+            }
+            else
+            {
+                return;
+            }
         }
 
         var newVars = new Dictionary<string, string>(source.Variables, StringComparer.Ordinal)

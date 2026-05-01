@@ -301,4 +301,85 @@ public class ShellViewModelTests
         shell.SelectedEnvironment!.FilePath.Should().BeEmpty();
         shell.SelectedEnvironment.Name.Should().Be("No environment");
     }
+
+    [Fact]
+    public async Task UpdateActiveEnvironmentVariableAsync_Globals_WritesToGlobalsRegardlessOfActiveEnv()
+    {
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        var activeEnv = new Environment("dev", "/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "active-val" });
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "global-val" });
+
+        _environmentStore.Setup(s => s.LoadAsync("/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+
+        Environment? savedGlobals = null;
+        _environmentStore
+            .Setup(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()))
+            .Callback<string, Environment>((_, e) => savedGlobals = e)
+            .Returns(Task.CompletedTask);
+        _environmentStore
+            .Setup(s => s.SaveAsync("/dev.json", It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings
+        {
+            ActiveEnvironmentName = "dev",
+            KnownEnvironmentPaths = ["/dev.json"],
+        });
+
+        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val", VariableTarget.Globals);
+
+        savedGlobals.Should().NotBeNull();
+        savedGlobals!.Variables["token"].Should().Be("new-val");
+    }
+
+    [Fact]
+    public async Task UpdateActiveEnvironmentVariableAsync_ActiveEnv_WritesToActiveEnvNotGlobals()
+    {
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        var activeEnv = new Environment("dev", "/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "active-val" });
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "global-val" });
+
+        _environmentStore.Setup(s => s.LoadAsync("/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+
+        Environment? savedActiveEnv = null;
+        _environmentStore
+            .Setup(s => s.SaveAsync("/dev.json", It.IsAny<Environment>()))
+            .Callback<string, Environment>((_, e) => savedActiveEnv = e)
+            .Returns(Task.CompletedTask);
+        _environmentStore
+            .Setup(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings
+        {
+            ActiveEnvironmentName = "dev",
+            KnownEnvironmentPaths = ["/dev.json"],
+        });
+        shell.SelectedEnvironment = new EnvironmentRef("dev", "/dev.json");
+
+        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val", VariableTarget.ActiveEnv);
+
+        savedActiveEnv.Should().NotBeNull();
+        savedActiveEnv!.Variables["token"].Should().Be("new-val");
+    }
 }
