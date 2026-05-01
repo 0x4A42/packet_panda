@@ -314,4 +314,50 @@ public sealed class RequestEditorViewModelTests
             It.IsAny<CancellationToken>()), Times.Once);
         vm.ErrorMessage.Should().BeNull();
     }
+
+    [Fact]
+    public async Task UpdateVariableAsync_InvokesCallback_WithCorrectArgs()
+    {
+        string? capturedName = null;
+        string? capturedValue = null;
+        VariableTarget? capturedTarget = null;
+        var vm = new RequestEditorViewModel(
+            _sender.Object,
+            _collectionStore.Object,
+            new VariableResolver(),
+            new BehaviorSubject<Environment?>(null),
+            updateVariable: (n, v, t) => { capturedName = n; capturedValue = v; capturedTarget = t; return Task.CompletedTask; });
+
+        await vm.UpdateVariableAsync("token", "abc123", VariableTarget.ActiveEnv);
+
+        capturedName.Should().Be("token");
+        capturedValue.Should().Be("abc123");
+        capturedTarget.Should().Be(VariableTarget.ActiveEnv);
+    }
+
+    [Fact]
+    public async Task UpdateVariableAsync_NoCallback_DoesNotThrow()
+    {
+        var vm = CreateVm();
+
+        var act = async () => await vm.UpdateVariableAsync("x", "y", VariableTarget.Globals);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public void OpenEnvironmentEditor_InvokesCallback()
+    {
+        var called = false;
+        var vm = new RequestEditorViewModel(
+            _sender.Object,
+            _collectionStore.Object,
+            new VariableResolver(),
+            new BehaviorSubject<Environment?>(null),
+            openEnvironmentEditor: () => called = true);
+
+        vm.OpenEnvironmentEditor();
+
+        called.Should().BeTrue();
+    }
 }

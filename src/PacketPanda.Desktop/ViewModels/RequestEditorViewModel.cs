@@ -13,6 +13,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private readonly IHttpRequestSender _sender;
     private readonly ICollectionFileStore _collectionStore;
     private readonly IVariableResolver _resolver;
+    private readonly Func<string, string, VariableTarget, Task>? _updateVariable;
+    private readonly Action? _openEnvironmentEditor;
     private Environment? _activeEnv;
     private IDisposable? _activeEnvSub;
     private IDisposable? _dirtySub;
@@ -35,11 +37,15 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         IHttpRequestSender sender,
         ICollectionFileStore collectionStore,
         IVariableResolver resolver,
-        IObservable<Environment?> activeEnvironment)
+        IObservable<Environment?> activeEnvironment,
+        Func<string, string, VariableTarget, Task>? updateVariable = null,
+        Action? openEnvironmentEditor = null)
     {
         _sender = sender;
         _collectionStore = collectionStore;
         _resolver = resolver;
+        _updateVariable = updateVariable;
+        _openEnvironmentEditor = openEnvironmentEditor;
         _activeEnvSub = activeEnvironment.Subscribe(env =>
         {
             _activeEnv = env;
@@ -134,6 +140,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         HttpMethod.Put,
         HttpMethod.Delete
     };
+
+    public Task UpdateVariableAsync(string name, string value, VariableTarget target) =>
+        _updateVariable?.Invoke(name, value, target) ?? Task.CompletedTask;
+
+    public void OpenEnvironmentEditor() => _openEnvironmentEditor?.Invoke();
 
     private async Task SendAsync()
     {
