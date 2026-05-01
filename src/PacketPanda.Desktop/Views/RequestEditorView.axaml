@@ -131,5 +131,56 @@
                      TextWrapping="Wrap"
                      FontFamily="Consolas,Menlo,monospace" />
         </Grid>
+
+        <Popup x:Name="VarPopup"
+               IsOpen="False"
+               Placement="Pointer"
+               IsLightDismissEnabled="False">
+            <Border Background="White"
+                    BorderBrush="#CCCCCC"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10,8"
+                    MinWidth="200"
+                    BoxShadow="0 2 8 0 #33000000">
+                <StackPanel Spacing="6">
+                    <TextBlock x:Name="PopupVarLabel"
+                               FontFamily="Consolas,Menlo,monospace"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#1E1E1E" />
+                    <TextBox x:Name="PopupValueBox"
+                             FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12"
+                             MinWidth="180"
+                             Watermark="(empty)" />
+                    <StackPanel x:Name="PopupTargetRow"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                IsVisible="False">
+                        <TextBlock Text="Save to:"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Opacity="0.7" />
+                        <ComboBox x:Name="PopupTargetPicker"
+                                  FontSize="12"
+                                  MinWidth="140" />
+                    </StackPanel>
+                    <TextBlock x:Name="PopupHint"
+                               Text="Enter to save · Esc to cancel"
+                               FontSize="11"
+                               Opacity="0.6" />
+                    <Separator />
+                    <Button x:Name="PopupEnvLink"
+                            Content="Environment ↗"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            FontSize="12"
+                            Foreground="#207AC1"
+                            Cursor="Hand" />
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </UserControl>
