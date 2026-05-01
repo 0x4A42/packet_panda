@@ -39,7 +39,7 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         PopupEnvLink.Click += (_, _) => OnPopupEnvLinkClick();
 
         VarPopup.PointerEntered += (_, _) => _popupCloseTimer?.Stop();
-        VarPopup.PointerExited += (_, _) => ClosePopup();
+        VarPopup.PointerExited += (_, _) => StartPopupCloseTimer();
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -94,6 +94,7 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         PopulatePopup(varSpan.Value.Name, vm);
         if (VarPopup.IsOpen) VarPopup.IsOpen = false;  // force re-placement at new pointer position
         VarPopup.IsOpen = true;
+        _popupCloseTimer?.Stop();  // popup is now open; cancel any close timer the PointerExited event may have started
     }
 
     private static int ApproximateCharIndex(double x, double y, string text, double leftPadding, double topPadding)
