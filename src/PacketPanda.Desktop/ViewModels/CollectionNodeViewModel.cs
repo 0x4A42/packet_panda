@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Linq;
 using PacketPanda.Core.Persistence;
 using ReactiveUI;
 
@@ -8,6 +9,10 @@ namespace PacketPanda.Desktop.ViewModels;
 public class CollectionNodeViewModel : ReactiveObject
 {
     private bool _isExpanded;
+    private bool _isEditing;
+    private string _editingName = string.Empty;
+    private readonly ObservableAsPropertyHelper<bool> _showFolderActions;
+    private readonly ObservableAsPropertyHelper<bool> _showRequestActions;
 
     public CollectionNodeViewModel(
         string id,
@@ -23,6 +28,14 @@ public class CollectionNodeViewModel : ReactiveObject
         Method = method;
         Children = new ObservableCollection<CollectionNodeViewModel>(children);
         SourceNode = sourceNode;
+
+        _showFolderActions = this.WhenAnyValue(x => x.IsEditing)
+            .Select(editing => isFolder && !editing)
+            .ToProperty(this, x => x.ShowFolderActions);
+
+        _showRequestActions = this.WhenAnyValue(x => x.IsEditing)
+            .Select(editing => !isFolder && !editing)
+            .ToProperty(this, x => x.ShowRequestActions);
     }
 
     private string _name;
@@ -41,13 +54,30 @@ public class CollectionNodeViewModel : ReactiveObject
     public Action<RequestNode>? RequestOpenedCallback { get; init; }
     public ReactiveCommand<Unit, Unit>? NewRequestCommand { get; init; }
     public ReactiveCommand<Unit, Unit>? NewFolderCommand { get; init; }
-    public ReactiveCommand<Unit, Unit>? RenameFolderCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? RenameFolderCommand { get; set; }
     public ReactiveCommand<Unit, Unit>? CopyFolderCommand { get; init; }
     public ReactiveCommand<Unit, Unit>? DeleteFolderCommand { get; init; }
-    public ReactiveCommand<Unit, Unit>? RenameRequestCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? RenameRequestCommand { get; set; }
     public ReactiveCommand<Unit, Unit>? DuplicateRequestCommand { get; init; }
     public ReactiveCommand<Unit, Unit>? DeleteRequestCommand { get; init; }
+    public ReactiveCommand<Unit, Unit>? CommitRenameCommand { get; set; }
+    public ReactiveCommand<Unit, Unit>? CancelRenameCommand { get; set; }
     public ObservableCollection<CollectionNodeViewModel> Children { get; }
+
+    public bool IsEditing
+    {
+        get => _isEditing;
+        set => this.RaiseAndSetIfChanged(ref _isEditing, value);
+    }
+
+    public string EditingName
+    {
+        get => _editingName;
+        set => this.RaiseAndSetIfChanged(ref _editingName, value);
+    }
+
+    public bool ShowFolderActions => _showFolderActions.Value;
+    public bool ShowRequestActions => _showRequestActions.Value;
 
     public string DisplayName => !IsFolder && Method is not null ? $"{Method} {Name}" : Name;
 
@@ -55,6 +85,18 @@ public class CollectionNodeViewModel : ReactiveObject
     {
         get => _isExpanded;
         set => this.RaiseAndSetIfChanged(ref _isExpanded, value);
+    }
+
+    public void BeginEdit()
+    {
+        EditingName = Name;
+        IsEditing = true;
+    }
+
+    public void CancelEdit()
+    {
+        IsEditing = false;
+        EditingName = string.Empty;
     }
 
     public void Open()

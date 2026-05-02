@@ -16,6 +16,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private readonly IFilePickerService _filePicker;
     private readonly IDialogService _dialog;
     private readonly Subject<RequestNode> _requestOpened = new();
+    private readonly Subject<object> _editingNodeStarted = new();
 
     private string? _filterText;
     private string? _errorMessage;
@@ -59,6 +60,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     public ReactiveCommand<CollectionViewModel, Unit> RemoveCollectionCommand { get; }
 
     public IObservable<RequestNode> RequestOpened => _requestOpened;
+    public IObservable<object> EditingNodeStarted => _editingNodeStarted;
 
     public async Task LoadCollectionsAsync(IReadOnlyList<string> paths)
     {
@@ -149,6 +151,7 @@ public class CollectionSidebarViewModel : ReactiveObject
         var vm = new CollectionViewModel(
             collection, _collectionStore, _dialog,
             node => _requestOpened.OnNext(node),
+            onEditingStarted: item => _editingNodeStarted.OnNext(item),
             onDuplicated: dup =>
             {
                 AddCollectionViewModel(dup);
@@ -181,7 +184,10 @@ public class CollectionViewModel : ReactiveObject
     private readonly Action<RequestNode> _onRequestOpened;
     private readonly Action<Collection>? _onDuplicated;
     private readonly Action<CollectionViewModel>? _onDeleted;
+    private readonly Action<object>? _onEditingStarted;
     private Collection _collection;
+    private bool _isEditing;
+    private string _editingName = string.Empty;
 
     public CollectionViewModel(
         Collection collection,
@@ -189,7 +195,8 @@ public class CollectionViewModel : ReactiveObject
         IDialogService dialog,
         Action<RequestNode> onRequestOpened,
         Action<Collection>? onDuplicated = null,
-        Action<CollectionViewModel>? onDeleted = null)
+        Action<CollectionViewModel>? onDeleted = null,
+        Action<object>? onEditingStarted = null)
     {
         _collection = collection;
         _store = store;
@@ -197,6 +204,7 @@ public class CollectionViewModel : ReactiveObject
         _onRequestOpened = onRequestOpened;
         _onDuplicated = onDuplicated;
         _onDeleted = onDeleted;
+        _onEditingStarted = onEditingStarted;
 
         Items = new ObservableCollection<CollectionNodeViewModel>(
             collection.Root.Children
@@ -205,7 +213,9 @@ public class CollectionViewModel : ReactiveObject
 
         NewRequestCommand = ReactiveCommand.CreateFromTask(AddNewRequestAsync);
         NewFolderCommand = ReactiveCommand.CreateFromTask(AddNewFolderAsync);
-        RenameCommand = ReactiveCommand.CreateFromTask(RenameCollectionAsync);
+        RenameCommand = ReactiveCommand.Create(BeginCollectionEdit);
+        CommitRenameCommand = ReactiveCommand.CreateFromTask(CommitRenameCollectionAsync);
+        CancelRenameCommand = ReactiveCommand.Create(CancelRenameCollection);
         DuplicateCommand = ReactiveCommand.CreateFromTask(DuplicateCollectionAsync);
         DeleteCommand = ReactiveCommand.CreateFromTask(DeleteCollectionAsync);
     }
@@ -214,38 +224,136 @@ public class CollectionViewModel : ReactiveObject
     public string FilePath => _collection.FilePath;
     public ObservableCollection<CollectionNodeViewModel> Items { get; }
 
+    public bool IsEditing
+    {
+        get => _isEditing;
+        set => this.RaiseAndSetIfChanged(ref _isEditing, value);
+    }
+
+    public string EditingName
+    {
+        get => _editingName;
+        set => this.RaiseAndSetIfChanged(ref _editingName, value);
+    }
+
     public ReactiveCommand<Unit, Unit> NewRequestCommand { get; }
     public ReactiveCommand<Unit, Unit> NewFolderCommand { get; }
     public ReactiveCommand<Unit, Unit> RenameCommand { get; }
+    public ReactiveCommand<Unit, Unit> CommitRenameCommand { get; }
+    public ReactiveCommand<Unit, Unit> CancelRenameCommand { get; }
     public ReactiveCommand<Unit, Unit> DuplicateCommand { get; }
     public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
 
     private CollectionNodeViewModel BuildNodeVm(CollectionNode node)
     {
-        return node switch
+        switch (node)
         {
-            FolderNode f => new CollectionNodeViewModel(
-                f.Id, f.Name, isFolder: true, method: null,
-                f.Children.OrderBy(c => c is FolderNode ? 0 : 1).Select(BuildNodeVm), sourceNode: f)
-            {
-                NewRequestCommand = ReactiveCommand.CreateFromTask(() => AddNewRequestToFolderAsync(f.Id)),
-                NewFolderCommand = ReactiveCommand.CreateFromTask(() => AddNewFolderToFolderAsync(f.Id)),
-                RenameFolderCommand = ReactiveCommand.CreateFromTask(() => RenameFolderAsync(f.Id)),
-                CopyFolderCommand = ReactiveCommand.CreateFromTask(() => CopyFolderAsync(f.Id)),
-                DeleteFolderCommand = ReactiveCommand.CreateFromTask(() => DeleteFolderAsync(f.Id)),
-            },
-            RequestNode r => new CollectionNodeViewModel(
-                r.Id, r.Name, isFolder: false,
-                method: r.Method.ToString().ToUpperInvariant(),
-                children: [], sourceNode: r)
-            {
-                RequestOpenedCallback = _onRequestOpened,
-                RenameRequestCommand = ReactiveCommand.CreateFromTask(() => RenameRequestAsync(r.Id)),
-                DuplicateRequestCommand = ReactiveCommand.CreateFromTask(() => DuplicateRequestAsync(r.Id)),
-                DeleteRequestCommand = ReactiveCommand.CreateFromTask(() => DeleteRequestAsync(r.Id)),
-            },
-            _ => throw new InvalidOperationException($"Unknown node type: {node.GetType().Name}")
-        };
+            case FolderNode f:
+                var folderVm = new CollectionNodeViewModel(
+                    f.Id, f.Name, isFolder: true, method: null,
+                    f.Children.OrderBy(c => c is FolderNode ? 0 : 1).Select(BuildNodeVm), sourceNode: f)
+                {
+                    NewRequestCommand = ReactiveCommand.CreateFromTask(() => AddNewRequestToFolderAsync(f.Id)),
+                    NewFolderCommand = ReactiveCommand.CreateFromTask(() => AddNewFolderToFolderAsync(f.Id)),
+                    CopyFolderCommand = ReactiveCommand.CreateFromTask(() => CopyFolderAsync(f.Id)),
+                    DeleteFolderCommand = ReactiveCommand.CreateFromTask(() => DeleteFolderAsync(f.Id)),
+                };
+                folderVm.RenameFolderCommand = ReactiveCommand.Create(() => StartEditNode(folderVm));
+                folderVm.CommitRenameCommand = ReactiveCommand.CreateFromTask(() => CommitRenameFolderAsync(folderVm, f.Id));
+                folderVm.CancelRenameCommand = ReactiveCommand.Create(() => folderVm.CancelEdit());
+                return folderVm;
+
+            case RequestNode r:
+                var requestVm = new CollectionNodeViewModel(
+                    r.Id, r.Name, isFolder: false,
+                    method: r.Method.ToString().ToUpperInvariant(),
+                    children: [], sourceNode: r)
+                {
+                    RequestOpenedCallback = _onRequestOpened,
+                    DuplicateRequestCommand = ReactiveCommand.CreateFromTask(() => DuplicateRequestAsync(r.Id)),
+                    DeleteRequestCommand = ReactiveCommand.CreateFromTask(() => DeleteRequestAsync(r.Id)),
+                };
+                requestVm.RenameRequestCommand = ReactiveCommand.Create(() => StartEditNode(requestVm));
+                requestVm.CommitRenameCommand = ReactiveCommand.CreateFromTask(() => CommitRenameRequestAsync(requestVm, r.Id));
+                requestVm.CancelRenameCommand = ReactiveCommand.Create(() => requestVm.CancelEdit());
+                return requestVm;
+
+            default:
+                throw new InvalidOperationException($"Unknown node type: {node.GetType().Name}");
+        }
+    }
+
+    private void StartEditNode(CollectionNodeViewModel vm)
+    {
+        vm.BeginEdit();
+        _onEditingStarted?.Invoke(vm);
+    }
+
+    private void BeginCollectionEdit()
+    {
+        EditingName = _collection.Name;
+        IsEditing = true;
+        _onEditingStarted?.Invoke(this);
+    }
+
+    private void CancelRenameCollection()
+    {
+        IsEditing = false;
+        EditingName = string.Empty;
+    }
+
+    private async Task CommitRenameCollectionAsync()
+    {
+        var newName = EditingName.Trim();
+        IsEditing = false;
+        EditingName = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(newName) || newName == _collection.Name) return;
+
+        var safeName = string.Concat(newName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+        if (string.IsNullOrWhiteSpace(safeName)) return;
+
+        var dirPath = Path.GetDirectoryName(_collection.FilePath) ?? string.Empty;
+        var newPath = Path.Combine(dirPath, safeName + ".json");
+
+        var candidate = _collection with { Name = newName, FilePath = newPath };
+        await _store.SaveAsync(newPath, candidate);
+        if (!string.Equals(_collection.FilePath, newPath, StringComparison.OrdinalIgnoreCase))
+            try { File.Delete(_collection.FilePath); } catch { /* best-effort */ }
+
+        _collection = candidate;
+        this.RaisePropertyChanged(nameof(Name));
+        this.RaisePropertyChanged(nameof(FilePath));
+    }
+
+    private async Task CommitRenameFolderAsync(CollectionNodeViewModel vm, string folderId)
+    {
+        var newName = vm.EditingName.Trim();
+        vm.CancelEdit();
+        if (string.IsNullOrWhiteSpace(newName) || newName == vm.Name) return;
+
+        var (newRoot, found) = RenameNodeInTree(_collection.Root, folderId, newName);
+        if (!found) return;
+
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+        vm.Name = newName;
+    }
+
+    private async Task CommitRenameRequestAsync(CollectionNodeViewModel vm, string requestId)
+    {
+        var newName = vm.EditingName.Trim();
+        vm.CancelEdit();
+        if (string.IsNullOrWhiteSpace(newName) || newName == vm.Name) return;
+
+        var (newRoot, found) = RenameNodeInTree(_collection.Root, requestId, newName);
+        if (!found) return;
+
+        var candidate = _collection with { Root = newRoot };
+        await _store.SaveAsync(candidate.FilePath, candidate);
+        _collection = candidate;
+        vm.Name = newName;
     }
 
     private async Task AddNewRequestAsync()
@@ -298,25 +406,6 @@ public class CollectionViewModel : ReactiveObject
         if (folderVm is not null) InsertNodeVmSorted(folderVm.Children, BuildNodeVm(newFolder));
     }
 
-    private async Task RenameFolderAsync(string folderId)
-    {
-        var current = FindFolderNode(_collection.Root, folderId);
-        if (current is null) return;
-
-        var newName = await _dialog.PromptTextAsync("Rename Folder", current.Name);
-        if (string.IsNullOrWhiteSpace(newName) || newName == current.Name) return;
-
-        var (newRoot, found) = RenameNodeInTree(_collection.Root, folderId, newName);
-        if (!found) return;
-
-        var candidate = _collection with { Root = newRoot };
-        await _store.SaveAsync(candidate.FilePath, candidate);
-        _collection = candidate;
-
-        if (FindNodeVm(Items, folderId) is { } vm)
-            vm.Name = newName;
-    }
-
     private async Task CopyFolderAsync(string folderId)
     {
         var source = FindFolderNode(_collection.Root, folderId);
@@ -363,25 +452,6 @@ public class CollectionViewModel : ReactiveObject
         RemoveNodeVm(Items, folderId);
     }
 
-    private async Task RenameRequestAsync(string requestId)
-    {
-        var node = FindRequestNode(_collection.Root, requestId);
-        if (node is null) return;
-
-        var newName = await _dialog.PromptTextAsync("Rename Request", node.Name);
-        if (string.IsNullOrWhiteSpace(newName) || newName == node.Name) return;
-
-        var (newRoot, found) = RenameNodeInTree(_collection.Root, requestId, newName);
-        if (!found) return;
-
-        var candidate = _collection with { Root = newRoot };
-        await _store.SaveAsync(candidate.FilePath, candidate);
-        _collection = candidate;
-
-        if (FindNodeVm(Items, requestId) is { } vm)
-            vm.Name = newName;
-    }
-
     private async Task DuplicateRequestAsync(string requestId)
     {
         var original = FindRequestNode(_collection.Root, requestId);
@@ -426,27 +496,6 @@ public class CollectionViewModel : ReactiveObject
         _collection = candidate;
 
         RemoveNodeVm(Items, requestId);
-    }
-
-    private async Task RenameCollectionAsync()
-    {
-        var newName = await _dialog.PromptTextAsync("Rename Collection", _collection.Name);
-        if (string.IsNullOrWhiteSpace(newName) || newName == _collection.Name) return;
-
-        var safeName = string.Concat(newName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-        if (string.IsNullOrWhiteSpace(safeName)) return;
-
-        var dirPath = Path.GetDirectoryName(_collection.FilePath) ?? string.Empty;
-        var newPath = Path.Combine(dirPath, safeName + ".json");
-
-        var candidate = _collection with { Name = newName, FilePath = newPath };
-        await _store.SaveAsync(newPath, candidate);
-        if (!string.Equals(_collection.FilePath, newPath, StringComparison.OrdinalIgnoreCase))
-            try { File.Delete(_collection.FilePath); } catch { /* best-effort */ }
-
-        _collection = candidate;
-        this.RaisePropertyChanged(nameof(Name));
-        this.RaisePropertyChanged(nameof(FilePath));
     }
 
     private async Task DuplicateCollectionAsync()

@@ -42,7 +42,12 @@
         </Style>
     </Window.Styles>
 
-    <Grid ColumnDefinitions="280,4,*">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" MinWidth="200" />
+            <ColumnDefinition Width="4" />
+            <ColumnDefinition Width="*" MinWidth="300" />
+        </Grid.ColumnDefinitions>
 
         <!-- Left panel: activity bar (64px) + sidebar content -->
         <Grid Grid.Column="0" ColumnDefinitions="64,*">
@@ -121,10 +126,12 @@
 
                     <!-- Collections tree -->
                     <TreeView Grid.Row="2"
+                              x:Name="CollectionTree"
                               Background="Transparent"
                               ItemsSource="{Binding Sidebar.Collections}"
                               SelectionChanged="CollectionTreeView_SelectionChanged"
-                              Tapped="CollectionTreeView_Tapped">
+                              Tapped="CollectionTreeView_Tapped"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <TreeView.DataTemplates>
 
                             <!-- CollectionViewModel (top-level) -->
@@ -132,8 +139,20 @@
                                               ItemsSource="{Binding Items}">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
                                     <TextBlock Text="📁" FontSize="11" VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                               IsVisible="{Binding !IsEditing}" />
+                                    <TextBox Text="{Binding EditingName, Mode=TwoWay}"
+                                             IsVisible="{Binding IsEditing}"
+                                             MinWidth="80" FontWeight="SemiBold"
+                                             Padding="2,1"
+                                             LostFocus="OnRenameTextBoxLostFocus">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Return" Command="{Binding CommitRenameCommand}" />
+                                            <KeyBinding Gesture="Escape" Command="{Binding CancelRenameCommand}" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
                                     <Button Content="+"
+                                            IsVisible="{Binding !IsEditing}"
                                             Command="{Binding NewRequestCommand}"
                                             Padding="4,0"
                                             Background="Transparent"
@@ -141,6 +160,7 @@
                                             FontSize="13"
                                             ToolTip.Tip="New request" />
                                     <Button Content="⚙"
+                                            IsVisible="{Binding !IsEditing}"
                                             Padding="4,0"
                                             Background="Transparent"
                                             BorderThickness="0"
@@ -179,8 +199,19 @@
                                                    FontWeight="Bold"
                                                    Foreground="White" />
                                     </Border>
-                                    <TextBlock Text="{Binding Name}" Foreground="#1E1E1E" VerticalAlignment="Center" />
-                                    <Button IsVisible="{Binding IsFolder}"
+                                    <TextBlock Text="{Binding Name}" Foreground="#1E1E1E" VerticalAlignment="Center"
+                                               IsVisible="{Binding !IsEditing}" />
+                                    <TextBox Text="{Binding EditingName, Mode=TwoWay}"
+                                             IsVisible="{Binding IsEditing}"
+                                             MinWidth="80"
+                                             Padding="2,1"
+                                             LostFocus="OnRenameTextBoxLostFocus">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Return" Command="{Binding CommitRenameCommand}" />
+                                            <KeyBinding Gesture="Escape" Command="{Binding CancelRenameCommand}" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                    <Button IsVisible="{Binding ShowFolderActions}"
                                             Content="+"
                                             Command="{Binding NewRequestCommand}"
                                             Padding="4,0"
@@ -188,7 +219,7 @@
                                             BorderThickness="0"
                                             FontSize="13"
                                             ToolTip.Tip="New request" />
-                                    <Button IsVisible="{Binding IsFolder}"
+                                    <Button IsVisible="{Binding ShowFolderActions}"
                                             Content="⚙"
                                             Padding="4,0"
                                             Background="Transparent"
@@ -207,7 +238,7 @@
                                             </MenuFlyout>
                                         </Button.Flyout>
                                     </Button>
-                                    <Button IsVisible="{Binding !IsFolder}"
+                                    <Button IsVisible="{Binding ShowRequestActions}"
                                             Content="⚙"
                                             Padding="4,0"
                                             Background="Transparent"

@@ -72,11 +72,12 @@ public sealed class CollectionSidebarViewModelTests
         var col = new Collection("Col", "/col.json",
             new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
         _storeMock.Setup(s => s.SaveAsync("/col.json", It.IsAny<Collection>())).Returns(Task.CompletedTask);
-        _dialogMock.Setup(d => d.PromptTextAsync("Rename Folder", "OldName")).ReturnsAsync("NewName");
         var vm = FakeCollectionVm(col);
         var folderVm = vm.Items.Single(i => i.Id == folderId);
 
-        await folderVm.RenameFolderCommand!.Execute();
+        folderVm.RenameFolderCommand!.Execute().Subscribe();  // begins inline edit
+        folderVm.EditingName = "NewName";
+        await folderVm.CommitRenameCommand!.Execute();
 
         vm.Items.Should().ContainSingle(i => i.Name == "NewName");
         _storeMock.Verify(s => s.SaveAsync("/col.json",
@@ -90,10 +91,12 @@ public sealed class CollectionSidebarViewModelTests
         var folder = new FolderNode(folderId, "OldName", []);
         var col = new Collection("Col", "/col.json",
             new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
-        _dialogMock.Setup(d => d.PromptTextAsync("Rename Folder", "OldName")).ReturnsAsync("   ");
         var vm = FakeCollectionVm(col);
+        var folderVm = vm.Items.Single(i => i.Id == folderId);
 
-        await vm.Items.Single(i => i.Id == folderId).RenameFolderCommand!.Execute();
+        folderVm.RenameFolderCommand!.Execute().Subscribe();
+        folderVm.EditingName = "   ";
+        await folderVm.CommitRenameCommand!.Execute();
 
         _storeMock.Verify(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Collection>()), Times.Never);
     }
