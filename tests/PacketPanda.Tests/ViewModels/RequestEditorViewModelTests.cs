@@ -468,4 +468,73 @@ public sealed class RequestEditorViewModelTests
 
         vm.StatusCode.Should().Be(200);
     }
+
+    [Fact]
+    public void BasicPassword_Change_MarksDirty()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.SelectedAuthType = AuthType.Basic;
+        vm.MarkSaved();
+
+        vm.BasicPassword = "s3cr3t";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void LoadHeaders_PopulatesHeadersCollection()
+    {
+        var vm = CreateVm();
+        var headers = new List<HttpHeader>
+        {
+            new HttpHeader("X-Foo", "bar", true),
+            new HttpHeader("X-Off", "skip", false)
+        };
+
+        vm.LoadHeaders(headers);
+
+        vm.Headers.Should().HaveCount(2);
+        vm.Headers[0].Name.Should().Be("X-Foo");
+        vm.Headers[0].Value.Should().Be("bar");
+        vm.Headers[0].Enabled.Should().BeTrue();
+        vm.Headers[1].Name.Should().Be("X-Off");
+        vm.Headers[1].Enabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoadAuth_Bearer_SetsAuthTypeAndToken()
+    {
+        var vm = CreateVm();
+
+        vm.LoadAuth(new BearerAuth("my-token"));
+
+        vm.SelectedAuthType.Should().Be(AuthType.Bearer);
+        vm.BearerToken.Should().Be("my-token");
+    }
+
+    [Fact]
+    public void LoadAuth_ApiKey_SetsAllFields()
+    {
+        var vm = CreateVm();
+
+        vm.LoadAuth(new ApiKeyAuth("X-Key", "secret", ApiKeyTarget.QueryParam));
+
+        vm.SelectedAuthType.Should().Be(AuthType.ApiKey);
+        vm.ApiKeyName.Should().Be("X-Key");
+        vm.ApiKeyValue.Should().Be("secret");
+        vm.ApiKeyTarget.Should().Be(ApiKeyTarget.QueryParam);
+    }
+
+    [Fact]
+    public void LoadAuth_Basic_SetsUsernameAndPassword()
+    {
+        var vm = CreateVm();
+
+        vm.LoadAuth(new BasicAuth("admin", "pass"));
+
+        vm.SelectedAuthType.Should().Be(AuthType.Basic);
+        vm.BasicUsername.Should().Be("admin");
+        vm.BasicPassword.Should().Be("pass");
+    }
 }
