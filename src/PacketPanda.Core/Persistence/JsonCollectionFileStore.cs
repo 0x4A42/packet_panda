@@ -187,7 +187,8 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                 }
 
                 // Auth
-                WriteAuth(writer, req.Auth);
+                if (req.Auth is not NoAuth)
+                    WriteAuth(writer, req.Auth);
 
                 writer.WriteEndObject();
                 writer.WriteStartArray("response");

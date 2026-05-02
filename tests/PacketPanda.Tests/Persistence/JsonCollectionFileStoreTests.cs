@@ -450,4 +450,22 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         loaded.Root.Children.Single().Should().BeOfType<RequestNode>()
             .Which.Auth.Should().Be(new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam));
     }
+
+    [Fact]
+    public async Task SaveAndLoad_RoundTrip_NoAuth_OmitsAuthKeyAndReturnsNoAuth()
+    {
+        var col = new Collection("C", _tempPath,
+            new FolderNode("root", "C", [
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                    Array.Empty<HttpHeader>(), new NoAuth())
+            ]));
+        await _store.SaveAsync(_tempPath, col);
+
+        var json = await File.ReadAllTextAsync(_tempPath);
+        json.Should().NotContain("\"auth\"");
+
+        var loaded = await _store.LoadAsync(_tempPath);
+        loaded.Root.Children.Single().Should().BeOfType<RequestNode>()
+            .Which.Auth.Should().BeOfType<NoAuth>();
+    }
 }
