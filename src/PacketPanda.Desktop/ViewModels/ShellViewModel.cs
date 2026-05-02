@@ -133,12 +133,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
         get => _selectedEnvironment;
         set
         {
-            this.RaiseAndSetIfChanged(ref _selectedEnvironment, value);
             // null is only ever a transient state produced by Avalonia's ComboBox during a
             // collection Replace event — real deselection arrives as NoEnvironmentSentinel.
-            // Ignore null so SyncEnvRefOnSave's item replacement doesn't clear the active env.
-            if (value is not null)
-                _ = OnSelectedEnvironmentChangedAsync(value);
+            // Discard null entirely so the backing field is never cleared by the transient pulse,
+            // allowing HandleEnvironmentRenamed/SyncEnvRefOnSave to compare FilePath correctly.
+            if (value is null) return;
+            this.RaiseAndSetIfChanged(ref _selectedEnvironment, value);
+            _ = OnSelectedEnvironmentChangedAsync(value);
         }
     }
 
@@ -342,16 +343,17 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     private void HandleEnvironmentRenamed(EnvironmentRef oldRef, EnvironmentRef newRef)
     {
-        // Update picker
+        // Capture before the Replace fires — the ComboBox sends a transient null through the
+        // two-way binding during Replace, which we now discard in the setter, but capturing
+        // here keeps the logic clear regardless of binding timing.
+        var wasSelected = _selectedEnvironment?.FilePath == oldRef.FilePath;
+
         var pickerIdx = EnvironmentsForPicker.IndexOf(oldRef);
         if (pickerIdx >= 0) EnvironmentsForPicker[pickerIdx] = newRef;
 
-        // Update SelectedEnvironment if it pointed to the renamed env
-        if (_selectedEnvironment?.FilePath == oldRef.FilePath)
-        {
-            _selectedEnvironment = newRef;
-            this.RaisePropertyChanged(nameof(SelectedEnvironment));
-        }
+        // Re-select via the setter so OnSelectedEnvironmentChangedAsync reloads from the new path.
+        if (wasSelected)
+            SelectedEnvironment = newRef;
 
         // Close old tab and open new one
         var oldTab = Tabs.FirstOrDefault(t => t.FilePath == oldRef.FilePath);

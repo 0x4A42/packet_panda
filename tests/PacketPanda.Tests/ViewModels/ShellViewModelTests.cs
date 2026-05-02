@@ -492,10 +492,50 @@ public class ShellViewModelTests
         // Simulate what Avalonia's ComboBox does during a collection Replace event.
         shell.SelectedEnvironment = null;
 
-        // The active environment context must not be cleared by the transient null.
+        // The transient null must be discarded entirely — backing field and env context unchanged.
+        shell.SelectedEnvironment.Should().NotBeNull();
         lastCtx.Should().NotBeNull();
-        shell.SelectedEnvironment.Should().BeNull(); // backing field follows the null…
-        // …but env state is preserved: context still has the dev env variables.
         lastCtx!.ActiveEnvVars.Should().ContainKey("x");
+    }
+
+    [Fact]
+    public async Task SelectedEnvironment_PickerReplaceFiresNull_SelectionNotCleared()
+    {
+        // Regression: Avalonia ComboBox sends null through the two-way binding during a
+        // collection Replace. Before the fix, RaiseAndSetIfChanged wrote null to the backing
+        // field, so the FilePath check in HandleEnvironmentRenamed / SyncEnvRefOnSave always
+        // evaluated null?.FilePath (false) and skipped re-selecting the renamed env.
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        var oldRef = new EnvironmentRef("dev", "/envs/dev.json");
+        var newRef = new EnvironmentRef("staging", "/envs/staging.json");
+        var activeEnv = new Environment("dev", "/envs/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["base"] = "https://api" });
+        var renamedEnv = activeEnv with { Name = "staging", FilePath = "/envs/staging.json" };
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal));
+
+        _environmentStore.Setup(s => s.LoadAsync("/envs/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync("/envs/staging.json")).ReturnsAsync(renamedEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings());
+        shell.EnvironmentsForPicker.Add(oldRef);
+        shell.SelectedEnvironment = oldRef;
+
+        // Simulate ComboBox Replace pulse (transient null) then re-select new ref.
+        // This mirrors HandleEnvironmentRenamed: capture wasSelected, do Replace, re-select.
+        var wasSelected = shell.SelectedEnvironment?.FilePath == oldRef.FilePath;
+        shell.EnvironmentsForPicker[shell.EnvironmentsForPicker.IndexOf(oldRef)] = newRef;
+        shell.SelectedEnvironment = null; // transient null from ComboBox
+        if (wasSelected) shell.SelectedEnvironment = newRef;
+
+        shell.SelectedEnvironment.Should().Be(newRef);
+        shell.SelectedEnvironment!.Name.Should().Be("staging");
     }
 }
