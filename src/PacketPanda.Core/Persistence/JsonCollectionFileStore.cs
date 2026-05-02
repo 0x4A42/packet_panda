@@ -106,7 +106,8 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     bodyEl.TryGetProperty("raw", out var rawBody))
                     body = rawBody.GetString();
 
-                result.Add(new RequestNode(id, name, collectionPath, method, url, body));
+                result.Add(new RequestNode(id, name, collectionPath, method, url, body,
+                    Array.Empty<HttpHeader>(), new NoAuth()));
             }
             else if (item.TryGetProperty("item", out var subItems))
             {
@@ -164,7 +165,14 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
         var newChildren = folder.Children.Select(child => child switch
         {
             RequestNode req when req.Id == requestId =>
-                req with { Method = updated.Method, Url = updated.Url, Body = updated.Body },
+                req with
+                {
+                    Method = updated.Method,
+                    Url = updated.Url,
+                    Body = updated.Body,
+                    Headers = updated.Headers ?? Array.Empty<HttpHeader>(),
+                    Auth = updated.Auth ?? new NoAuth()
+                },
             RequestNode => child,
             FolderNode f => UpdateInTree(f, requestId, updated),
             _ => child
