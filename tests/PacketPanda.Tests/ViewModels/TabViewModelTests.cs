@@ -14,14 +14,13 @@ namespace PacketPanda.Tests.ViewModels;
 public class TabViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
-    private readonly Mock<IRequestFileStore> _store = new(MockBehavior.Strict);
-    private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
+    private readonly Mock<ICollectionFileStore> _collectionStore = new(MockBehavior.Strict);
     private readonly Mock<IDialogService> _dialog = new(MockBehavior.Strict);
 
     private RequestEditorViewModel NewEditor() =>
-        new(_sender.Object, _store.Object, _picker.Object,
+        new(_sender.Object, _collectionStore.Object,
             new VariableResolver(),
-            new BehaviorSubject<Environment?>(null));
+            new BehaviorSubject<EnvironmentContext?>(null));
 
     [Fact]
     public void Title_ForFreshTab_IsUntitled()
@@ -32,33 +31,33 @@ public class TabViewModelTests
     }
 
     [Fact]
-    public void Title_WhenEditorHasFilePath_UsesFileNameWithoutExtension()
+    public void Title_WhenEditorHasRequestName_UsesRequestName()
     {
         var editor = NewEditor();
-        editor.CurrentFilePath = "/tmp/login.toml";
+        editor.RequestName = "Login";
 
         var tab = new TabViewModel(editor, _dialog.Object);
 
-        tab.Title.Should().Be("login");
+        tab.Title.Should().Be("Login");
     }
 
     [Fact]
     public void Title_WhenDirty_IncludesDirtyIndicator()
     {
         var editor = NewEditor();
-        editor.CurrentFilePath = "/tmp/login.toml";
+        editor.RequestName = "Login";
         editor.Url = "https://example.com"; // makes it dirty
 
         var tab = new TabViewModel(editor, _dialog.Object);
 
-        tab.Title.Should().Be("login ●");
+        tab.Title.Should().Be("Login ●");
     }
 
     [Fact]
     public void FilePath_ForwardsFromEditor()
     {
         var editor = NewEditor();
-        editor.CurrentFilePath = "/tmp/x.toml";
+        editor.CollectionFilePath = "/tmp/x.toml";
 
         var tab = new TabViewModel(editor, _dialog.Object);
 

@@ -12,6 +12,19 @@
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
     </UserControl.Resources>
 
+    <!-- Force the inner text-presenter foreground to transparent so the FluentTheme
+         doesn't paint white characters over the colored TextBlock overlay when focused. -->
+    <UserControl.Styles>
+        <Style Selector="TextBox#UrlEditor /template/ TextPresenter#PART_TextPresenter">
+            <Setter Property="TextElement.Foreground" Value="Transparent" />
+            <Setter Property="CaretBrush" Value="#1E1E1E" />
+        </Style>
+        <Style Selector="TextBox#BodyEditor /template/ TextPresenter#PART_TextPresenter">
+            <Setter Property="TextElement.Foreground" Value="Transparent" />
+            <Setter Property="CaretBrush" Value="#1E1E1E" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8" Margin="12">
 
         <!-- URL bar: method selector | URL | Send | 💾 ▾ -->
@@ -29,12 +42,24 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <TextBox Grid.Column="1"
-                     Text="{Binding Url, Mode=TwoWay}"
-                     AcceptsReturn="False"
-                     FontFamily="Consolas,Menlo,monospace"
-                     FontSize="13"
-                     VerticalContentAlignment="Center" />
+            <Panel Grid.Column="1">
+                <TextBox x:Name="UrlEditor"
+                         Text="{Binding Url, Mode=TwoWay}"
+                         AcceptsReturn="False"
+                         Foreground="Transparent"
+                         Background="White"
+                         CaretBrush="#1E1E1E"
+                         FontFamily="Consolas,Menlo,monospace"
+                         FontSize="13"
+                         VerticalContentAlignment="Center" />
+                <TextBlock x:Name="UrlOverlay"
+                           Foreground="#1E1E1E"
+                           FontFamily="Consolas,Menlo,monospace"
+                           FontSize="13"
+                           VerticalAlignment="Center"
+                           Padding="9,0,9,0"
+                           IsHitTestVisible="False" />
+            </Panel>
 
             <Button Grid.Column="2"
                     Content="Send"
@@ -52,31 +77,33 @@
                         <TextBlock Text="Save" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
-                <Button Content="▾"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Padding="4,6"
-                        ToolTip.Tip="Save As…">
-                    <Button.Flyout>
-                        <MenuFlyout>
-                            <MenuItem Header="Save As…" Command="{Binding SaveAsCommand}" />
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
             </StackPanel>
         </Grid>
 
         <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
 
-        <TextBox Grid.Row="2"
-                 Text="{Binding RequestBody, Mode=TwoWay}"
-                 AcceptsReturn="True"
-                 TextWrapping="NoWrap"
-                 FontFamily="Consolas,Menlo,monospace"
-                 FontSize="13"
-                 Height="120"
-                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+        <Panel Grid.Row="2" Height="120" Background="White">
+            <TextBox x:Name="BodyEditor"
+                     Text="{Binding RequestBody}"
+                     AcceptsReturn="True"
+                     AcceptsTab="True"
+                     Foreground="Transparent"
+                     Background="Transparent"
+                     CaretBrush="#1E1E1E"
+                     FontFamily="Consolas,Menlo,monospace"
+                     FontSize="13"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     TextWrapping="NoWrap"
+                     Padding="9,5,9,5" />
+            <TextBlock x:Name="BodyOverlay"
+                       Foreground="#1E1E1E"
+                       FontFamily="Consolas,Menlo,monospace"
+                       FontSize="13"
+                       Padding="9,5,9,5"
+                       TextWrapping="NoWrap"
+                       IsHitTestVisible="False" />
+        </Panel>
 
         <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
@@ -104,5 +131,56 @@
                      TextWrapping="Wrap"
                      FontFamily="Consolas,Menlo,monospace" />
         </Grid>
+
+        <Popup x:Name="VarPopup"
+               IsOpen="False"
+               Placement="Pointer"
+               IsLightDismissEnabled="False">
+            <Border x:Name="PopupContent"
+                    Background="White"
+                    BorderBrush="#CCCCCC"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10,8"
+                    MinWidth="200"
+                    BoxShadow="0 2 8 0 #33000000">
+                <StackPanel Spacing="6">
+                    <TextBlock x:Name="PopupVarLabel"
+                               FontFamily="Consolas,Menlo,monospace"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#1E1E1E" />
+                    <TextBox x:Name="PopupValueBox"
+                             FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12"
+                             MinWidth="180"
+                             Watermark="(empty)" />
+                    <StackPanel x:Name="PopupTargetRow"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                IsVisible="False">
+                        <TextBlock Text="Save to:"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Opacity="0.7" />
+                        <ComboBox x:Name="PopupTargetPicker"
+                                  FontSize="12"
+                                  MinWidth="140" />
+                    </StackPanel>
+                    <TextBlock x:Name="PopupHint"
+                               FontSize="11"
+                               Opacity="0.6" />
+                    <Separator />
+                    <Button x:Name="PopupEnvLink"
+                            Content="Environment ↗"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            FontSize="12"
+                            Foreground="#207AC1"
+                            Cursor="Hand" />
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </UserControl>

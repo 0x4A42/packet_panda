@@ -14,23 +14,21 @@ namespace PacketPanda.Desktop.ViewModels;
 public class ShellViewModel : ViewModelBase, IDisposable
 {
     private static readonly EnvironmentRef NoEnvironmentSentinel = new("No environment", string.Empty);
-    private const string GlobalsFileName = "globals.toml";
 
     private readonly Func<RequestEditorViewModel> _editorFactory;
     private readonly IDialogService _dialog;
-    private readonly IRequestFileStore _store;
     private readonly IFilePickerService _filePicker;
     private readonly IEnvironmentFileStore _environmentStore;
     private readonly ISettingsStore _settings;
     private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
-    private readonly BehaviorSubject<Environment?> _activeEnvSubject = new(null);
-    private readonly IDisposable _envScannedSub;
+    private readonly BehaviorSubject<EnvironmentContext?> _activeEnvSubject = new(null);
     private readonly IDisposable _envOpenSub;
     private readonly IDisposable _newEnvCreatedSub;
     private readonly IDisposable _activateEnvSub;
     private readonly IDisposable _envRenamedSub;
     private readonly IDisposable _envDeletedSub;
     private readonly IDisposable _envAddedSub;
+    private readonly IDisposable _requestOpenedSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -45,15 +43,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
         CollectionSidebarViewModel sidebar,
         Func<RequestEditorViewModel> editorFactory,
         IDialogService dialog,
-        IRequestFileStore store,
-        IFilePickerService filePicker,
         IEnvironmentFileStore environmentStore,
+        IFilePickerService filePicker,
         ISettingsStore settings)
     {
         Sidebar = sidebar;
         _editorFactory = editorFactory;
         _dialog = dialog;
-        _store = store;
         _filePicker = filePicker;
         _environmentStore = environmentStore;
         _settings = settings;
@@ -62,8 +58,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
         EnvironmentsForPicker = new ObservableCollection<EnvironmentRef> { NoEnvironmentSentinel };
 
         NewTabCommand = ReactiveCommand.Create(AddBlankTab);
-        OpenFileInTabCommand = ReactiveCommand.CreateFromTask<string>(OpenFileInTabAsync);
-        OpenFileCommand = ReactiveCommand.CreateFromTask(OpenFileAsync);
         CloseActiveTabCommand = ReactiveCommand.Create(
             () =>
             {
@@ -78,12 +72,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
             environmentStore,
             dialog,
             filePicker,
-            () => Sidebar.WorkspacePath);
+            () => null);
 
-        Sidebar.RequestOpened.InvokeCommand(OpenFileInTabCommand);
-
-        _envScannedSub = sidebar.EnvironmentsScanned.Subscribe(envs =>
-            _ = HandleEnvironmentsScanAsync(envs));
+        _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
 
         _envOpenSub = EnvironmentSidebar.EnvironmentOpenRequested
             .Subscribe(path => _ = OpenEnvironmentInTabAsync(path));
@@ -108,7 +99,10 @@ public class ShellViewModel : ViewModelBase, IDisposable
             .Subscribe(added =>
             {
                 if (!EnvironmentsForPicker.Any(e => e.FilePath == added.FilePath))
+                {
                     EnvironmentsForPicker.Add(added);
+                    _ = PersistKnownEnvironmentPathsAsync();
+                }
             });
     }
 
@@ -126,7 +120,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     // Kept for backward compat with MainWindow binding
     public ObservableCollection<EnvironmentRef> AvailableEnvironments => EnvironmentsForPicker;
 
-    public IObservable<Environment?> ActiveEnvironmentObservable => _activeEnvSubject;
+    public IObservable<EnvironmentContext?> ActiveEnvironmentObservable => _activeEnvSubject;
 
     public TabViewModel? ActiveTab
     {
@@ -139,18 +133,88 @@ public class ShellViewModel : ViewModelBase, IDisposable
         get => _selectedEnvironment;
         set
         {
+            // null is only ever a transient state produced by Avalonia's ComboBox during a
+            // collection Replace event — real deselection arrives as NoEnvironmentSentinel.
+            // Discard null entirely so the backing field is never cleared by the transient pulse,
+            // allowing HandleEnvironmentRenamed/SyncEnvRefOnSave to compare FilePath correctly.
+            if (value is null) return;
             this.RaiseAndSetIfChanged(ref _selectedEnvironment, value);
             _ = OnSelectedEnvironmentChangedAsync(value);
         }
     }
 
     public ReactiveCommand<Unit, Unit> NewTabCommand { get; }
-    public ReactiveCommand<string, Unit> OpenFileInTabCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
     public ReactiveCommand<Unit, Unit> CloseActiveTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetRequestsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetEnvironmentsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveActiveTabCommand { get; }
+
+    public async Task InitializeAsync(AppSettings settings)
+    {
+        SetPendingActiveEnvironmentName(settings.ActiveEnvironmentName);
+
+        var paths = settings.OpenCollectionPaths ?? [];
+        if (paths.Count > 0)
+            await Sidebar.LoadCollectionsAsync(paths);
+
+        var envPaths = settings.KnownEnvironmentPaths ?? [];
+        if (envPaths.Count > 0)
+        {
+            var refs = new List<EnvironmentRef>();
+            foreach (var p in envPaths.Where(File.Exists))
+            {
+                try
+                {
+                    var env = await _environmentStore.LoadAsync(p);
+                    refs.Add(new EnvironmentRef(env.Name, p));
+                }
+                catch
+                {
+                    refs.Add(new EnvironmentRef(Path.GetFileNameWithoutExtension(p), p));
+                }
+            }
+            if (refs.Count > 0)
+            {
+                EnvironmentSidebar.SetEnvironments(refs);
+                foreach (var r in refs)
+                    if (!EnvironmentsForPicker.Any(e => e.FilePath == r.FilePath))
+                        EnvironmentsForPicker.Add(r);
+            }
+        }
+
+        if (_pendingActiveEnvName is not null)
+        {
+            var match = EnvironmentsForPicker.FirstOrDefault(e => e.Name == _pendingActiveEnvName);
+            if (match is not null)
+                SelectedEnvironment = match;
+            _pendingActiveEnvName = null;
+        }
+
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+        await EnsureGlobalsAsync(globalsPath);
+    }
+
+    private async Task EnsureGlobalsAsync(string globalsPath)
+    {
+        _globalsRef = new EnvironmentRef("Globals", globalsPath);
+        EnvironmentSidebar.SetGlobalsRef(_globalsRef);
+
+        if (!File.Exists(globalsPath))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath)!);
+            var empty = new Environment("Globals", globalsPath,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+            try { await _environmentStore.SaveAsync(globalsPath, empty); }
+            catch { /* best-effort */ }
+        }
+
+        try { _globals = await _environmentStore.LoadAsync(globalsPath); }
+        catch { _globals = null; }
+
+        await PublishMergedEnvAsync();
+    }
 
     private async Task SaveActiveTabAsync()
     {
@@ -159,18 +223,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
             await req.SaveCommand.Execute();
         else if (content is EnvironmentEditorViewModel env)
             await env.SaveCommand.Execute();
-    }
-
-    private async Task OpenFileAsync()
-    {
-        var path = await _filePicker.PickOpenAsync();
-        if (path is null) return;
-
-        var dir = Path.GetDirectoryName(path);
-        if (dir is not null)
-            await Sidebar.LoadWorkspaceAsync(dir);
-
-        await OpenFileInTabAsync(path);
     }
 
     private void AddBlankTab()
@@ -182,35 +234,25 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
-    private async Task OpenFileInTabAsync(string path)
+    private Task OpenRequestNodeInTabAsync(RequestNode node)
     {
-        var existing = Tabs.FirstOrDefault(t => t.FilePath == path);
-        if (existing is not null)
-        {
-            ActiveTab = existing;
-            return;
-        }
+        var existing = Tabs.FirstOrDefault(t => t.Content is RequestEditorViewModel r && r.RequestId == node.Id);
+        if (existing is not null) { ActiveTab = existing; return Task.CompletedTask; }
 
         var editor = _editorFactory();
-        try
-        {
-            var request = await _store.LoadAsync(path);
-            editor.SelectedMethod = request.Method;
-            editor.Url = request.Url;
-            editor.RequestBody = request.Body;
-            editor.CurrentFilePath = path;
-            editor.MarkSaved();
-        }
-        catch (RequestFileException ex)
-        {
-            editor.ErrorMessage = ex.Message;
-            editor.CurrentFilePath = path;
-        }
+        editor.RequestId = node.Id;
+        editor.RequestName = node.Name;
+        editor.CollectionFilePath = node.CollectionFilePath;
+        editor.SelectedMethod = node.Method;
+        editor.Url = node.Url;
+        editor.RequestBody = node.Body;
+        editor.MarkSaved();
 
         var tab = new TabViewModel(editor, _dialog);
         _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
         Tabs.Add(tab);
         ActiveTab = tab;
+        return Task.CompletedTask;
     }
 
     public Task OpenNewEnvironmentInTabAsync(string name, string filePath)
@@ -218,7 +260,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var existing = Tabs.FirstOrDefault(t => t.FilePath == filePath);
         if (existing is not null) { ActiveTab = existing; return Task.CompletedTask; }
 
-        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog);
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog, _filePicker);
         var env = new Environment(name, filePath,
             new Dictionary<string, string>(StringComparer.Ordinal));
         envEditor.Load(env);
@@ -234,6 +276,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
                 EnvironmentSidebar.DiscardPendingEnvironment(filePath);
                 EnvironmentSidebar.CommitEnvironment(savedEnv.FilePath, savedEnv.Name);
                 EnvironmentsForPicker.Add(new EnvironmentRef(savedEnv.Name, savedEnv.FilePath));
+                _ = PersistKnownEnvironmentPathsAsync();
             }
             else
             {
@@ -263,7 +306,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog);
+        var envEditor = new EnvironmentEditorViewModel(_environmentStore, _dialog, _filePicker);
         try
         {
             var env = await _environmentStore.LoadAsync(filePath);
@@ -298,65 +341,19 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     public void SetPendingActiveEnvironmentName(string? name) => _pendingActiveEnvName = name;
 
-    private async Task HandleEnvironmentsScanAsync(IReadOnlyList<EnvironmentRef> envs)
-    {
-        var root = Sidebar.WorkspacePath;
-        if (root is not null)
-            await EnsureGlobalsAsync(root, envs);
-
-        var nonGlobals = envs
-            .Where(e => !IsGlobalsFile(e.FilePath))
-            .ToList();
-
-        EnvironmentSidebar.SetGlobalsRef(_globalsRef);
-        EnvironmentSidebar.SetEnvironments(nonGlobals);
-        SyncEnvironmentsForPicker(nonGlobals);
-        RestoreSelectedEnvironment();
-    }
-
-    private static bool IsGlobalsFile(string filePath) =>
-        Path.GetFileName(filePath).Equals(GlobalsFileName, StringComparison.OrdinalIgnoreCase);
-
-    private async Task EnsureGlobalsAsync(string workspaceRoot, IReadOnlyList<EnvironmentRef> scannedEnvs)
-    {
-        var globalsPath = Path.Combine(workspaceRoot, "environments", GlobalsFileName);
-
-        _globalsRef = scannedEnvs.FirstOrDefault(e => IsGlobalsFile(e.FilePath))
-            ?? new EnvironmentRef("Globals", globalsPath);
-
-        if (!File.Exists(globalsPath))
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath)!);
-            var empty = new Environment("Globals", globalsPath,
-                new Dictionary<string, string>(StringComparer.Ordinal));
-            try { await _environmentStore.SaveAsync(globalsPath, empty); }
-            catch { /* best-effort */ }
-        }
-
-        try { _globals = await _environmentStore.LoadAsync(globalsPath); }
-        catch { _globals = null; }
-    }
-
-    private void SyncEnvironmentsForPicker(IReadOnlyList<EnvironmentRef> nonGlobals)
-    {
-        EnvironmentsForPicker.Clear();
-        EnvironmentsForPicker.Add(NoEnvironmentSentinel);
-        foreach (var e in nonGlobals)
-            EnvironmentsForPicker.Add(e);
-    }
-
     private void HandleEnvironmentRenamed(EnvironmentRef oldRef, EnvironmentRef newRef)
     {
-        // Update picker
+        // Capture before the Replace fires — the ComboBox sends a transient null through the
+        // two-way binding during Replace, which we now discard in the setter, but capturing
+        // here keeps the logic clear regardless of binding timing.
+        var wasSelected = _selectedEnvironment?.FilePath == oldRef.FilePath;
+
         var pickerIdx = EnvironmentsForPicker.IndexOf(oldRef);
         if (pickerIdx >= 0) EnvironmentsForPicker[pickerIdx] = newRef;
 
-        // Update SelectedEnvironment if it pointed to the renamed env
-        if (_selectedEnvironment?.FilePath == oldRef.FilePath)
-        {
-            _selectedEnvironment = newRef;
-            this.RaisePropertyChanged(nameof(SelectedEnvironment));
-        }
+        // Re-select via the setter so OnSelectedEnvironmentChangedAsync reloads from the new path.
+        if (wasSelected)
+            SelectedEnvironment = newRef;
 
         // Close old tab and open new one
         var oldTab = Tabs.FirstOrDefault(t => t.FilePath == oldRef.FilePath);
@@ -371,7 +368,10 @@ public class ShellViewModel : ViewModelBase, IDisposable
     {
         var pickerEntry = EnvironmentsForPicker.FirstOrDefault(e => e.FilePath == deleted.FilePath);
         if (pickerEntry is not null)
+        {
             EnvironmentsForPicker.Remove(pickerEntry);
+            _ = PersistKnownEnvironmentPathsAsync();
+        }
 
         if (_selectedEnvironment?.FilePath == deleted.FilePath)
             SelectedEnvironment = NoEnvironmentSentinel;
@@ -379,34 +379,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var openTab = Tabs.FirstOrDefault(t => t.FilePath == deleted.FilePath);
         if (openTab is not null)
             CloseTab(openTab);
-    }
-
-    private void RestoreSelectedEnvironment()
-    {
-        var nameToRestore = _pendingActiveEnvName ?? _selectedEnvironment?.Name;
-        var isPendingRestore = _pendingActiveEnvName is not null;
-        _pendingActiveEnvName = null;
-
-        EnvironmentRef match;
-        if (nameToRestore is null || nameToRestore == NoEnvironmentSentinel.Name)
-        {
-            match = NoEnvironmentSentinel;
-        }
-        else
-        {
-            match = EnvironmentsForPicker.FirstOrDefault(e => e.Name == nameToRestore)
-                ?? NoEnvironmentSentinel;
-        }
-
-        if (isPendingRestore)
-        {
-            SelectedEnvironment = match;
-        }
-        else
-        {
-            _selectedEnvironment = match;
-            this.RaisePropertyChanged(nameof(SelectedEnvironment));
-        }
     }
 
     private async Task OnSelectedEnvironmentChangedAsync(EnvironmentRef? envRef)
@@ -435,10 +407,70 @@ public class ShellViewModel : ViewModelBase, IDisposable
         await PublishMergedEnvAsync();
     }
 
+    /// <summary>
+    /// Updates a variable in whichever source environment currently provides it
+    /// (active env wins over globals because it shadows it in the merged view), then
+    /// republishes the merged environment so colorizers and the variable resolver pick
+    /// up the new value.  If the variable isn't defined anywhere, it's added to the
+    /// active env (or globals if no active env is selected).
+    /// </summary>
+    public async Task UpdateActiveEnvironmentVariableAsync(string name, string value, VariableTarget target = VariableTarget.ActiveEnv)
+    {
+        Environment? source;
+        bool isGlobals;
+
+        if (target == VariableTarget.Globals)
+        {
+            if (_globals is null) return;
+            source = _globals;
+            isGlobals = true;
+        }
+        else
+        {
+            // Explicit ActiveEnv target: always write to the active environment.
+            // If the variable also exists in globals, the active env entry will shadow it,
+            // which is exactly the override behaviour the caller asked for.
+            if (_loadedActiveEnv is not null)
+            {
+                source = _loadedActiveEnv;
+                isGlobals = false;
+            }
+            else if (_globals is not null)
+            {
+                // No active env loaded — fall back to globals so the value isn't silently lost.
+                source = _globals;
+                isGlobals = true;
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        var newVars = new Dictionary<string, string>(source.Variables, StringComparer.Ordinal)
+        {
+            [name] = value,
+        };
+        var updated = source with { Variables = newVars };
+
+        try
+        {
+            await _environmentStore.SaveAsync(updated.FilePath, updated);
+            if (isGlobals) _globals = updated;
+            else _loadedActiveEnv = updated;
+            await PublishMergedEnvAsync();
+        }
+        catch (EnvironmentFileException)
+        {
+            // best-effort — leave in-memory state alone if save failed
+        }
+    }
+
     private Task PublishMergedEnvAsync()
     {
         var merged = MergeEnvironments(_globals, _loadedActiveEnv);
-        _activeEnvSubject.OnNext(merged);
+        var ctx = merged is null ? null : new EnvironmentContext(merged, _globals?.Variables, _loadedActiveEnv?.Variables);
+        _activeEnvSubject.OnNext(ctx);
         return Task.CompletedTask;
     }
 
@@ -475,21 +507,43 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     private void SyncEnvRefOnSave(PacketPanda.Core.Environments.Environment env)
     {
-        if (IsGlobalsFile(env.FilePath)) return;
+        if (_globalsRef?.FilePath == env.FilePath) return;
 
         EnvironmentSidebar.UpdateEnvironmentRef(env.FilePath, env.Name);
 
-        var pickerIdx = EnvironmentsForPicker.IndexOf(
-            EnvironmentsForPicker.FirstOrDefault(e => e.FilePath == env.FilePath)!);
-        if (pickerIdx >= 0)
+        var newRef = new EnvironmentRef(env.Name, env.FilePath);
+        var existing = EnvironmentsForPicker.FirstOrDefault(e => e.FilePath == env.FilePath);
+        if (existing is null) return;
+
+        // Only replace the item when the name actually changed. An unconditional Replace fires
+        // a CollectionChanged event that causes Avalonia's ComboBox to transiently clear
+        // SelectedItem, which flows back through the two-way binding and wipes the active env.
+        if (existing != newRef)
         {
-            EnvironmentsForPicker[pickerIdx] = new EnvironmentRef(env.Name, env.FilePath);
-            if (_selectedEnvironment?.FilePath == env.FilePath)
-            {
-                _selectedEnvironment = EnvironmentsForPicker[pickerIdx];
-                this.RaisePropertyChanged(nameof(SelectedEnvironment));
-            }
+            var pickerIdx = EnvironmentsForPicker.IndexOf(existing);
+            if (pickerIdx >= 0)
+                EnvironmentsForPicker[pickerIdx] = newRef;
         }
+
+        if (_selectedEnvironment?.FilePath == env.FilePath)
+        {
+            _selectedEnvironment = newRef;
+            this.RaisePropertyChanged(nameof(SelectedEnvironment));
+        }
+    }
+
+    private async Task PersistKnownEnvironmentPathsAsync()
+    {
+        try
+        {
+            var paths = EnvironmentsForPicker
+                .Where(e => !string.IsNullOrEmpty(e.FilePath))
+                .Select(e => e.FilePath)
+                .ToList();
+            var current = await _settings.LoadAsync();
+            await _settings.SaveAsync(current with { KnownEnvironmentPaths = paths });
+        }
+        catch (SettingsException) { }
     }
 
     private async Task PersistActiveEnvNameAsync(string? name)
@@ -504,13 +558,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
-        _envScannedSub.Dispose();
         _envOpenSub.Dispose();
         _newEnvCreatedSub.Dispose();
         _activateEnvSub.Dispose();
         _envRenamedSub.Dispose();
         _envDeletedSub.Dispose();
         _envAddedSub.Dispose();
+        _requestOpenedSub.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

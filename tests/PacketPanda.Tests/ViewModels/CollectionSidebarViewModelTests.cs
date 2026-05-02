@@ -1,126 +1,181 @@
+using System.Collections.Generic;
 using System.Reactive.Linq;
 using FluentAssertions;
 using Moq;
 using PacketPanda.Core.Persistence;
+using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
 
 namespace PacketPanda.Tests.ViewModels;
 
-public class CollectionSidebarViewModelTests
+public sealed class CollectionSidebarViewModelTests
 {
-    private readonly Mock<IWorkspaceScanner> _scanner = new(MockBehavior.Strict);
-    private readonly Mock<ISettingsStore> _settings = new(MockBehavior.Strict);
+    private readonly Mock<ICollectionFileStore> _storeMock = new();
+    private readonly Mock<ISettingsStore> _settingsMock = new();
+    private readonly Mock<IFilePickerService> _pickerMock = new();
+    private readonly Mock<IDialogService> _dialogMock = new();
 
-    private CollectionSidebarViewModel CreateVm() =>
-        new(_scanner.Object, _settings.Object);
+    private CollectionSidebarViewModel Build() =>
+        new(_storeMock.Object, _settingsMock.Object, _pickerMock.Object, _dialogMock.Object);
+
+    private static Collection FakeCollection(string name, string path) =>
+        new(name, path, new FolderNode(Guid.NewGuid().ToString(), name, []));
+
+    private CollectionViewModel FakeCollectionVm(Collection col) =>
+        new(col, _storeMock.Object, _dialogMock.Object, _ => { });
 
     [Fact]
-    public async Task LoadWorkspaceAsync_Success_PopulatesRootNodesAndSavesSettings()
+    public async Task LoadCollections_AppendsToCollectionsList()
     {
-        var tree = new WorkspaceScan(
-            new FolderNode("root", "/ws", new CollectionNode[]
-            {
-                new RequestNode("a.toml", "/ws/a.toml")
-            }),
-            Array.Empty<PacketPanda.Core.Environments.EnvironmentRef>());
-        _scanner.Setup(s => s.ScanAsync("/ws")).ReturnsAsync(tree);
-        _settings.Setup(s => s.SaveAsync(It.Is<AppSettings>(a => a.LastWorkspacePath == "/ws")))
-                 .Returns(Task.CompletedTask);
+        _storeMock.Setup(s => s.LoadAsync("/a.json")).ReturnsAsync(FakeCollection("A", "/a.json"));
+        _settingsMock.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settingsMock.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        var vm = Build();
 
-        var vm = CreateVm();
-        await vm.LoadWorkspaceAsync("/ws");
+        await vm.LoadCollectionsAsync(["/a.json"]);
 
-        vm.WorkspacePath.Should().Be("/ws");
-        vm.RootNodes.Should().ContainSingle().Which.Name.Should().Be("a.toml");
-        _settings.Verify(s => s.SaveAsync(It.Is<AppSettings>(a => a.LastWorkspacePath == "/ws")), Times.Once);
+        vm.Collections.Should().ContainSingle().Which.Name.Should().Be("A");
     }
 
     [Fact]
-    public async Task LoadWorkspaceAsync_ScanFailure_SetsErrorAndDoesNotSaveSettings()
+    public async Task LoadCollections_SkipsDuplicatePath()
     {
-        _scanner.Setup(s => s.ScanAsync("/bad"))
-                .ThrowsAsync(new DirectoryNotFoundException("not there"));
+        _storeMock.Setup(s => s.LoadAsync("/a.json")).ReturnsAsync(FakeCollection("A", "/a.json"));
+        _settingsMock.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settingsMock.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        var vm = Build();
 
-        var vm = CreateVm();
-        await vm.LoadWorkspaceAsync("/bad");
+        await vm.LoadCollectionsAsync(["/a.json", "/a.json"]);
 
-        vm.RootNodes.Should().BeEmpty();
-        vm.ErrorMessage.Should().NotBeNullOrEmpty();
-        _settings.Verify(s => s.SaveAsync(It.IsAny<AppSettings>()), Times.Never);
+        vm.Collections.Should().ContainSingle();
     }
 
     [Fact]
-    public async Task CloseWorkspaceCommand_ClearsStateAndSavesSettings()
+    public void RemoveCollection_RemovesFromList()
     {
-        var tree = new WorkspaceScan(
-            new FolderNode("root", "/ws", []),
-            Array.Empty<PacketPanda.Core.Environments.EnvironmentRef>());
-        _scanner.Setup(s => s.ScanAsync("/ws")).ReturnsAsync(tree);
-        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        _settingsMock.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settingsMock.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        var vm = Build();
+        var colVm = new CollectionViewModel(FakeCollection("X", "/x.json"), _storeMock.Object, _dialogMock.Object, _ => { });
+        vm.Collections.Add(colVm);
 
-        var vm = CreateVm();
-        await vm.LoadWorkspaceAsync("/ws");
+        vm.RemoveCollection(colVm);
 
-        await vm.CloseWorkspaceCommand.Execute();
-
-        vm.WorkspacePath.Should().BeNull();
-        vm.RootNodes.Should().BeEmpty();
-        _settings.Verify(s => s.SaveAsync(It.Is<AppSettings>(a => a.LastWorkspacePath == null)), Times.Once);
+        vm.Collections.Should().BeEmpty();
     }
 
     [Fact]
-    public void SelectedNode_SetToRequestNode_FiresRequestOpened()
+    public async Task RenameFolder_UpdatesNameInVmAndPersists()
     {
-        var vm = CreateVm();
-        var node = new CollectionNodeViewModel("a.toml", "/ws/a.toml", isFolder: false, method: null, []);
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "OldName", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _storeMock.Setup(s => s.SaveAsync("/col.json", It.IsAny<Collection>())).Returns(Task.CompletedTask);
+        var vm = FakeCollectionVm(col);
+        var folderVm = vm.Items.Single(i => i.Id == folderId);
 
-        string? received = null;
-        vm.RequestOpened.Subscribe(p => received = p);
+        folderVm.RenameFolderCommand!.Execute().Subscribe();  // begins inline edit
+        folderVm.EditingName = "NewName";
+        await folderVm.CommitRenameCommand!.Execute();
 
-        vm.SelectedNode = node;
-
-        received.Should().Be("/ws/a.toml");
+        vm.Items.Should().ContainSingle(i => i.Name == "NewName");
+        _storeMock.Verify(s => s.SaveAsync("/col.json",
+            It.Is<Collection>(c => ContainsFolder(c.Root, folderId, "NewName"))), Times.Once);
     }
 
     [Fact]
-    public void SelectedNode_SetToFolderNode_DoesNotFireRequestOpened()
+    public async Task RenameFolder_BlankInput_DoesNotSave()
     {
-        var vm = CreateVm();
-        var folder = new CollectionNodeViewModel("api", "/ws/api", isFolder: true, method: null, []);
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "OldName", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        var vm = FakeCollectionVm(col);
+        var folderVm = vm.Items.Single(i => i.Id == folderId);
 
-        string? received = null;
-        vm.RequestOpened.Subscribe(p => received = p);
+        folderVm.RenameFolderCommand!.Execute().Subscribe();
+        folderVm.EditingName = "   ";
+        await folderVm.CommitRenameCommand!.Execute();
 
-        vm.SelectedNode = folder;
-
-        received.Should().BeNull();
+        _storeMock.Verify(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Collection>()), Times.Never);
     }
 
     [Fact]
-    public async Task RequestOpened_FiresWhenRequestNodeActivated()
+    public async Task CopyFolder_AddsCopyWithDifferentIdAndSameName()
     {
-        var vm = CreateVm();
-        var node = new CollectionNodeViewModel("a.toml", "/ws/a.toml", isFolder: false, method: null, []);
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "MyFolder", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _storeMock.Setup(s => s.SaveAsync("/col.json", It.IsAny<Collection>())).Returns(Task.CompletedTask);
+        var vm = FakeCollectionVm(col);
 
-        string? received = null;
-        using var _ = vm.RequestOpened.Subscribe(p => received = p);
+        await vm.Items.Single(i => i.Id == folderId).CopyFolderCommand!.Execute();
 
-        await vm.OpenRequestCommand.Execute(node);
-
-        received.Should().Be("/ws/a.toml");
+        vm.Items.Should().HaveCount(2);
+        vm.Items.Should().Contain(i => i.Name == "MyFolder - copy");
+        vm.Items.Select(i => i.Id).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]
-    public async Task RequestOpened_DoesNotFireForFolderNodes()
+    public async Task DeleteFolder_Confirmed_RemovesFolderFromVmAndPersists()
     {
-        var vm = CreateVm();
-        var folder = new CollectionNodeViewModel("api", "/ws/api", isFolder: true, method: null, []);
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "ToDelete", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _storeMock.Setup(s => s.SaveAsync("/col.json", It.IsAny<Collection>())).Returns(Task.CompletedTask);
+        _dialogMock.Setup(d => d.ConfirmAsync("Delete Folder", It.IsAny<string>())).ReturnsAsync(true);
+        var vm = FakeCollectionVm(col);
 
-        string? received = null;
-        using var _ = vm.RequestOpened.Subscribe(p => received = p);
+        await vm.Items.Single(i => i.Id == folderId).DeleteFolderCommand!.Execute();
 
-        await vm.OpenRequestCommand.Execute(folder);
+        vm.Items.Should().BeEmpty();
+        _storeMock.Verify(s => s.SaveAsync("/col.json",
+            It.Is<Collection>(c => !ContainsAnyFolder(c.Root, folderId))), Times.Once);
+    }
 
-        received.Should().BeNull();
+    [Fact]
+    public async Task DeleteFolder_Cancelled_DoesNotRemoveOrSave()
+    {
+        var folderId = Guid.NewGuid().ToString();
+        var folder = new FolderNode(folderId, "ToDelete", []);
+        var col = new Collection("Col", "/col.json",
+            new FolderNode(Guid.NewGuid().ToString(), "Col", [folder]));
+        _dialogMock.Setup(d => d.ConfirmAsync("Delete Folder", It.IsAny<string>())).ReturnsAsync(false);
+        var vm = FakeCollectionVm(col);
+
+        await vm.Items.Single(i => i.Id == folderId).DeleteFolderCommand!.Execute();
+
+        vm.Items.Should().ContainSingle();
+        _storeMock.Verify(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Collection>()), Times.Never);
+    }
+
+    private static bool ContainsFolder(FolderNode root, string id, string name)
+    {
+        if (root.Id == id) return root.Name == name;
+        return root.Children.OfType<FolderNode>().Any(f => ContainsFolder(f, id, name));
+    }
+
+    private static bool ContainsAnyFolder(FolderNode root, string id)
+    {
+        if (root.Id == id) return true;
+        return root.Children.OfType<FolderNode>().Any(f => ContainsAnyFolder(f, id));
+    }
+
+    [Fact]
+    public async Task OpenFilesCommand_AddsCollectionsForEachPickedFile()
+    {
+        _pickerMock.Setup(p => p.PickOpenMultipleAsync()).ReturnsAsync(["/b.json", "/c.json"]);
+        _storeMock.Setup(s => s.LoadAsync("/b.json")).ReturnsAsync(FakeCollection("B", "/b.json"));
+        _storeMock.Setup(s => s.LoadAsync("/c.json")).ReturnsAsync(FakeCollection("C", "/c.json"));
+        _settingsMock.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settingsMock.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        var vm = Build();
+
+        await vm.OpenFilesCommand.Execute();
+
+        vm.Collections.Should().HaveCount(2);
     }
 }

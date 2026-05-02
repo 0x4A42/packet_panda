@@ -14,6 +14,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 {
     private readonly IEnvironmentFileStore _store;
     private readonly IDialogService _dialog;
+    private readonly IFilePickerService _picker;
     private string _environmentName = string.Empty;
     private string _savedName = string.Empty;
     private string? _currentFilePath;
@@ -25,13 +26,14 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
 
     public IObservable<Environment> Saved => _saved;
 
-    public EnvironmentEditorViewModel(IEnvironmentFileStore store, IDialogService dialog)
+    public EnvironmentEditorViewModel(IEnvironmentFileStore store, IDialogService dialog, IFilePickerService picker)
     {
         _store = store;
         _dialog = dialog;
+        _picker = picker;
         Rows = new ObservableCollection<EnvironmentVariableRowViewModel>();
         Rows.CollectionChanged += OnCollectionChanged;
-        Rows.Add(new EnvironmentVariableRowViewModel());
+        Rows.Add(CreateRow());
 
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync);
     }
@@ -78,13 +80,12 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         foreach (var kvp in env.Variables)
         {
             var description = env.Descriptions?.GetValueOrDefault(kvp.Key) ?? string.Empty;
-            Rows.Add(new EnvironmentVariableRowViewModel
-            {
-                Name = kvp.Key,
-                Value = kvp.Value,
-                Description = description,
-                IsEnabled = disabledSet?.Contains(kvp.Key) != true
-            });
+            var row = CreateRow();
+            row.Name = kvp.Key;
+            row.Value = kvp.Value;
+            row.Description = description;
+            row.Enabled = disabledSet?.Contains(kvp.Key) != true;
+            Rows.Add(row);
         }
 
         EnsureTrailingEmptyRow();
@@ -120,8 +121,19 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
             || !string.IsNullOrEmpty(last.Value)
             || !string.IsNullOrEmpty(last.Description))
         {
-            Rows.Add(new EnvironmentVariableRowViewModel());
+            Rows.Add(CreateRow());
         }
+    }
+
+    private EnvironmentVariableRowViewModel CreateRow()
+    {
+        var row = new EnvironmentVariableRowViewModel();
+        row.SetDeleteCallback(() =>
+        {
+            Rows.Remove(row);
+            EnsureTrailingEmptyRow();
+        });
+        return row;
     }
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -147,7 +159,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
     {
         var currentRows = Rows
             .Where(r => !string.IsNullOrEmpty(r.Name))
-            .Select(r => (r.Name, r.Value, r.Description, r.IsEnabled))
+            .Select(r => (r.Name, r.Value, r.Description, r.Enabled))
             .ToList();
         IsDirty = EnvironmentName != _savedName || !currentRows.SequenceEqual(_savedSnapshot);
     }
@@ -157,7 +169,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         _savedName = EnvironmentName;
         _savedSnapshot = Rows
             .Where(r => !string.IsNullOrEmpty(r.Name))
-            .Select(r => (r.Name, r.Value, r.Description, r.IsEnabled))
+            .Select(r => (r.Name, r.Value, r.Description, r.Enabled))
             .ToList();
         IsDirty = false;
     }
@@ -167,6 +179,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         ? Path.GetFileNameWithoutExtension(CurrentFilePath ?? "Untitled")
         : EnvironmentName;
 
+    string? ITabContent.RequestId => null;
     string? ITabContent.MethodLabel => null;
 
     private async Task SaveAsync()
@@ -194,17 +207,17 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
             .Where(r => !string.IsNullOrEmpty(r.Description))
             .ToDictionary(r => r.Name, r => r.Description, StringComparer.Ordinal);
         var disabled = nonEmpty
-            .Where(r => !r.IsEnabled)
+            .Where(r => !r.Enabled)
             .Select(r => r.Name)
             .ToList();
 
         if (_isNew)
         {
-            _isNew = false;
             var safeName = string.Concat(EnvironmentName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
-            var lastSep = CurrentFilePath!.LastIndexOfAny(new[] { '/', '\\' });
-            var dirPrefix = lastSep >= 0 ? CurrentFilePath[..(lastSep + 1)] : string.Empty;
-            CurrentFilePath = dirPrefix + safeName + ".toml";
+            var picked = await _picker.PickSaveEnvironmentAsync(safeName);
+            if (picked is null) return;
+            _isNew = false;
+            CurrentFilePath = picked;
         }
 
         var env = new Environment(EnvironmentName, CurrentFilePath!, vars, descs,

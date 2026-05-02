@@ -15,25 +15,24 @@ namespace PacketPanda.Tests.ViewModels;
 public class ShellViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
-    private readonly Mock<IRequestFileStore> _store = new(MockBehavior.Strict);
     private readonly Mock<IFilePickerService> _picker = new(MockBehavior.Strict);
     private readonly Mock<IDialogService> _dialog = new(MockBehavior.Strict);
 
-    private readonly Mock<IWorkspaceScanner> _scanner = new(MockBehavior.Strict);
+    private readonly Mock<ICollectionFileStore> _collectionStore = new(MockBehavior.Strict);
     private readonly Mock<ISettingsStore> _settings = new(MockBehavior.Strict);
     private readonly Mock<IEnvironmentFileStore> _environmentStore = new(MockBehavior.Strict);
 
     private CollectionSidebarViewModel NewSidebar() =>
-        new(_scanner.Object, _settings.Object);
+        new(_collectionStore.Object, _settings.Object, _picker.Object, _dialog.Object);
 
     private RequestEditorViewModel NewEditor() =>
-        new(_sender.Object, _store.Object, _picker.Object,
+        new(_sender.Object, _collectionStore.Object,
             new VariableResolver(),
-            new BehaviorSubject<Environment?>(null));
+            new BehaviorSubject<EnvironmentContext?>(null));
 
     private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null) =>
-        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _store.Object, _picker.Object,
-            _environmentStore.Object, _settings.Object);
+        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _environmentStore.Object, _picker.Object,
+            _settings.Object);
 
     [Fact]
     public async Task NewTabCommand_AddsUntitledTabAndSetsItActive()
@@ -48,66 +47,49 @@ public class ShellViewModelTests
     }
 
     [Fact]
-    public async Task OpenFileInTab_WithNewPath_LoadsFileAndAddsTab()
+    public async Task SidebarRequestOpened_TriggersOpenRequestNodeInTab()
     {
-        _store.Setup(s => s.LoadAsync("/tmp/a.toml"))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://example.com", null));
-
-        var shell = CreateShell();
-
-        await shell.OpenFileInTabCommand.Execute("/tmp/a.toml");
-
-        shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.FilePath.Should().Be("/tmp/a.toml");
-        ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://example.com");
-    }
-
-    [Fact]
-    public async Task OpenFileInTab_WithAlreadyOpenPath_FocusesExistingTab()
-    {
-        _store.Setup(s => s.LoadAsync("/tmp/a.toml"))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://example.com", null));
-
-        var shell = CreateShell();
-        await shell.OpenFileInTabCommand.Execute("/tmp/a.toml");
-        await shell.NewTabCommand.Execute(); // active tab is now the blank one
-
-        await shell.OpenFileInTabCommand.Execute("/tmp/a.toml");
-
-        shell.Tabs.Should().HaveCount(2);
-        shell.ActiveTab!.FilePath.Should().Be("/tmp/a.toml");
-        _store.Verify(s => s.LoadAsync("/tmp/a.toml"), Times.Once);
-    }
-
-    [Fact]
-    public async Task OpenFileInTab_LoadFailure_AddsTabWithErrorMessage()
-    {
-        _store.Setup(s => s.LoadAsync("/tmp/bad.toml"))
-              .ThrowsAsync(new RequestFileException("Invalid TOML: bad"));
-
-        var shell = CreateShell();
-
-        await shell.OpenFileInTabCommand.Execute("/tmp/bad.toml");
-
-        shell.Tabs.Should().ContainSingle();
-        ((RequestEditorViewModel)shell.ActiveTab!.Content).ErrorMessage.Should().Be("Invalid TOML: bad");
-        shell.ActiveTab.FilePath.Should().Be("/tmp/bad.toml");
-    }
-
-    [Fact]
-    public async Task SidebarRequestOpened_TriggersOpenFileInTab()
-    {
-        _store.Setup(s => s.LoadAsync("/ws/x.toml"))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://x.com", null));
-
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
-        var node = new CollectionNodeViewModel("x.toml", "/ws/x.toml", isFolder: false, method: null, []);
+        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null);
 
-        await sidebar.OpenRequestCommand.Execute(node);
+        // Load a fake collection so the sidebar wires up the callback -> RequestOpened
+        var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
+            new FolderNode("root", "root", [rn]));
+        _collectionStore.Setup(s => s.LoadAsync("/ws/col.json")).ReturnsAsync(collection);
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        await sidebar.LoadCollectionsAsync(["/ws/col.json"]);
+
+        // Open the request node via its view-model callback
+        sidebar.Collections[0].Items[0].Open();
 
         shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.FilePath.Should().Be("/ws/x.toml");
+        ((RequestEditorViewModel)shell.ActiveTab!.Content).CollectionFilePath.Should().Be("/ws/col.json");
+    }
+
+    [Fact]
+    public async Task SidebarRequestOpened_WithAlreadyOpenRequest_FocusesExistingTab()
+    {
+        var sidebar = NewSidebar();
+        var shell = CreateShell(sidebar);
+        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null);
+
+        var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
+            new FolderNode("root", "root", [rn]));
+        _collectionStore.Setup(s => s.LoadAsync("/ws/col.json")).ReturnsAsync(collection);
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+        await sidebar.LoadCollectionsAsync(["/ws/col.json"]);
+
+        sidebar.Collections[0].Items[0].Open();
+        await shell.NewTabCommand.Execute(); // make a different tab active
+
+        sidebar.Collections[0].Items[0].Open();
+
+        shell.Tabs.Should().HaveCount(2);
+        shell.ActiveTab!.FilePath.Should().Be("/ws/col.json");
+        ((RequestEditorViewModel)shell.ActiveTab.Content).RequestId.Should().Be("r1");
     }
 
     [Fact]
@@ -166,48 +148,11 @@ public class ShellViewModelTests
     }
 
     [Fact]
-    public async Task OpenFileCommand_PickerReturnsPath_OpensFileInTabAndLoadsWorkspace()
-    {
-        const string pickedPath = "/tmp/picked.toml";
-
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync(pickedPath);
-        _store.Setup(s => s.LoadAsync(pickedPath))
-              .ReturnsAsync(new HttpRequest(HttpMethod.Get, "https://picked.com", null));
-        _scanner.Setup(s => s.ScanAsync(It.IsAny<string>()))
-                .ReturnsAsync(new WorkspaceScan(
-                    new FolderNode("dir", "dir", Array.Empty<CollectionNode>()),
-                    Array.Empty<PacketPanda.Core.Environments.EnvironmentRef>()));
-        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>()))
-                 .Returns(Task.CompletedTask);
-
-        var shell = CreateShell();
-
-        await shell.OpenFileCommand.Execute();
-
-        shell.Tabs.Should().ContainSingle();
-        shell.ActiveTab!.FilePath.Should().Be(pickedPath);
-        ((RequestEditorViewModel)shell.ActiveTab.Content).Url.Should().Be("https://picked.com");
-        shell.Sidebar.WorkspacePath.Should().NotBeNull();
-    }
-
-    [Fact]
-    public async Task OpenFileCommand_PickerCancelled_DoesNotAddTab()
-    {
-        _picker.Setup(p => p.PickOpenAsync()).ReturnsAsync((string?)null);
-
-        var shell = CreateShell();
-
-        await shell.OpenFileCommand.Execute();
-
-        shell.Tabs.Should().BeEmpty();
-    }
-
-    [Fact]
     public async Task OpenNewEnvironmentInTabAsync_DoesNotLoadFromStore_OpensPristineTab()
     {
         var shell = CreateShell();
 
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
 
         _environmentStore.Verify(s => s.LoadAsync(It.IsAny<string>()), Times.Never);
         shell.Tabs.Should().ContainSingle();
@@ -219,23 +164,25 @@ public class ShellViewModelTests
     public async Task OpenNewEnvironmentInTabAsync_OnFirstSave_AddsToEnvironmentsForPicker()
     {
         var shell = CreateShell();
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
+        _picker.Setup(p => p.PickSaveEnvironmentAsync("New Environment"))
+            .ReturnsAsync("/tmp/envs/New Environment.json");
         _environmentStore
-            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.toml", It.IsAny<Environment>()))
+            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.json", It.IsAny<Environment>()))
             .Returns(Task.CompletedTask);
 
         var envEditor = (EnvironmentEditorViewModel)shell.ActiveTab!.Content;
         await envEditor.SaveCommand.Execute();
 
         shell.EnvironmentsForPicker.Should().Contain(e =>
-            e.Name == "New Environment" && e.FilePath == "/tmp/envs/New Environment.toml");
+            e.Name == "New Environment" && e.FilePath == "/tmp/envs/New Environment.json");
     }
 
     [Fact]
     public async Task OpenNewEnvironmentInTabAsync_OnCloseWithoutChanges_SilentlyDiscardsWithoutPrompt()
     {
         var shell = CreateShell();
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
 
         await shell.ActiveTab!.CloseCommand.Execute();
 
@@ -243,16 +190,18 @@ public class ShellViewModelTests
         // _dialog is MockBehavior.Strict — ConfirmDiscardAsync being called would throw here,
         // so this assertion doubles as "no discard dialog was shown"
         shell.EnvironmentsForPicker.Should().NotContain(e =>
-            e.FilePath == "/tmp/envs/New Environment.toml");
+            e.FilePath == "/tmp/envs/New Environment.json");
     }
 
     [Fact]
     public async Task OpenNewEnvironmentInTabAsync_OnSecondSave_UpdatesPickerEntryViaSync()
     {
         var shell = CreateShell();
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
+        _picker.Setup(p => p.PickSaveEnvironmentAsync("New Environment"))
+            .ReturnsAsync("/tmp/envs/New Environment.json");
         _environmentStore
-            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.toml", It.IsAny<Environment>()))
+            .Setup(s => s.SaveAsync("/tmp/envs/New Environment.json", It.IsAny<Environment>()))
             .Returns(Task.CompletedTask);
 
         var envEditor = (EnvironmentEditorViewModel)shell.ActiveTab!.Content;
@@ -263,7 +212,7 @@ public class ShellViewModelTests
         await envEditor.SaveCommand.Execute();
 
         shell.EnvironmentsForPicker.Should().Contain(e =>
-            e.Name == "Staging" && e.FilePath == "/tmp/envs/New Environment.toml");
+            e.Name == "Staging" && e.FilePath == "/tmp/envs/New Environment.json");
         shell.EnvironmentsForPicker.Should().NotContain(e => e.Name == "New Environment");
     }
 
@@ -271,22 +220,22 @@ public class ShellViewModelTests
     public async Task OpenNewEnvironmentInTabAsync_WithAlreadyOpenPath_FocusesExistingTab()
     {
         var shell = CreateShell();
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
         await shell.NewTabCommand.Execute(); // make a different tab active
 
-        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.toml");
+        await shell.OpenNewEnvironmentInTabAsync("New Environment", "/tmp/envs/New Environment.json");
 
-        shell.Tabs.Should().ContainSingle(t => t.FilePath == "/tmp/envs/New Environment.toml");
-        shell.ActiveTab!.FilePath.Should().Be("/tmp/envs/New Environment.toml");
+        shell.Tabs.Should().ContainSingle(t => t.FilePath == "/tmp/envs/New Environment.json");
+        shell.ActiveTab!.FilePath.Should().Be("/tmp/envs/New Environment.json");
     }
 
     [Fact]
     public async Task DuplicateEnvironment_AddsEntryToEnvironmentsForPicker()
     {
         _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
-        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
-        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.toml"))
-            .ReturnsAsync(new Environment("Dev", "/tmp/dev.toml",
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.json");
+        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.json"))
+            .ReturnsAsync(new Environment("Dev", "/tmp/dev.json",
                 new Dictionary<string, string>(StringComparer.Ordinal)));
         _environmentStore.Setup(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Environment>()))
             .Returns(Task.CompletedTask);
@@ -305,28 +254,28 @@ public class ShellViewModelTests
         _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
 
         var shell = CreateShell();
-        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.json");
         shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
         shell.EnvironmentsForPicker.Add(envRef);
 
         await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
 
-        shell.EnvironmentsForPicker.Should().NotContain(e => e.FilePath == "/tmp/dev.toml");
+        shell.EnvironmentsForPicker.Should().NotContain(e => e.FilePath == "/tmp/dev.json");
     }
 
     [Fact]
     public async Task DeleteEnvironment_ClosesOpenTab()
     {
         _dialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
-        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.toml"))
-            .ReturnsAsync(new Environment("Dev", "/tmp/dev.toml",
+        _environmentStore.Setup(s => s.LoadAsync("/tmp/dev.json"))
+            .ReturnsAsync(new Environment("Dev", "/tmp/dev.json",
                 new Dictionary<string, string>(StringComparer.Ordinal)));
 
         var shell = CreateShell();
-        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.json");
         shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
         shell.EnvironmentsForPicker.Add(envRef);
-        await shell.OpenEnvironmentInTabAsync("/tmp/dev.toml");
+        await shell.OpenEnvironmentInTabAsync("/tmp/dev.json");
         shell.Tabs.Should().ContainSingle();
 
         await shell.EnvironmentSidebar.DeleteEnvironmentCommand.Execute(envRef);
@@ -342,7 +291,7 @@ public class ShellViewModelTests
             .ThrowsAsync(new EnvironmentFileException("gone"));
 
         var shell = CreateShell();
-        var envRef = new EnvironmentRef("Dev", "/tmp/dev.toml");
+        var envRef = new EnvironmentRef("Dev", "/tmp/dev.json");
         shell.EnvironmentSidebar.SetEnvironments(new[] { envRef });
         shell.EnvironmentsForPicker.Add(envRef);
         shell.SelectedEnvironment = envRef;
@@ -351,5 +300,242 @@ public class ShellViewModelTests
 
         shell.SelectedEnvironment!.FilePath.Should().BeEmpty();
         shell.SelectedEnvironment.Name.Should().Be("No environment");
+    }
+
+    [Fact]
+    public async Task InitializeAsync_WithActiveEnvironmentName_RestoresSelectedEnvironment()
+    {
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        // InitializeAsync gates on File.Exists, so we need a real path on disk.
+        var devPath = Path.GetTempFileName();
+        try
+        {
+            var devEnv = new Environment("dev", devPath,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+            var globals = new Environment("Globals", globalsPath,
+                new Dictionary<string, string>(StringComparer.Ordinal));
+
+            _environmentStore.Setup(s => s.LoadAsync(devPath)).ReturnsAsync(devEnv);
+            _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+            _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+            _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+            var shell = CreateShell();
+            await shell.InitializeAsync(new AppSettings
+            {
+                ActiveEnvironmentName = "dev",
+                KnownEnvironmentPaths = [devPath],
+            });
+
+            shell.SelectedEnvironment.Should().NotBeNull();
+            shell.SelectedEnvironment!.Name.Should().Be("dev");
+        }
+        finally
+        {
+            File.Delete(devPath);
+        }
+    }
+
+    [Fact]
+    public async Task UpdateActiveEnvironmentVariableAsync_Globals_WritesToGlobalsRegardlessOfActiveEnv()
+    {
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        var activeEnv = new Environment("dev", "/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "active-val" });
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "global-val" });
+
+        _environmentStore.Setup(s => s.LoadAsync("/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+
+        Environment? savedGlobals = null;
+        _environmentStore
+            .Setup(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()))
+            .Callback<string, Environment>((_, e) => savedGlobals = e)
+            .Returns(Task.CompletedTask);
+        _environmentStore
+            .Setup(s => s.SaveAsync("/dev.json", It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings
+        {
+            ActiveEnvironmentName = "dev",
+            KnownEnvironmentPaths = ["/dev.json"],
+        });
+
+        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val", VariableTarget.Globals);
+
+        savedGlobals.Should().NotBeNull();
+        savedGlobals!.Variables["token"].Should().Be("new-val");
+    }
+
+    [Fact]
+    public async Task UpdateActiveEnvironmentVariableAsync_ActiveEnv_WritesToActiveEnvNotGlobals()
+    {
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        var activeEnv = new Environment("dev", "/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "active-val" });
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "global-val" });
+
+        _environmentStore.Setup(s => s.LoadAsync("/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+
+        Environment? savedActiveEnv = null;
+        _environmentStore
+            .Setup(s => s.SaveAsync("/dev.json", It.IsAny<Environment>()))
+            .Callback<string, Environment>((_, e) => savedActiveEnv = e)
+            .Returns(Task.CompletedTask);
+        _environmentStore
+            .Setup(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings
+        {
+            ActiveEnvironmentName = "dev",
+            KnownEnvironmentPaths = ["/dev.json"],
+        });
+        shell.SelectedEnvironment = new EnvironmentRef("dev", "/dev.json");
+
+        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val", VariableTarget.ActiveEnv);
+
+        savedActiveEnv.Should().NotBeNull();
+        savedActiveEnv!.Variables["token"].Should().Be("new-val");
+    }
+
+    [Fact]
+    public async Task UpdateActiveEnvironmentVariableAsync_ActiveEnvTarget_VariableOnlyInGlobals_WritesToActiveEnvNotGlobals()
+    {
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        // Variable exists only in globals, not in the active env.
+        var activeEnv = new Environment("dev", "/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal));
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "global-val" });
+
+        _environmentStore.Setup(s => s.LoadAsync("/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+
+        Environment? savedActiveEnv = null;
+        _environmentStore
+            .Setup(s => s.SaveAsync("/dev.json", It.IsAny<Environment>()))
+            .Callback<string, Environment>((_, e) => savedActiveEnv = e)
+            .Returns(Task.CompletedTask);
+        _environmentStore
+            .Setup(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings
+        {
+            ActiveEnvironmentName = "dev",
+            KnownEnvironmentPaths = ["/dev.json"],
+        });
+        shell.SelectedEnvironment = new EnvironmentRef("dev", "/dev.json");
+
+        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val", VariableTarget.ActiveEnv);
+
+        savedActiveEnv.Should().NotBeNull();
+        savedActiveEnv!.Variables["token"].Should().Be("new-val");
+        _environmentStore.Verify(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SelectedEnvironment_SetToNull_DoesNotClearActiveEnvironment()
+    {
+        // Simulate the transient null that Avalonia's ComboBox sends through the two-way
+        // binding when a collection Replace event fires (e.g. during SyncEnvRefOnSave).
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        var activeEnv = new Environment("dev", "/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["x"] = "1" });
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal));
+
+        _environmentStore.Setup(s => s.LoadAsync("/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings());
+        shell.SelectedEnvironment = new EnvironmentRef("dev", "/dev.json");
+
+        EnvironmentContext? lastCtx = null;
+        shell.ActiveEnvironmentObservable.Subscribe(ctx => lastCtx = ctx);
+
+        // Simulate what Avalonia's ComboBox does during a collection Replace event.
+        shell.SelectedEnvironment = null;
+
+        // The transient null must be discarded entirely — backing field and env context unchanged.
+        shell.SelectedEnvironment.Should().NotBeNull();
+        lastCtx.Should().NotBeNull();
+        lastCtx!.ActiveEnvVars.Should().ContainKey("x");
+    }
+
+    [Fact]
+    public async Task SelectedEnvironment_PickerReplaceFiresNull_SelectionNotCleared()
+    {
+        // Regression: Avalonia ComboBox sends null through the two-way binding during a
+        // collection Replace. Before the fix, RaiseAndSetIfChanged wrote null to the backing
+        // field, so the FilePath check in HandleEnvironmentRenamed / SyncEnvRefOnSave always
+        // evaluated null?.FilePath (false) and skipped re-selecting the renamed env.
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        var oldRef = new EnvironmentRef("dev", "/envs/dev.json");
+        var newRef = new EnvironmentRef("staging", "/envs/staging.json");
+        var activeEnv = new Environment("dev", "/envs/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["base"] = "https://api" });
+        var renamedEnv = activeEnv with { Name = "staging", FilePath = "/envs/staging.json" };
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal));
+
+        _environmentStore.Setup(s => s.LoadAsync("/envs/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync("/envs/staging.json")).ReturnsAsync(renamedEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings());
+        shell.EnvironmentsForPicker.Add(oldRef);
+        shell.SelectedEnvironment = oldRef;
+
+        // Simulate ComboBox Replace pulse (transient null) then re-select new ref.
+        // This mirrors HandleEnvironmentRenamed: capture wasSelected, do Replace, re-select.
+        var wasSelected = shell.SelectedEnvironment?.FilePath == oldRef.FilePath;
+        shell.EnvironmentsForPicker[shell.EnvironmentsForPicker.IndexOf(oldRef)] = newRef;
+        shell.SelectedEnvironment = null; // transient null from ComboBox
+        if (wasSelected) shell.SelectedEnvironment = newRef;
+
+        shell.SelectedEnvironment.Should().Be(newRef);
+        shell.SelectedEnvironment!.Name.Should().Be("staging");
     }
 }

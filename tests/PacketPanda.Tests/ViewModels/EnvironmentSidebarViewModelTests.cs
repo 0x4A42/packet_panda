@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Reactive.Linq;
 using FluentAssertions;
 using Moq;
@@ -12,11 +13,15 @@ namespace PacketPanda.Tests.ViewModels;
 
 public class EnvironmentSidebarViewModelTests
 {
+    private static string NewTempEnvDir() =>
+        Path.Combine(Path.GetTempPath(), "panda-test-" + Guid.NewGuid().ToString("N"));
+
     private static EnvironmentSidebarViewModel NewVm(IFilePickerService? picker = null) =>
         new(new Mock<IEnvironmentFileStore>().Object,
             new Mock<IDialogService>().Object,
             picker ?? new Mock<IFilePickerService>().Object,
-            () => System.IO.Path.GetTempPath());
+            () => Path.GetTempPath(),
+            NewTempEnvDir());
 
     [Fact]
     public async Task NewEnvironment_DoesNotSaveFileToDisk_AndDoesNotAddToItems()
@@ -26,7 +31,8 @@ public class EnvironmentSidebarViewModelTests
             store.Object,
             new Mock<IDialogService>().Object,
             new Mock<IFilePickerService>().Object,
-            () => System.IO.Path.GetTempPath());
+            () => Path.GetTempPath(),
+            NewTempEnvDir());
 
         await vm.NewEnvironmentCommand.Execute();
 
@@ -35,7 +41,7 @@ public class EnvironmentSidebarViewModelTests
     }
 
     [Fact]
-    public async Task NewEnvironment_FiresNewEnvironmentCreated_WithNameAndPath()
+    public async Task NewEnvironment_FiresNewEnvironmentCreated_WithNameAndJsonPath()
     {
         var vm = NewVm();
         (string Name, string FilePath)? received = null;
@@ -45,7 +51,7 @@ public class EnvironmentSidebarViewModelTests
 
         received.Should().NotBeNull();
         received!.Value.Name.Should().Be("New Environment");
-        received.Value.FilePath.Should().EndWith("New Environment.toml");
+        received.Value.FilePath.Should().EndWith("New Environment.json");
     }
 
     [Fact]

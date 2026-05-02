@@ -41,9 +41,15 @@
                   CanUserResizeColumns="True"
                   CanUserSortColumns="False">
             <DataGrid.Columns>
-                <DataGridCheckBoxColumn Header="On"
-                                        Binding="{Binding IsEnabled}"
-                                        Width="36" />
+                <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Variable"
                                     Binding="{Binding Name}"
                                     Width="2*" />
@@ -53,6 +59,22 @@
                 <DataGridTextColumn Header="Description"
                                     Binding="{Binding Description}"
                                     Width="3*" />
+                <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="✕"
+                                    Command="{Binding DeleteCommand}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="4,0"
+                                    FontSize="11"
+                                    Foreground="#AAAAAA"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Cursor="Hand" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 

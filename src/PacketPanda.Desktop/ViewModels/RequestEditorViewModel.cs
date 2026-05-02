@@ -1,10 +1,9 @@
 using System.Reactive;
 using PacketPanda.Core.Environments;
-using Environment = PacketPanda.Core.Environments.Environment;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
-using PacketPanda.Desktop.Services;
 using ReactiveUI;
+using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
@@ -12,11 +11,15 @@ namespace PacketPanda.Desktop.ViewModels;
 public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 {
     private readonly IHttpRequestSender _sender;
-    private readonly IRequestFileStore _store;
-    private readonly IFilePickerService _picker;
+    private readonly ICollectionFileStore _collectionStore;
     private readonly IVariableResolver _resolver;
+    private readonly Func<string, string, VariableTarget, Task>? _updateVariable;
+    private readonly Action? _openEnvironmentEditor;
     private Environment? _activeEnv;
+    private IReadOnlyDictionary<string, string>? _globalsVars;
+    private IReadOnlyDictionary<string, string>? _activeEnvVars;
     private IDisposable? _activeEnvSub;
+    private IDisposable? _dirtySub;
 
     private HttpMethod _selectedMethod = HttpMethod.Get;
     private string _url = string.Empty;
@@ -28,41 +31,58 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private string? _currentFilePath;
     private bool _isDirty;
     private RequestSnapshot? _savedSnapshot;
+    private string? _requestName;
 
     private sealed record RequestSnapshot(HttpMethod Method, string Url, string? Body);
 
     public RequestEditorViewModel(
         IHttpRequestSender sender,
-        IRequestFileStore store,
-        IFilePickerService picker,
+        ICollectionFileStore collectionStore,
         IVariableResolver resolver,
-        IObservable<Environment?> activeEnvironment)
+        IObservable<EnvironmentContext?> activeEnvironment,
+        Func<string, string, VariableTarget, Task>? updateVariable = null,
+        Action? openEnvironmentEditor = null)
     {
         _sender = sender;
-        _store = store;
-        _picker = picker;
+        _collectionStore = collectionStore;
         _resolver = resolver;
-        _activeEnvSub = activeEnvironment.Subscribe(env =>
+        _updateVariable = updateVariable;
+        _openEnvironmentEditor = openEnvironmentEditor;
+        _activeEnvSub = activeEnvironment.Subscribe(ctx =>
         {
-            _activeEnv = env;
+            _activeEnv = ctx?.Merged;
+            _globalsVars = ctx?.GlobalsVars;
+            _activeEnvVars = ctx?.ActiveEnvVars;
             this.RaisePropertyChanged(nameof(ActiveEnvironmentVariables));
+            this.RaisePropertyChanged(nameof(GlobalsVariables));
+            this.RaisePropertyChanged(nameof(ActiveEnvVariables));
         });
 
         var canSend = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
         var canSave = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
 
         SendCommand = ReactiveCommand.CreateFromTask(SendAsync, canSend);
-        OpenCommand = ReactiveCommand.CreateFromTask(OpenAsync);
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
-        SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync, canSave);
 
-        this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RequestBody)
+        _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RequestBody)
             .Subscribe(_ => RecomputeDirty());
 
         CaptureSnapshot();
     }
 
+    public string? RequestId { get; set; }
+
+    public string? RequestName
+    {
+        get => _requestName;
+        set => this.RaiseAndSetIfChanged(ref _requestName, value);
+    }
+
+    public string? CollectionFilePath { get; set; }
+
     public IReadOnlyDictionary<string, string>? ActiveEnvironmentVariables => _activeEnv?.Variables;
+    public IReadOnlyDictionary<string, string>? GlobalsVariables => _globalsVars;
+    public IReadOnlyDictionary<string, string>? ActiveEnvVariables => _activeEnvVars;
 
     public HttpMethod SelectedMethod
     {
@@ -119,9 +139,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     }
 
     public ReactiveCommand<Unit, Unit> SendCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
-    public ReactiveCommand<Unit, Unit> SaveAsCommand { get; }
 
     public HttpMethod[] AvailableMethods { get; } =
     {
@@ -131,13 +149,17 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         HttpMethod.Delete
     };
 
+    public Task UpdateVariableAsync(string name, string value, VariableTarget target) =>
+        _updateVariable?.Invoke(name, value, target) ?? Task.CompletedTask;
+
+    public void OpenEnvironmentEditor() => _openEnvironmentEditor?.Invoke();
+
     private async Task SendAsync()
     {
         ErrorMessage = null;
 
         var urlResult = _resolver.Resolve(Url, _activeEnv);
-        var bodyTemplate = RequestBody ?? string.Empty;
-        var bodyResult = _resolver.Resolve(bodyTemplate, _activeEnv);
+        var bodyResult = _resolver.Resolve(RequestBody ?? string.Empty, _activeEnv);
 
         var unresolved = urlResult.UnresolvedNames
             .Concat(bodyResult.UnresolvedNames)
@@ -147,15 +169,12 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         if (unresolved.Count > 0)
         {
             ErrorMessage = $"Unresolved variables: {string.Join(", ", unresolved)}";
-            StatusCode = null;
-            ResponseBody = null;
-            ElapsedMilliseconds = null;
+            StatusCode = null; ResponseBody = null; ElapsedMilliseconds = null;
             return;
         }
 
         var body = string.IsNullOrEmpty(bodyResult.Text) ? null : bodyResult.Text;
-        var request = new HttpRequest(SelectedMethod, urlResult.Text, body);
-        var result = await _sender.SendAsync(request);
+        var result = await _sender.SendAsync(new HttpRequest(SelectedMethod, urlResult.Text, body));
 
         switch (result)
         {
@@ -165,89 +184,40 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                 ElapsedMilliseconds = ok.Response.ElapsedMilliseconds;
                 ErrorMessage = null;
                 break;
-
             case SendResult.Error err:
                 ErrorMessage = err.Message;
-                StatusCode = null;
-                ResponseBody = null;
-                ElapsedMilliseconds = null;
+                StatusCode = null; ResponseBody = null; ElapsedMilliseconds = null;
                 break;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (RequestId is null || CollectionFilePath is null) return;
+
+        try
+        {
+            var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
+            await _collectionStore.UpdateRequestAsync(CollectionFilePath, RequestId, new HttpRequest(SelectedMethod, Url, body));
+            CaptureSnapshot();
+            ErrorMessage = null;
+        }
+        catch (RequestFileException ex)
+        {
+            ErrorMessage = ex.Message;
         }
     }
 
     public void Dispose()
     {
         _activeEnvSub?.Dispose();
-    }
-
-    private async Task OpenAsync()
-    {
-        var path = await _picker.PickOpenAsync();
-        if (path is null) return;
-
-        try
-        {
-            var request = await _store.LoadAsync(path);
-            SelectedMethod = request.Method;
-            Url = request.Url;
-            RequestBody = request.Body;
-            StatusCode = null;
-            ResponseBody = null;
-            ElapsedMilliseconds = null;
-            ErrorMessage = null;
-            CurrentFilePath = path;
-            CaptureSnapshot();
-        }
-        catch (RequestFileException ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-    }
-
-    private async Task SaveAsync()
-    {
-        if (CurrentFilePath is null)
-        {
-            await SaveAsAsync();
-            return;
-        }
-
-        await SaveToPathAsync(CurrentFilePath);
-    }
-
-    private async Task SaveAsAsync()
-    {
-        var path = await _picker.PickSaveAsync();
-        if (path is null) return;
-
-        var succeeded = await SaveToPathAsync(path);
-        if (succeeded)
-            CurrentFilePath = path;
-    }
-
-    private async Task<bool> SaveToPathAsync(string path)
-    {
-        try
-        {
-            var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-            var request = new HttpRequest(SelectedMethod, Url, body);
-            await _store.SaveAsync(path, request);
-            CaptureSnapshot();
-            ErrorMessage = null;
-            return true;
-        }
-        catch (RequestFileException ex)
-        {
-            ErrorMessage = ex.Message;
-            return false;
-        }
+        _dirtySub?.Dispose();
     }
 
     private void RecomputeDirty()
     {
         var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-        var current = new RequestSnapshot(SelectedMethod, Url, body);
-        IsDirty = _savedSnapshot != current;
+        IsDirty = _savedSnapshot != new RequestSnapshot(SelectedMethod, Url, body);
     }
 
     private void CaptureSnapshot()
@@ -257,15 +227,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         IsDirty = false;
     }
 
-    public void MarkSaved()
-    {
-        CaptureSnapshot();
-    }
+    public void MarkSaved() => CaptureSnapshot();
 
     // ITabContent
-    string ITabContent.DisplayTitle => CurrentFilePath is null
-        ? "Untitled"
-        : Path.GetFileNameWithoutExtension(CurrentFilePath);
-
+    string? ITabContent.CurrentFilePath => CollectionFilePath;
+    string? ITabContent.RequestId => RequestId;
+    string ITabContent.DisplayTitle => RequestName ?? "Untitled";
     string? ITabContent.MethodLabel => SelectedMethod.ToString().ToUpperInvariant();
 }

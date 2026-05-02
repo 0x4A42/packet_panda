@@ -24,22 +24,24 @@ public class EnvironmentEditorViewModelTests
 
     private static EnvironmentEditorViewModel NewVm(
         Mock<IEnvironmentFileStore>? store = null,
-        Mock<IDialogService>? dialog = null) =>
-        new((store ?? NewStore()).Object, (dialog ?? NewDialog()).Object);
+        Mock<IDialogService>? dialog = null,
+        Mock<IFilePickerService>? picker = null) =>
+        new((store ?? NewStore()).Object, (dialog ?? NewDialog()).Object,
+            (picker ?? new Mock<IFilePickerService>()).Object);
 
     private static Environment DevEnv(params (string k, string v)[] vars) =>
-        new("dev", "/ws/environments/dev.toml",
+        new("dev", "/ws/environments/dev.json",
             vars.ToDictionary(p => p.k, p => p.v));
 
     private static Environment DevEnvWithDescs(
         (string k, string v, string d)[] vars) =>
-        new("dev", "/ws/environments/dev.toml",
+        new("dev", "/ws/environments/dev.json",
             vars.ToDictionary(p => p.k, p => p.v),
             vars.Where(p => !string.IsNullOrEmpty(p.d))
                 .ToDictionary(p => p.k, p => p.d));
 
     private static Environment BlankNewEnv() =>
-        new("New Environment", "/ws/environments/New Environment.toml",
+        new("New Environment", "/ws/environments/New Environment.json",
             new Dictionary<string, string>(StringComparer.Ordinal));
 
     [Fact]
@@ -118,7 +120,7 @@ public class EnvironmentEditorViewModelTests
         await vm.SaveCommand.Execute();
 
         store.Verify(s => s.SaveAsync(
-            "/ws/environments/dev.toml",
+            "/ws/environments/dev.json",
             It.Is<Environment>(e => e.Variables["a"] == "1")), Times.Once);
         vm.IsDirty.Should().BeFalse();
         vm.ErrorMessage.Should().BeNull();
@@ -137,7 +139,7 @@ public class EnvironmentEditorViewModelTests
         await vm.SaveCommand.Execute();
 
         store.Verify(s => s.SaveAsync(
-            "/ws/environments/dev.toml",
+            "/ws/environments/dev.json",
             It.Is<Environment>(e => e.Descriptions!["token"] == "Auth token")), Times.Once);
     }
 
@@ -152,7 +154,7 @@ public class EnvironmentEditorViewModelTests
         await vm.SaveCommand.Execute();
 
         store.Verify(s => s.SaveAsync(
-            "/ws/environments/dev.toml",
+            "/ws/environments/dev.json",
             It.Is<Environment>(e => e.Variables.Count == 0)), Times.Once);
     }
 
@@ -204,47 +206,99 @@ public class EnvironmentEditorViewModelTests
     }
 
     [Fact]
-    public async Task Save_WhenNew_AndNameUnchanged_SavesToOriginalPath()
+    public async Task Save_WhenNew_PickerCancelled_DoesNotSave()
     {
         var store = NewStore();
-        var vm = NewVm(store);
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync(It.IsAny<string>())).ReturnsAsync((string?)null);
+        var vm = NewVm(store, picker: picker);
         vm.Load(BlankNewEnv());
         vm.MarkAsNew();
 
         await vm.SaveCommand.Execute();
 
-        store.Verify(s => s.SaveAsync("/ws/environments/New Environment.toml", It.IsAny<Environment>()), Times.Once);
-        vm.CurrentFilePath.Should().Be("/ws/environments/New Environment.toml");
+        store.Verify(s => s.SaveAsync(It.IsAny<string>(), It.IsAny<Environment>()), Times.Never);
     }
 
     [Fact]
-    public async Task Save_WhenNew_AndNameChanged_SavesWithDerivedPath()
+    public async Task Save_WhenNew_SavesWithPickedPath()
+    {
+        const string pickedPath = "/ws/environments/New Environment.json";
+        var store = NewStore();
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync(It.IsAny<string>())).ReturnsAsync(pickedPath);
+        var vm = NewVm(store, picker: picker);
+        vm.Load(BlankNewEnv());
+        vm.MarkAsNew();
+
+        await vm.SaveCommand.Execute();
+
+        store.Verify(s => s.SaveAsync(pickedPath, It.IsAny<Environment>()), Times.Once);
+        vm.CurrentFilePath.Should().Be(pickedPath);
+    }
+
+    [Fact]
+    public async Task Save_WhenNew_SuggestsCurrentNameToFilePicker()
     {
         var store = NewStore();
-        var vm = NewVm(store);
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync("Staging")).ReturnsAsync("/ws/environments/Staging.json");
+        var vm = NewVm(store, picker: picker);
         vm.Load(BlankNewEnv());
         vm.MarkAsNew();
         vm.EnvironmentName = "Staging";
 
         await vm.SaveCommand.Execute();
 
-        store.Verify(s => s.SaveAsync("/ws/environments/Staging.toml", It.IsAny<Environment>()), Times.Once);
-        vm.CurrentFilePath.Should().Be("/ws/environments/Staging.toml");
+        picker.Verify(p => p.PickSaveEnvironmentAsync("Staging"), Times.Once);
     }
 
     [Fact]
-    public async Task Save_WhenNew_SecondSave_DoesNotRederivePath()
+    public async Task Save_WhenNew_SecondSave_DoesNotReopenPicker()
     {
+        const string pickedPath = "/ws/environments/Staging.json";
         var store = NewStore();
-        var vm = NewVm(store);
+        var picker = new Mock<IFilePickerService>();
+        picker.Setup(p => p.PickSaveEnvironmentAsync(It.IsAny<string>())).ReturnsAsync(pickedPath);
+        var vm = NewVm(store, picker: picker);
         vm.Load(BlankNewEnv());
         vm.MarkAsNew();
         vm.EnvironmentName = "Staging";
-        await vm.SaveCommand.Execute();  // first save → path becomes Staging.toml
+        await vm.SaveCommand.Execute();  // first save → picks path, clears _isNew
 
         vm.EnvironmentName = "Production";
-        await vm.SaveCommand.Execute();  // second save → stays Staging.toml (rename is a separate action)
+        await vm.SaveCommand.Execute();  // second save → uses stored path, no picker
 
-        store.Verify(s => s.SaveAsync("/ws/environments/Staging.toml", It.IsAny<Environment>()), Times.Exactly(2));
+        picker.Verify(p => p.PickSaveEnvironmentAsync(It.IsAny<string>()), Times.Once);
+        store.Verify(s => s.SaveAsync(pickedPath, It.IsAny<Environment>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task DeleteCommand_RemovesRowAndKeepsTrailingEmptyRow()
+    {
+        var vm = NewVm();
+        vm.Load(DevEnv(("a", "1"), ("b", "2")));
+
+        var rowToDelete = vm.Rows.First(r => r.Name == "a");
+        await rowToDelete.DeleteCommand.Execute();
+
+        vm.Rows.Select(r => r.Name).Where(n => !string.IsNullOrEmpty(n))
+            .Should().Equal("b");
+        vm.Rows.Last().Name.Should().BeEmpty();
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void DeleteCommand_CanExecute_IsFalseForEmptyRow()
+    {
+        var vm = NewVm();
+        vm.Load(DevEnv());
+
+        var emptyRow = vm.Rows.Last();
+        emptyRow.Name.Should().BeEmpty();
+
+        // CanExecute emits false immediately for an empty-name row.
+        var canExecute = emptyRow.DeleteCommand.CanExecute.FirstAsync().GetAwaiter().GetResult();
+        canExecute.Should().BeFalse();
     }
 }
