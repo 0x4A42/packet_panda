@@ -462,4 +462,40 @@ public class ShellViewModelTests
         savedActiveEnv!.Variables["token"].Should().Be("new-val");
         _environmentStore.Verify(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()), Times.Never);
     }
+
+    [Fact]
+    public async Task SelectedEnvironment_SetToNull_DoesNotClearActiveEnvironment()
+    {
+        // Simulate the transient null that Avalonia's ComboBox sends through the two-way
+        // binding when a collection Replace event fires (e.g. during SyncEnvRefOnSave).
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        var activeEnv = new Environment("dev", "/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["x"] = "1" });
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal));
+
+        _environmentStore.Setup(s => s.LoadAsync("/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings());
+        shell.SelectedEnvironment = new EnvironmentRef("dev", "/dev.json");
+
+        EnvironmentContext? lastCtx = null;
+        shell.ActiveEnvironmentObservable.Subscribe(ctx => lastCtx = ctx);
+
+        // Simulate what Avalonia's ComboBox does during a collection Replace event.
+        shell.SelectedEnvironment = null;
+
+        // The active environment context must not be cleared by the transient null.
+        lastCtx.Should().NotBeNull();
+        shell.SelectedEnvironment.Should().BeNull(); // backing field follows the null…
+        // …but env state is preserved: context still has the dev env variables.
+        lastCtx!.ActiveEnvVars.Should().ContainKey("x");
+    }
 }

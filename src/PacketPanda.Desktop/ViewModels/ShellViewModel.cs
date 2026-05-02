@@ -134,7 +134,11 @@ public class ShellViewModel : ViewModelBase, IDisposable
         set
         {
             this.RaiseAndSetIfChanged(ref _selectedEnvironment, value);
-            _ = OnSelectedEnvironmentChangedAsync(value);
+            // null is only ever a transient state produced by Avalonia's ComboBox during a
+            // collection Replace event — real deselection arrives as NoEnvironmentSentinel.
+            // Ignore null so SyncEnvRefOnSave's item replacement doesn't clear the active env.
+            if (value is not null)
+                _ = OnSelectedEnvironmentChangedAsync(value);
         }
     }
 
@@ -505,16 +509,24 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         EnvironmentSidebar.UpdateEnvironmentRef(env.FilePath, env.Name);
 
-        var pickerIdx = EnvironmentsForPicker.IndexOf(
-            EnvironmentsForPicker.FirstOrDefault(e => e.FilePath == env.FilePath)!);
-        if (pickerIdx >= 0)
+        var newRef = new EnvironmentRef(env.Name, env.FilePath);
+        var existing = EnvironmentsForPicker.FirstOrDefault(e => e.FilePath == env.FilePath);
+        if (existing is null) return;
+
+        // Only replace the item when the name actually changed. An unconditional Replace fires
+        // a CollectionChanged event that causes Avalonia's ComboBox to transiently clear
+        // SelectedItem, which flows back through the two-way binding and wipes the active env.
+        if (existing != newRef)
         {
-            EnvironmentsForPicker[pickerIdx] = new EnvironmentRef(env.Name, env.FilePath);
-            if (_selectedEnvironment?.FilePath == env.FilePath)
-            {
-                _selectedEnvironment = EnvironmentsForPicker[pickerIdx];
-                this.RaisePropertyChanged(nameof(SelectedEnvironment));
-            }
+            var pickerIdx = EnvironmentsForPicker.IndexOf(existing);
+            if (pickerIdx >= 0)
+                EnvironmentsForPicker[pickerIdx] = newRef;
+        }
+
+        if (_selectedEnvironment?.FilePath == env.FilePath)
+        {
+            _selectedEnvironment = newRef;
+            this.RaisePropertyChanged(nameof(SelectedEnvironment));
         }
     }
 
