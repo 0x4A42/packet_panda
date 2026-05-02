@@ -97,4 +97,97 @@ public class HttpRequestSenderTests : IDisposable
 
         result.Should().BeOfType<SendResult.Error>();
     }
+
+    [Fact]
+    public async Task SendAsync_EnabledHeaders_AreSentWithRequest()
+    {
+        _server.Given(Request.Create().WithPath("/h").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200));
+
+        await _sender.SendAsync(new HttpRequest(HttpMethod.Get, _server.Url + "/h",
+            Headers: [new HttpHeader("X-Custom", "hello"), new HttpHeader("X-Skip", "no", Enabled: false)]));
+
+        var sentHeaders = _server.LogEntries.Single().RequestMessage!.Headers!;
+        sentHeaders.Should().ContainKey("X-Custom");
+        sentHeaders.Should().NotContainKey("X-Skip");
+    }
+
+    [Fact]
+    public async Task SendAsync_BearerAuth_InjectsAuthorizationHeader()
+    {
+        _server.Given(Request.Create().WithPath("/h").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200));
+
+        await _sender.SendAsync(new HttpRequest(HttpMethod.Get, _server.Url + "/h",
+            Auth: new BearerAuth("my-token")));
+
+        var sentHeaders = _server.LogEntries.Single().RequestMessage!.Headers!;
+        sentHeaders["Authorization"].Should().ContainSingle("Bearer my-token");
+    }
+
+    [Fact]
+    public async Task SendAsync_BasicAuth_InjectsBase64EncodedHeader()
+    {
+        _server.Given(Request.Create().WithPath("/h").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200));
+
+        await _sender.SendAsync(new HttpRequest(HttpMethod.Get, _server.Url + "/h",
+            Auth: new BasicAuth("user", "pass")));
+
+        var expected = "Basic " + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("user:pass"));
+        var sentHeaders = _server.LogEntries.Single().RequestMessage!.Headers!;
+        sentHeaders["Authorization"].Should().ContainSingle(expected);
+    }
+
+    [Fact]
+    public async Task SendAsync_ApiKeyAuth_HeaderTarget_InjectsNamedHeader()
+    {
+        _server.Given(Request.Create().WithPath("/h").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200));
+
+        await _sender.SendAsync(new HttpRequest(HttpMethod.Get, _server.Url + "/h",
+            Auth: new ApiKeyAuth("X-API-Key", "secret", ApiKeyTarget.Header)));
+
+        var sentHeaders = _server.LogEntries.Single().RequestMessage!.Headers!;
+        sentHeaders["X-API-Key"].Should().ContainSingle("secret");
+    }
+
+    [Fact]
+    public async Task SendAsync_ApiKeyAuth_QueryParamTarget_AppendsToUrl()
+    {
+        _server.Given(Request.Create().WithPath("/h").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200));
+
+        await _sender.SendAsync(new HttpRequest(HttpMethod.Get, _server.Url + "/h",
+            Auth: new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam)));
+
+        var requestedUrl = _server.LogEntries.Single().RequestMessage!.Url;
+        requestedUrl.Should().Contain("api_key=secret");
+    }
+
+    [Fact]
+    public async Task SendAsync_ApiKeyAuth_QueryParamTarget_AppendsWithAmpersandWhenQueryStringExists()
+    {
+        _server.Given(Request.Create().WithPath("/h").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200));
+
+        await _sender.SendAsync(new HttpRequest(HttpMethod.Get, _server.Url + "/h?existing=1",
+            Auth: new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam)));
+
+        var requestedUrl = _server.LogEntries.Single().RequestMessage!.Url;
+        requestedUrl.Should().Contain("existing=1");
+        requestedUrl.Should().Contain("api_key=secret");
+    }
+
+    [Fact]
+    public async Task SendAsync_NoAuth_DoesNotInjectAuthorizationHeader()
+    {
+        _server.Given(Request.Create().WithPath("/h").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200));
+
+        await _sender.SendAsync(new HttpRequest(HttpMethod.Get, _server.Url + "/h", Auth: new NoAuth()));
+
+        var sentHeaders = _server.LogEntries.Single().RequestMessage!.Headers!;
+        sentHeaders.Should().NotContainKey("Authorization");
+    }
 }
