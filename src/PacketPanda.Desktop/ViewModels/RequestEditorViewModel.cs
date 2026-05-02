@@ -16,6 +16,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private readonly Func<string, string, VariableTarget, Task>? _updateVariable;
     private readonly Action? _openEnvironmentEditor;
     private Environment? _activeEnv;
+    private IReadOnlyDictionary<string, string>? _globalsVars;
+    private IReadOnlyDictionary<string, string>? _activeEnvVars;
     private IDisposable? _activeEnvSub;
     private IDisposable? _dirtySub;
 
@@ -37,7 +39,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         IHttpRequestSender sender,
         ICollectionFileStore collectionStore,
         IVariableResolver resolver,
-        IObservable<Environment?> activeEnvironment,
+        IObservable<EnvironmentContext?> activeEnvironment,
         Func<string, string, VariableTarget, Task>? updateVariable = null,
         Action? openEnvironmentEditor = null)
     {
@@ -46,10 +48,14 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _resolver = resolver;
         _updateVariable = updateVariable;
         _openEnvironmentEditor = openEnvironmentEditor;
-        _activeEnvSub = activeEnvironment.Subscribe(env =>
+        _activeEnvSub = activeEnvironment.Subscribe(ctx =>
         {
-            _activeEnv = env;
+            _activeEnv = ctx?.Merged;
+            _globalsVars = ctx?.GlobalsVars;
+            _activeEnvVars = ctx?.ActiveEnvVars;
             this.RaisePropertyChanged(nameof(ActiveEnvironmentVariables));
+            this.RaisePropertyChanged(nameof(GlobalsVariables));
+            this.RaisePropertyChanged(nameof(ActiveEnvVariables));
         });
 
         var canSend = this.WhenAnyValue(vm => vm.Url, url => !string.IsNullOrWhiteSpace(url));
@@ -75,6 +81,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public string? CollectionFilePath { get; set; }
 
     public IReadOnlyDictionary<string, string>? ActiveEnvironmentVariables => _activeEnv?.Variables;
+    public IReadOnlyDictionary<string, string>? GlobalsVariables => _globalsVars;
+    public IReadOnlyDictionary<string, string>? ActiveEnvVariables => _activeEnvVars;
 
     public HttpMethod SelectedMethod
     {

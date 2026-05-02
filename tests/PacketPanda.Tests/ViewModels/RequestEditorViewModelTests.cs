@@ -20,7 +20,7 @@ public sealed class RequestEditorViewModelTests
         _sender.Object,
         _collectionStore.Object,
         new VariableResolver(),
-        new BehaviorSubject<Environment?>(null));
+        new BehaviorSubject<EnvironmentContext?>(null));
 
     [Fact]
     public async Task Send_PopulatesResponseFieldsFromOkResult()
@@ -283,7 +283,7 @@ public sealed class RequestEditorViewModelTests
             _sender.Object,
             _collectionStore.Object,
             new VariableResolver(),
-            new BehaviorSubject<Environment?>(null));
+            new BehaviorSubject<EnvironmentContext?>(null));
         vm.Url = "{{baseUrl}}/users";
 
         await vm.SendCommand.Execute();
@@ -299,7 +299,7 @@ public sealed class RequestEditorViewModelTests
                .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
         var env = new Environment("dev", "/e.toml",
             new Dictionary<string, string> { ["baseUrl"] = "https://api" });
-        var activeEnv = new BehaviorSubject<Environment?>(env);
+        var activeEnv = new BehaviorSubject<EnvironmentContext?>(new EnvironmentContext(env, null, env.Variables));
         var vm = new RequestEditorViewModel(
             _sender.Object,
             _collectionStore.Object,
@@ -325,7 +325,7 @@ public sealed class RequestEditorViewModelTests
             _sender.Object,
             _collectionStore.Object,
             new VariableResolver(),
-            new BehaviorSubject<Environment?>(null),
+            new BehaviorSubject<EnvironmentContext?>(null),
             updateVariable: (n, v, t) => { capturedName = n; capturedValue = v; capturedTarget = t; return Task.CompletedTask; });
 
         await vm.UpdateVariableAsync("token", "abc123", VariableTarget.ActiveEnv);
@@ -353,7 +353,7 @@ public sealed class RequestEditorViewModelTests
             _sender.Object,
             _collectionStore.Object,
             new VariableResolver(),
-            new BehaviorSubject<Environment?>(null),
+            new BehaviorSubject<EnvironmentContext?>(null),
             openEnvironmentEditor: () => called = true);
 
         vm.OpenEnvironmentEditor();

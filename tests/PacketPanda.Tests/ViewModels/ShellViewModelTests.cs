@@ -28,7 +28,7 @@ public class ShellViewModelTests
     private RequestEditorViewModel NewEditor() =>
         new(_sender.Object, _collectionStore.Object,
             new VariableResolver(),
-            new BehaviorSubject<Environment?>(null));
+            new BehaviorSubject<EnvironmentContext?>(null));
 
     private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null) =>
         new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _environmentStore.Object, _picker.Object,

@@ -21,7 +21,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IEnvironmentFileStore _environmentStore;
     private readonly ISettingsStore _settings;
     private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
-    private readonly BehaviorSubject<Environment?> _activeEnvSubject = new(null);
+    private readonly BehaviorSubject<EnvironmentContext?> _activeEnvSubject = new(null);
     private readonly IDisposable _envOpenSub;
     private readonly IDisposable _newEnvCreatedSub;
     private readonly IDisposable _activateEnvSub;
@@ -120,7 +120,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     // Kept for backward compat with MainWindow binding
     public ObservableCollection<EnvironmentRef> AvailableEnvironments => EnvironmentsForPicker;
 
-    public IObservable<Environment?> ActiveEnvironmentObservable => _activeEnvSubject;
+    public IObservable<EnvironmentContext?> ActiveEnvironmentObservable => _activeEnvSubject;
 
     public TabViewModel? ActiveTab
     {
@@ -470,7 +470,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private Task PublishMergedEnvAsync()
     {
         var merged = MergeEnvironments(_globals, _loadedActiveEnv);
-        _activeEnvSubject.OnNext(merged);
+        var ctx = merged is null ? null : new EnvironmentContext(merged, _globals?.Variables, _loadedActiveEnv?.Variables);
+        _activeEnvSubject.OnNext(ctx);
         return Task.CompletedTask;
     }
 

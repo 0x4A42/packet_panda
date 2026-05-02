@@ -20,7 +20,7 @@ public class TabViewModelTests
     private RequestEditorViewModel NewEditor() =>
         new(_sender.Object, _collectionStore.Object,
             new VariableResolver(),
-            new BehaviorSubject<Environment?>(null));
+            new BehaviorSubject<EnvironmentContext?>(null));
 
     [Fact]
     public void Title_ForFreshTab_IsUntitled()

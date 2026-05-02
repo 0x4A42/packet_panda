@@ -62,20 +62,20 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
 
         vm.WhenAnyValue(x => x.Url)
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(_ => VariableTextHighlighter.Apply(UrlOverlay, vm.Url, vm.ActiveEnvironmentVariables))
+            .Subscribe(_ => VariableTextHighlighter.Apply(UrlOverlay, vm.Url, vm.GlobalsVariables, vm.ActiveEnvVariables))
             .DisposeWith(_subs);
 
         vm.WhenAnyValue(x => x.RequestBody)
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(_ => VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.ActiveEnvironmentVariables))
+            .Subscribe(_ => VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.GlobalsVariables, vm.ActiveEnvVariables))
             .DisposeWith(_subs);
 
         vm.WhenAnyValue(x => x.ActiveEnvironmentVariables)
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(_ =>
             {
-                VariableTextHighlighter.Apply(UrlOverlay, vm.Url, vm.ActiveEnvironmentVariables);
-                VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.ActiveEnvironmentVariables);
+                VariableTextHighlighter.Apply(UrlOverlay, vm.Url, vm.GlobalsVariables, vm.ActiveEnvVariables);
+                VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.GlobalsVariables, vm.ActiveEnvVariables);
             })
             .DisposeWith(_subs);
     }

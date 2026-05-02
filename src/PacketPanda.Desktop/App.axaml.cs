@@ -43,7 +43,7 @@ public partial class App : Application
                 sender,
                 collectionStore,
                 new VariableResolver(),
-                shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<PacketPanda.Core.Environments.Environment?>(null),
+                shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<EnvironmentContext?>(null),
                 updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
                 openEnvironmentEditor: () => shell!.SetEnvironmentsTabCommand.Execute().Subscribe());
 
