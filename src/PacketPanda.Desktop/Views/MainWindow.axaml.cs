@@ -26,8 +26,20 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CollectionTreeView_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // First click on an unselected TreeViewItem causes TreeViewItem to handle PointerPressed
+        // for selection, which suppresses Tapped. SelectionChanged handles that first-click case.
+        if (e.AddedItems.Count > 0 &&
+            e.AddedItems[0] is CollectionNodeViewModel { IsFolder: false } vm)
+        {
+            vm.Open();
+        }
+    }
+
     private void CollectionTreeView_Tapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
+        // Handles re-clicking an already-selected item (SelectionChanged doesn't fire then).
         if (e.Source is Avalonia.Controls.Control ctrl &&
             ctrl.DataContext is CollectionNodeViewModel vm &&
             !vm.IsFolder)

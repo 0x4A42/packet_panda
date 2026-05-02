@@ -60,14 +60,23 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
 
         _subs = new CompositeDisposable();
 
-        vm.WhenAnyValue(x => x.Url, x => x.ActiveEnvironmentVariables)
+        vm.WhenAnyValue(x => x.Url)
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(t => VariableTextHighlighter.Apply(UrlOverlay, t.Item1, t.Item2))
+            .Subscribe(_ => VariableTextHighlighter.Apply(UrlOverlay, vm.Url, vm.ActiveEnvironmentVariables))
             .DisposeWith(_subs);
 
-        vm.WhenAnyValue(x => x.RequestBody, x => x.ActiveEnvironmentVariables)
+        vm.WhenAnyValue(x => x.RequestBody)
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(t => VariableTextHighlighter.Apply(BodyOverlay, t.Item1, t.Item2))
+            .Subscribe(_ => VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.ActiveEnvironmentVariables))
+            .DisposeWith(_subs);
+
+        vm.WhenAnyValue(x => x.ActiveEnvironmentVariables)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ =>
+            {
+                VariableTextHighlighter.Apply(UrlOverlay, vm.Url, vm.ActiveEnvironmentVariables);
+                VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.ActiveEnvironmentVariables);
+            })
             .DisposeWith(_subs);
     }
 

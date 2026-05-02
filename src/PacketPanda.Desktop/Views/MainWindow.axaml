@@ -123,6 +123,7 @@
                     <TreeView Grid.Row="2"
                               Background="Transparent"
                               ItemsSource="{Binding Sidebar.Collections}"
+                              SelectionChanged="CollectionTreeView_SelectionChanged"
                               Tapped="CollectionTreeView_Tapped">
                         <TreeView.DataTemplates>
 
