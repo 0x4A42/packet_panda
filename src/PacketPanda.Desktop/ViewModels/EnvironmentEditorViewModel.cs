@@ -33,7 +33,7 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         _picker = picker;
         Rows = new ObservableCollection<EnvironmentVariableRowViewModel>();
         Rows.CollectionChanged += OnCollectionChanged;
-        Rows.Add(new EnvironmentVariableRowViewModel());
+        Rows.Add(CreateRow());
 
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync);
     }
@@ -80,13 +80,12 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
         foreach (var kvp in env.Variables)
         {
             var description = env.Descriptions?.GetValueOrDefault(kvp.Key) ?? string.Empty;
-            Rows.Add(new EnvironmentVariableRowViewModel
-            {
-                Name = kvp.Key,
-                Value = kvp.Value,
-                Description = description,
-                Enabled = disabledSet?.Contains(kvp.Key) != true
-            });
+            var row = CreateRow();
+            row.Name = kvp.Key;
+            row.Value = kvp.Value;
+            row.Description = description;
+            row.Enabled = disabledSet?.Contains(kvp.Key) != true;
+            Rows.Add(row);
         }
 
         EnsureTrailingEmptyRow();
@@ -122,8 +121,19 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
             || !string.IsNullOrEmpty(last.Value)
             || !string.IsNullOrEmpty(last.Description))
         {
-            Rows.Add(new EnvironmentVariableRowViewModel());
+            Rows.Add(CreateRow());
         }
+    }
+
+    private EnvironmentVariableRowViewModel CreateRow()
+    {
+        var row = new EnvironmentVariableRowViewModel();
+        row.SetDeleteCallback(() =>
+        {
+            Rows.Remove(row);
+            EnsureTrailingEmptyRow();
+        });
+        return row;
     }
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

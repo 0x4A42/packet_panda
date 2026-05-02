@@ -419,4 +419,47 @@ public class ShellViewModelTests
         savedActiveEnv.Should().NotBeNull();
         savedActiveEnv!.Variables["token"].Should().Be("new-val");
     }
+
+    [Fact]
+    public async Task UpdateActiveEnvironmentVariableAsync_ActiveEnvTarget_VariableOnlyInGlobals_WritesToActiveEnvNotGlobals()
+    {
+        var globalsPath = Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            "PacketPanda", "globals.json");
+
+        // Variable exists only in globals, not in the active env.
+        var activeEnv = new Environment("dev", "/dev.json",
+            new Dictionary<string, string>(StringComparer.Ordinal));
+        var globals = new Environment("Globals", globalsPath,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = "global-val" });
+
+        _environmentStore.Setup(s => s.LoadAsync("/dev.json")).ReturnsAsync(activeEnv);
+        _environmentStore.Setup(s => s.LoadAsync(globalsPath)).ReturnsAsync(globals);
+
+        Environment? savedActiveEnv = null;
+        _environmentStore
+            .Setup(s => s.SaveAsync("/dev.json", It.IsAny<Environment>()))
+            .Callback<string, Environment>((_, e) => savedActiveEnv = e)
+            .Returns(Task.CompletedTask);
+        _environmentStore
+            .Setup(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()))
+            .Returns(Task.CompletedTask);
+
+        _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
+        _settings.Setup(s => s.SaveAsync(It.IsAny<AppSettings>())).Returns(Task.CompletedTask);
+
+        var shell = CreateShell();
+        await shell.InitializeAsync(new AppSettings
+        {
+            ActiveEnvironmentName = "dev",
+            KnownEnvironmentPaths = ["/dev.json"],
+        });
+        shell.SelectedEnvironment = new EnvironmentRef("dev", "/dev.json");
+
+        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val", VariableTarget.ActiveEnv);
+
+        savedActiveEnv.Should().NotBeNull();
+        savedActiveEnv!.Variables["token"].Should().Be("new-val");
+        _environmentStore.Verify(s => s.SaveAsync(globalsPath, It.IsAny<Environment>()), Times.Never);
+    }
 }

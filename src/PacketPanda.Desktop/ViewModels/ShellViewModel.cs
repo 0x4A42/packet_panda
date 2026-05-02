@@ -421,24 +421,17 @@ public class ShellViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            // Auto-detect: active env shadows globals
-            if (_loadedActiveEnv is not null && _loadedActiveEnv.Variables.ContainsKey(name))
-            {
-                source = _loadedActiveEnv;
-                isGlobals = false;
-            }
-            else if (_globals is not null && _globals.Variables.ContainsKey(name))
-            {
-                source = _globals;
-                isGlobals = true;
-            }
-            else if (_loadedActiveEnv is not null)
+            // Explicit ActiveEnv target: always write to the active environment.
+            // If the variable also exists in globals, the active env entry will shadow it,
+            // which is exactly the override behaviour the caller asked for.
+            if (_loadedActiveEnv is not null)
             {
                 source = _loadedActiveEnv;
                 isGlobals = false;
             }
             else if (_globals is not null)
             {
+                // No active env loaded — fall back to globals so the value isn't silently lost.
                 source = _globals;
                 isGlobals = true;
             }

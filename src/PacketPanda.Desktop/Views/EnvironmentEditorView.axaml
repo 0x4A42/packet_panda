@@ -59,6 +59,22 @@
                 <DataGridTextColumn Header="Description"
                                     Binding="{Binding Description}"
                                     Width="3*" />
+                <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="✕"
+                                    Command="{Binding DeleteCommand}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="4,0"
+                                    FontSize="11"
+                                    Foreground="#AAAAAA"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Cursor="Hand" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 

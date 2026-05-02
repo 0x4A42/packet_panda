@@ -272,4 +272,33 @@ public class EnvironmentEditorViewModelTests
         picker.Verify(p => p.PickSaveEnvironmentAsync(It.IsAny<string>()), Times.Once);
         store.Verify(s => s.SaveAsync(pickedPath, It.IsAny<Environment>()), Times.Exactly(2));
     }
+
+    [Fact]
+    public async Task DeleteCommand_RemovesRowAndKeepsTrailingEmptyRow()
+    {
+        var vm = NewVm();
+        vm.Load(DevEnv(("a", "1"), ("b", "2")));
+
+        var rowToDelete = vm.Rows.First(r => r.Name == "a");
+        await rowToDelete.DeleteCommand.Execute();
+
+        vm.Rows.Select(r => r.Name).Where(n => !string.IsNullOrEmpty(n))
+            .Should().Equal("b");
+        vm.Rows.Last().Name.Should().BeEmpty();
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void DeleteCommand_CanExecute_IsFalseForEmptyRow()
+    {
+        var vm = NewVm();
+        vm.Load(DevEnv());
+
+        var emptyRow = vm.Rows.Last();
+        emptyRow.Name.Should().BeEmpty();
+
+        // CanExecute emits false immediately for an empty-name row.
+        var canExecute = emptyRow.DeleteCommand.CanExecute.FirstAsync().GetAwaiter().GetResult();
+        canExecute.Should().BeFalse();
+    }
 }
