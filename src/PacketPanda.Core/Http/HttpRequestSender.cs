@@ -68,7 +68,7 @@ public sealed class HttpRequestSender : IHttpRequestSender
         if (request.Auth is ApiKeyAuth { Target: ApiKeyTarget.QueryParam } qpAuth)
         {
             var sep = url.Contains('?') ? '&' : '?';
-            url = $"{url}{sep}{qpAuth.Name}={Uri.EscapeDataString(qpAuth.Value)}";
+            url = $"{url}{sep}{Uri.EscapeDataString(qpAuth.Name)}={Uri.EscapeDataString(qpAuth.Value)}";
         }
 
         var message = new HttpRequestMessage(method, url);
