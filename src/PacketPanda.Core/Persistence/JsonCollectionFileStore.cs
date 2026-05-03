@@ -106,7 +106,34 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     bodyEl.TryGetProperty("raw", out var rawBody))
                     body = rawBody.GetString();
 
-                result.Add(new RequestNode(id, name, collectionPath, method, url, body));
+                // Parse headers
+                var headers = new List<HttpHeader>();
+                if (requestEl.TryGetProperty("header", out var headerArr))
+                {
+                    foreach (var h in headerArr.EnumerateArray())
+                    {
+                        var key = h.TryGetProperty("key", out var kEl) ? kEl.GetString() ?? string.Empty : string.Empty;
+                        var val = h.TryGetProperty("value", out var vEl) ? vEl.GetString() ?? string.Empty : string.Empty;
+                        var disabled = h.TryGetProperty("disabled", out var dEl) && dEl.GetBoolean();
+                        headers.Add(new HttpHeader(key, val, !disabled));
+                    }
+                }
+
+                // Parse auth
+                AuthConfig auth = new NoAuth();
+                if (requestEl.TryGetProperty("auth", out var authEl) &&
+                    authEl.TryGetProperty("type", out var typeEl))
+                {
+                    auth = typeEl.GetString() switch
+                    {
+                        "bearer" => ParseBearerAuth(authEl),
+                        "apikey" => ParseApiKeyAuth(authEl),
+                        "basic" => ParseBasicAuth(authEl),
+                        _ => new NoAuth()
+                    };
+                }
+
+                result.Add(new RequestNode(id, name, collectionPath, method, url, body, headers, auth));
             }
             else if (item.TryGetProperty("item", out var subItems))
             {
@@ -128,11 +155,25 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
             {
                 writer.WriteStartObject("request");
                 writer.WriteString("method", req.Method.ToString().ToUpperInvariant());
-                writer.WriteStartArray("header"); // TODO: custom headers not yet persisted
+
+                // Headers
+                writer.WriteStartArray("header");
+                foreach (var h in req.Headers)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("key", h.Name);
+                    writer.WriteString("value", h.Value);
+                    if (!h.Enabled) writer.WriteBoolean("disabled", true);
+                    writer.WriteEndObject();
+                }
                 writer.WriteEndArray();
+
+                // URL
                 writer.WriteStartObject("url");
                 writer.WriteString("raw", req.Url);
                 writer.WriteEndObject();
+
+                // Body
                 if (req.Body is not null)
                 {
                     writer.WriteStartObject("body");
@@ -144,6 +185,11 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                 {
                     writer.WriteNull("body");
                 }
+
+                // Auth
+                if (req.Auth is not NoAuth)
+                    WriteAuth(writer, req.Auth);
+
                 writer.WriteEndObject();
                 writer.WriteStartArray("response");
                 writer.WriteEndArray();
@@ -159,12 +205,108 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
         }
     }
 
+    private static BearerAuth ParseBearerAuth(JsonElement authEl)
+    {
+        var token = string.Empty;
+        if (authEl.TryGetProperty("bearer", out var arr))
+            foreach (var p in arr.EnumerateArray())
+                if (p.TryGetProperty("key", out var k) && k.GetString() == "token" &&
+                    p.TryGetProperty("value", out var v))
+                    token = v.GetString() ?? string.Empty;
+        return new BearerAuth(token);
+    }
+
+    private static ApiKeyAuth ParseApiKeyAuth(JsonElement authEl)
+    {
+        var name = string.Empty;
+        var value = string.Empty;
+        var target = ApiKeyTarget.Header;
+        if (authEl.TryGetProperty("apikey", out var arr))
+            foreach (var p in arr.EnumerateArray())
+            {
+                if (!p.TryGetProperty("key", out var k) || !p.TryGetProperty("value", out var v)) continue;
+                switch (k.GetString())
+                {
+                    case "key": name = v.GetString() ?? string.Empty; break;
+                    case "value": value = v.GetString() ?? string.Empty; break;
+                    case "in": target = v.GetString() == "query_param" ? ApiKeyTarget.QueryParam : ApiKeyTarget.Header; break;
+                }
+            }
+        return new ApiKeyAuth(name, value, target);
+    }
+
+    private static BasicAuth ParseBasicAuth(JsonElement authEl)
+    {
+        var username = string.Empty;
+        var password = string.Empty;
+        if (authEl.TryGetProperty("basic", out var arr))
+            foreach (var p in arr.EnumerateArray())
+            {
+                if (!p.TryGetProperty("key", out var k) || !p.TryGetProperty("value", out var v)) continue;
+                switch (k.GetString())
+                {
+                    case "username": username = v.GetString() ?? string.Empty; break;
+                    case "password": password = v.GetString() ?? string.Empty; break;
+                }
+            }
+        return new BasicAuth(username, password);
+    }
+
+    private static void WriteAuth(Utf8JsonWriter writer, AuthConfig auth)
+    {
+        writer.WriteStartObject("auth");
+        switch (auth)
+        {
+            case BearerAuth bearer:
+                writer.WriteString("type", "bearer");
+                writer.WriteStartArray("bearer");
+                WriteKV(writer, "token", bearer.Token);
+                writer.WriteEndArray();
+                break;
+            case ApiKeyAuth apiKey:
+                writer.WriteString("type", "apikey");
+                writer.WriteStartArray("apikey");
+                WriteKV(writer, "key", apiKey.Name);
+                WriteKV(writer, "value", apiKey.Value);
+                WriteKV(writer, "in", apiKey.Target == ApiKeyTarget.QueryParam ? "query_param" : "header");
+                writer.WriteEndArray();
+                break;
+            case BasicAuth basic:
+                writer.WriteString("type", "basic");
+                writer.WriteStartArray("basic");
+                WriteKV(writer, "username", basic.Username);
+                WriteKV(writer, "password", basic.Password);
+                writer.WriteEndArray();
+                break;
+            default:
+                writer.WriteString("type", "noauth");
+                break;
+        }
+        writer.WriteEndObject();
+    }
+
+    private static void WriteKV(Utf8JsonWriter writer, string key, string value)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("key", key);
+        writer.WriteString("value", value);
+        writer.WriteString("type", "string");
+        writer.WriteEndObject();
+    }
+
     private static FolderNode UpdateInTree(FolderNode folder, string requestId, HttpRequest updated)
     {
         var newChildren = folder.Children.Select(child => child switch
         {
             RequestNode req when req.Id == requestId =>
-                req with { Method = updated.Method, Url = updated.Url, Body = updated.Body },
+                req with
+                {
+                    Method = updated.Method,
+                    Url = updated.Url,
+                    Body = updated.Body,
+                    Headers = updated.Headers ?? req.Headers,
+                    Auth = updated.Auth ?? req.Auth
+                },
             RequestNode => child,
             FolderNode f => UpdateInTree(f, requestId, updated),
             _ => child

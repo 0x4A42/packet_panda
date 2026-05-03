@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Reactive;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
@@ -33,7 +35,22 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private RequestSnapshot? _savedSnapshot;
     private string? _requestName;
 
-    private sealed record RequestSnapshot(HttpMethod Method, string Url, string? Body);
+    private AuthType _selectedAuthType = AuthType.None;
+    private string _apiKeyName = string.Empty;
+    private string _apiKeyValue = string.Empty;
+    private ApiKeyTarget _apiKeyTarget = ApiKeyTarget.Header;
+    private string _bearerToken = string.Empty;
+    private string _basicUsername = string.Empty;
+    private string _basicPassword = string.Empty;
+    private IDisposable? _authDirtySub;
+    private IDisposable? _authDirtySubPassword;
+
+    private sealed record RequestSnapshot(
+        HttpMethod Method,
+        string Url,
+        string? Body,
+        string HeadersKey,
+        string AuthKey);
 
     public RequestEditorViewModel(
         IHttpRequestSender sender,
@@ -65,6 +82,31 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
 
         _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RequestBody)
+            .Subscribe(_ => RecomputeDirty());
+
+        AddHeaderCommand = ReactiveCommand.Create(() =>
+            Headers.Add(new HeaderRowViewModel(row => { Headers.Remove(row); RecomputeDirty(); })));
+
+        void OnHeaderRowChanged(object? s, PropertyChangedEventArgs e) => RecomputeDirty();
+        Headers.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems != null)
+                foreach (HeaderRowViewModel row in e.NewItems)
+                    row.PropertyChanged += OnHeaderRowChanged;
+            if (e.OldItems != null)
+                foreach (HeaderRowViewModel row in e.OldItems)
+                    row.PropertyChanged -= OnHeaderRowChanged;
+            RecomputeDirty();
+        };
+
+        _authDirtySub = this.WhenAnyValue(
+            vm => vm.SelectedAuthType,
+            vm => vm.ApiKeyName, vm => vm.ApiKeyValue, vm => vm.ApiKeyTarget,
+            vm => vm.BearerToken,
+            vm => vm.BasicUsername)
+            .Subscribe(_ => RecomputeDirty());
+
+        _authDirtySubPassword = this.WhenAnyValue(vm => vm.BasicPassword)
             .Subscribe(_ => RecomputeDirty());
 
         CaptureSnapshot();
@@ -141,6 +183,67 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ReactiveCommand<Unit, Unit> SendCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
 
+    public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
+    public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
+
+    public AuthType SelectedAuthType
+    {
+        get => _selectedAuthType;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedAuthType, value);
+            this.RaisePropertyChanged(nameof(IsApiKeyAuth));
+            this.RaisePropertyChanged(nameof(IsBearerAuth));
+            this.RaisePropertyChanged(nameof(IsBasicAuth));
+        }
+    }
+
+    public bool IsApiKeyAuth => SelectedAuthType == AuthType.ApiKey;
+    public bool IsBearerAuth => SelectedAuthType == AuthType.Bearer;
+    public bool IsBasicAuth => SelectedAuthType == AuthType.Basic;
+
+    public string ApiKeyName
+    {
+        get => _apiKeyName;
+        set => this.RaiseAndSetIfChanged(ref _apiKeyName, value);
+    }
+
+    public string ApiKeyValue
+    {
+        get => _apiKeyValue;
+        set => this.RaiseAndSetIfChanged(ref _apiKeyValue, value);
+    }
+
+    public ApiKeyTarget ApiKeyTarget
+    {
+        get => _apiKeyTarget;
+        set => this.RaiseAndSetIfChanged(ref _apiKeyTarget, value);
+    }
+
+    public string BearerToken
+    {
+        get => _bearerToken;
+        set => this.RaiseAndSetIfChanged(ref _bearerToken, value);
+    }
+
+    public string BasicUsername
+    {
+        get => _basicUsername;
+        set => this.RaiseAndSetIfChanged(ref _basicUsername, value);
+    }
+
+    public string BasicPassword
+    {
+        get => _basicPassword;
+        set => this.RaiseAndSetIfChanged(ref _basicPassword, value);
+    }
+
+    public AuthType[] AvailableAuthTypes { get; } =
+        [AuthType.None, AuthType.ApiKey, AuthType.Bearer, AuthType.Basic];
+
+    public ApiKeyTarget[] AvailableApiKeyTargets { get; } =
+        [ApiKeyTarget.Header, ApiKeyTarget.QueryParam];
+
     public HttpMethod[] AvailableMethods { get; } =
     {
         HttpMethod.Get,
@@ -154,18 +257,101 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public void OpenEnvironmentEditor() => _openEnvironmentEditor?.Invoke();
 
+    public HttpRequest BuildRequest()
+    {
+        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
+        var headers = Headers.Select(h => new HttpHeader(h.Name, h.Value, h.Enabled)).ToList();
+        AuthConfig auth = SelectedAuthType switch
+        {
+            AuthType.Bearer => new BearerAuth(BearerToken),
+            AuthType.ApiKey => new ApiKeyAuth(ApiKeyName, ApiKeyValue, ApiKeyTarget),
+            AuthType.Basic  => new BasicAuth(BasicUsername, BasicPassword),
+            _               => new NoAuth()
+        };
+        return new HttpRequest(SelectedMethod, Url, body, headers, auth);
+    }
+
+    public void LoadHeaders(IReadOnlyList<HttpHeader> headers)
+    {
+        Headers.Clear();
+        foreach (var h in headers)
+            Headers.Add(new HeaderRowViewModel(row => { Headers.Remove(row); RecomputeDirty(); })
+                { Enabled = h.Enabled, Name = h.Name, Value = h.Value });
+    }
+
+    public void LoadAuth(AuthConfig auth)
+    {
+        switch (auth)
+        {
+            case BearerAuth bearer:
+                SelectedAuthType = AuthType.Bearer;
+                BearerToken = bearer.Token;
+                break;
+            case ApiKeyAuth apiKey:
+                SelectedAuthType = AuthType.ApiKey;
+                ApiKeyName = apiKey.Name;
+                ApiKeyValue = apiKey.Value;
+                ApiKeyTarget = apiKey.Target;
+                break;
+            case BasicAuth basic:
+                SelectedAuthType = AuthType.Basic;
+                BasicUsername = basic.Username;
+                BasicPassword = basic.Password;
+                break;
+            default:
+                SelectedAuthType = AuthType.None;
+                break;
+        }
+    }
+
     private async Task SendAsync()
     {
         ErrorMessage = null;
 
         var urlResult = _resolver.Resolve(Url, _activeEnv);
         var bodyResult = _resolver.Resolve(RequestBody ?? string.Empty, _activeEnv);
+        var unresolvedNames = new List<string>(urlResult.UnresolvedNames.Concat(bodyResult.UnresolvedNames));
 
-        var unresolved = urlResult.UnresolvedNames
-            .Concat(bodyResult.UnresolvedNames)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        var resolvedHeaders = new List<HttpHeader>();
+        foreach (var row in Headers.Where(h => h.Enabled))
+        {
+            var r = _resolver.Resolve(row.Value, _activeEnv);
+            unresolvedNames.AddRange(r.UnresolvedNames);
+            resolvedHeaders.Add(new HttpHeader(row.Name, r.Text));
+        }
 
+        AuthConfig resolvedAuth;
+        switch (SelectedAuthType)
+        {
+            case AuthType.Bearer:
+            {
+                var r = _resolver.Resolve(BearerToken, _activeEnv);
+                unresolvedNames.AddRange(r.UnresolvedNames);
+                resolvedAuth = new BearerAuth(r.Text);
+                break;
+            }
+            case AuthType.ApiKey:
+            {
+                var r = _resolver.Resolve(ApiKeyValue, _activeEnv);
+                unresolvedNames.AddRange(r.UnresolvedNames);
+                resolvedAuth = new ApiKeyAuth(ApiKeyName, r.Text, ApiKeyTarget);
+                break;
+            }
+            case AuthType.Basic:
+            {
+                var ru = _resolver.Resolve(BasicUsername, _activeEnv);
+                var rp = _resolver.Resolve(BasicPassword, _activeEnv);
+                unresolvedNames.AddRange(ru.UnresolvedNames);
+                unresolvedNames.AddRange(rp.UnresolvedNames);
+                resolvedAuth = new BasicAuth(ru.Text, rp.Text);
+                break;
+            }
+            default:
+                resolvedAuth = new NoAuth();
+                break;
+        }
+
+        var unresolved = unresolvedNames.Distinct(StringComparer.Ordinal).ToList();
         if (unresolved.Count > 0)
         {
             ErrorMessage = $"Unresolved variables: {string.Join(", ", unresolved)}";
@@ -174,7 +360,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
 
         var body = string.IsNullOrEmpty(bodyResult.Text) ? null : bodyResult.Text;
-        var result = await _sender.SendAsync(new HttpRequest(SelectedMethod, urlResult.Text, body));
+        var result = await _sender.SendAsync(
+            new HttpRequest(SelectedMethod, urlResult.Text, body, resolvedHeaders, resolvedAuth));
 
         switch (result)
         {
@@ -194,11 +381,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private async Task SaveAsync()
     {
         if (RequestId is null || CollectionFilePath is null) return;
-
         try
         {
-            var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-            await _collectionStore.UpdateRequestAsync(CollectionFilePath, RequestId, new HttpRequest(SelectedMethod, Url, body));
+            await _collectionStore.UpdateRequestAsync(CollectionFilePath, RequestId, BuildRequest());
             CaptureSnapshot();
             ErrorMessage = null;
         }
@@ -212,18 +397,32 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     {
         _activeEnvSub?.Dispose();
         _dirtySub?.Dispose();
+        _authDirtySub?.Dispose();
+        _authDirtySubPassword?.Dispose();
     }
 
     private void RecomputeDirty()
     {
         var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-        IsDirty = _savedSnapshot != new RequestSnapshot(SelectedMethod, Url, body);
+        IsDirty = _savedSnapshot != new RequestSnapshot(
+            SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey());
     }
+
+    private string ComputeHeadersKey() =>
+        string.Join("|", Headers.Select(h => $"{h.Enabled}:{h.Name}:{h.Value}"));
+
+    private string ComputeAuthKey() => SelectedAuthType switch
+    {
+        AuthType.ApiKey => $"apikey:{ApiKeyName}:{ApiKeyValue}:{ApiKeyTarget}",
+        AuthType.Bearer => $"bearer:{BearerToken}",
+        AuthType.Basic  => $"basic:{BasicUsername}:{BasicPassword}",
+        _               => "none"
+    };
 
     private void CaptureSnapshot()
     {
         var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-        _savedSnapshot = new RequestSnapshot(SelectedMethod, Url, body);
+        _savedSnapshot = new RequestSnapshot(SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey());
         IsDirty = false;
     }
 

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
+using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
 using ReactiveUI;
@@ -359,7 +360,8 @@ public class CollectionViewModel : ReactiveObject
     private async Task AddNewRequestAsync()
     {
         var id = Guid.NewGuid().ToString();
-        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null);
+        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null,
+            Array.Empty<HttpHeader>(), new NoAuth());
         var newChildren = _collection.Root.Children.Append(newNode).ToList();
         var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
         await _store.SaveAsync(candidate.FilePath, candidate);
@@ -382,7 +384,8 @@ public class CollectionViewModel : ReactiveObject
     private async Task AddNewRequestToFolderAsync(string folderId)
     {
         var id = Guid.NewGuid().ToString();
-        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null);
+        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null,
+            Array.Empty<HttpHeader>(), new NoAuth());
         var (newRoot, found) = InsertIntoFolder(_collection.Root, folderId, newNode);
         if (!found) return;
         var candidate = _collection with { Root = newRoot };

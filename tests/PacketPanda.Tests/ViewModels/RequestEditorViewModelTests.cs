@@ -1,3 +1,4 @@
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using FluentAssertions;
@@ -359,5 +360,181 @@ public sealed class RequestEditorViewModelTests
         vm.OpenEnvironmentEditor();
 
         called.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddHeader_AddsRowToHeaders()
+    {
+        var vm = CreateVm();
+        vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
+        vm.Headers.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void RemoveHeader_RemovesRowFromHeaders()
+    {
+        var vm = CreateVm();
+        vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
+        var row = vm.Headers.Single();
+        row.RemoveCommand.Execute(Unit.Default).Subscribe();
+        vm.Headers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Headers_AddRow_MarksDirty()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.MarkSaved();
+
+        vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Headers_EditRowName_MarksDirty()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
+        vm.MarkSaved();
+
+        vm.Headers.Single().Name = "X-Foo";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AuthType_Change_MarksDirty()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.MarkSaved();
+
+        vm.SelectedAuthType = AuthType.Bearer;
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BearerToken_Change_MarksDirty()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.SelectedAuthType = AuthType.Bearer;
+        vm.MarkSaved();
+
+        vm.BearerToken = "new-token";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuildRequest_IncludesEnabledHeadersOnly()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
+        vm.Headers[0].Name = "X-Keep";
+        vm.Headers[0].Value = "yes";
+        vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
+        vm.Headers[1].Name = "X-Skip";
+        vm.Headers[1].Value = "no";
+        vm.Headers[1].Enabled = false;
+
+        var req = vm.BuildRequest();
+
+        req.Headers.Should().HaveCount(2);
+        req.Headers!.Where(h => h.Enabled).Should().ContainSingle(h => h.Name == "X-Keep");
+        req.Headers!.Where(h => !h.Enabled).Should().ContainSingle(h => h.Name == "X-Skip");
+    }
+
+    [Fact]
+    public async Task Send_WithBearerAuth_SendsResolvedToken()
+    {
+        _sender
+            .Setup(s => s.SendAsync(
+                It.Is<HttpRequest>(r => r.Auth is BearerAuth && ((BearerAuth)r.Auth!).Token == "tok"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "", 1)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.SelectedAuthType = AuthType.Bearer;
+        vm.BearerToken = "tok";
+
+        await vm.SendCommand.Execute();
+
+        vm.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public void BasicPassword_Change_MarksDirty()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.SelectedAuthType = AuthType.Basic;
+        vm.MarkSaved();
+
+        vm.BasicPassword = "s3cr3t";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void LoadHeaders_PopulatesHeadersCollection()
+    {
+        var vm = CreateVm();
+        var headers = new List<HttpHeader>
+        {
+            new HttpHeader("X-Foo", "bar", true),
+            new HttpHeader("X-Off", "skip", false)
+        };
+
+        vm.LoadHeaders(headers);
+
+        vm.Headers.Should().HaveCount(2);
+        vm.Headers[0].Name.Should().Be("X-Foo");
+        vm.Headers[0].Value.Should().Be("bar");
+        vm.Headers[0].Enabled.Should().BeTrue();
+        vm.Headers[1].Name.Should().Be("X-Off");
+        vm.Headers[1].Enabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoadAuth_Bearer_SetsAuthTypeAndToken()
+    {
+        var vm = CreateVm();
+
+        vm.LoadAuth(new BearerAuth("my-token"));
+
+        vm.SelectedAuthType.Should().Be(AuthType.Bearer);
+        vm.BearerToken.Should().Be("my-token");
+    }
+
+    [Fact]
+    public void LoadAuth_ApiKey_SetsAllFields()
+    {
+        var vm = CreateVm();
+
+        vm.LoadAuth(new ApiKeyAuth("X-Key", "secret", ApiKeyTarget.QueryParam));
+
+        vm.SelectedAuthType.Should().Be(AuthType.ApiKey);
+        vm.ApiKeyName.Should().Be("X-Key");
+        vm.ApiKeyValue.Should().Be("secret");
+        vm.ApiKeyTarget.Should().Be(ApiKeyTarget.QueryParam);
+    }
+
+    [Fact]
+    public void LoadAuth_Basic_SetsUsernameAndPassword()
+    {
+        var vm = CreateVm();
+
+        vm.LoadAuth(new BasicAuth("admin", "pass"));
+
+        vm.SelectedAuthType.Should().Be(AuthType.Basic);
+        vm.BasicUsername.Should().Be("admin");
+        vm.BasicPassword.Should().Be("pass");
     }
 }

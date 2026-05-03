@@ -29,7 +29,7 @@ dotnet test --watch   # run tests in watch mode
 
 ### Current state
 
-**Authentication** is modelled as a discriminated type on the request — one of: None, ApiKey, BearerToken, BasicAuth, OAuth2. The request editor switches its auth sub-panel based on the active type.
+**Authentication** is modelled as a discriminated type on the request — one of: None, ApiKey, BearerToken, BasicAuth. The request editor switches its auth sub-panel based on the active type. Auth is injected into the outgoing request at send time (not visible in the Headers tab).
 
 **Environment variables** are resolved at send time: variable references in URLs, headers, and body are substituted from the active environment's key/value map before the HTTP request is built.
 
