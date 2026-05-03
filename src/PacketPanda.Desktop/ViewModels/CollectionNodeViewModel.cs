@@ -50,7 +50,7 @@ public class CollectionNodeViewModel : ReactiveObject
 
     public bool IsFolder { get; }
     public string? Method { get; }
-    public CollectionNode? SourceNode { get; }
+    public CollectionNode? SourceNode { get; set; }
     public Action<RequestNode>? RequestOpenedCallback { get; init; }
     public ReactiveCommand<Unit, Unit>? NewRequestCommand { get; init; }
     public ReactiveCommand<Unit, Unit>? NewFolderCommand { get; init; }

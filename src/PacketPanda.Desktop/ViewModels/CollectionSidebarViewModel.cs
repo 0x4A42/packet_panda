@@ -69,6 +69,12 @@ public class CollectionSidebarViewModel : ReactiveObject
             await AddCollectionFromPathAsync(path);
     }
 
+    public async Task SyncCollectionFromDiskAsync(string filePath)
+    {
+        var vm = Collections.FirstOrDefault(c => string.Equals(c.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+        if (vm is not null) await vm.SyncFromDiskAsync();
+    }
+
     public void RemoveCollection(CollectionViewModel collection)
     {
         Collections.Remove(collection);
@@ -223,6 +229,41 @@ public class CollectionViewModel : ReactiveObject
 
     public string Name => _collection.Name;
     public string FilePath => _collection.FilePath;
+
+    public async Task SyncFromDiskAsync()
+    {
+        try
+        {
+            _collection = await _store.LoadAsync(_collection.FilePath);
+            var index = BuildNodeIndex(_collection.Root);
+            foreach (var vm in Items)
+                RefreshSourceNodes(vm, index);
+        }
+        catch { /* best-effort */ }
+    }
+
+    private static Dictionary<string, CollectionNode> BuildNodeIndex(FolderNode folder)
+    {
+        var dict = new Dictionary<string, CollectionNode>(StringComparer.Ordinal);
+        IndexNode(dict, folder);
+        return dict;
+    }
+
+    private static void IndexNode(Dictionary<string, CollectionNode> dict, CollectionNode node)
+    {
+        dict[node.Id] = node;
+        if (node is FolderNode f)
+            foreach (var child in f.Children)
+                IndexNode(dict, child);
+    }
+
+    private static void RefreshSourceNodes(CollectionNodeViewModel vm, Dictionary<string, CollectionNode> index)
+    {
+        if (index.TryGetValue(vm.Id, out var node))
+            vm.SourceNode = node;
+        foreach (var child in vm.Children)
+            RefreshSourceNodes(child, index);
+    }
     public ObservableCollection<CollectionNodeViewModel> Items { get; }
 
     public bool IsEditing

@@ -251,7 +251,11 @@ public class ShellViewModel : ViewModelBase, IDisposable
         editor.MarkSaved();
 
         var tab = new TabViewModel(editor, _dialog);
-        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+        var savedSub = editor.SavedSuccessfully
+            .Subscribe(path => _ = Sidebar.SyncCollectionFromDiskAsync(path));
+        _closeSubscriptions[tab] = new System.Reactive.Disposables.CompositeDisposable(
+            tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
+            savedSub);
         Tabs.Add(tab);
         ActiveTab = tab;
         return Task.CompletedTask;
