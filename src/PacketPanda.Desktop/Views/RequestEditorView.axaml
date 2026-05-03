@@ -84,6 +84,77 @@
 
         <TabControl Grid.Row="1" MinHeight="160">
 
+            <!-- Params tab -->
+            <TabItem Header="Params">
+                <DataGrid Margin="0,4"
+                          ItemsSource="{Binding QueryParams}"
+                          AutoGenerateColumns="False"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="1"
+                          BorderBrush="#DDDDDD"
+                          RowHeight="34"
+                          HeadersVisibility="Column"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:QueryParamRowViewModel">
+                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Key" Width="2*" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:QueryParamRowViewModel">
+                                    <TextBox Text="{Binding Key}"
+                                             Watermark="Key"
+                                             FontFamily="Consolas,Menlo,monospace"
+                                             FontSize="12"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="6,0"
+                                             VerticalContentAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Value" Width="2*" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:QueryParamRowViewModel">
+                                    <TextBox Text="{Binding Value}"
+                                             Watermark="Value or {variable}"
+                                             FontFamily="Consolas,Menlo,monospace"
+                                             FontSize="12"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="6,0"
+                                             VerticalContentAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:QueryParamRowViewModel">
+                                    <Button Content="✕"
+                                            Command="{Binding RemoveCommand}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="4,0"
+                                            FontSize="11"
+                                            Foreground="#AAAAAA"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Cursor="Hand" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
             <!-- Body tab -->
             <TabItem Header="Body">
                 <Panel Background="White">
