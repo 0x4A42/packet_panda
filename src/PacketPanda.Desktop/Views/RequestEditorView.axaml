@@ -156,7 +156,7 @@
             </TabItem>
 
             <!-- Auth tab -->
-            <TabItem Header="Auth">
+            <TabItem Header="Authorisation">
                 <Grid ColumnDefinitions="200,Auto,*" Margin="0,6">
 
                     <!-- Left: type selector + description -->
