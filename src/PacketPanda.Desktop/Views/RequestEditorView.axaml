@@ -27,7 +27,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,220" RowSpacing="8" Margin="12">
+    <Grid RowDefinitions="Auto,*,8,220" RowSpacing="8" Margin="12">
 
         <!-- URL bar: method selector | URL | Send | 💾 ▾ -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="4">
@@ -369,7 +369,14 @@
 
         </TabControl>
 
-        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+        <GridSplitter Grid.Row="2"
+                      ResizeDirection="Rows"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="#E0E0E0"
+                      Cursor="SizeNorthSouth" />
+
+        <Grid Grid.Row="3" RowDefinitions="Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="IndianRed"
