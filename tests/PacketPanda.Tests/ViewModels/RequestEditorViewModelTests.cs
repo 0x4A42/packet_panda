@@ -666,4 +666,88 @@ public sealed class RequestEditorViewModelTests
         vm.Url.Should().NotContain("foo");
         vm.QueryParams.Should().Contain(p => p.Key == "foo" && !p.Enabled);
     }
+
+    // ── Response headers / cookies ───────────────────────────────
+
+    [Fact]
+    public async Task Send_PopulatesResponseHeaders()
+    {
+        var responseHeaders = new List<HttpHeader> { new HttpHeader("Content-Type", "application/json") };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "{}", 10, responseHeaders)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseHeaders.Should().ContainSingle(h => h.Name == "Content-Type" && h.Value == "application/json");
+    }
+
+    [Fact]
+    public async Task Send_PopulatesResponseCookies_FromSetCookieHeaders()
+    {
+        var responseHeaders = new List<HttpHeader>
+        {
+            new HttpHeader("Set-Cookie", "session=abc123; Path=/; HttpOnly")
+        };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "", 10, responseHeaders)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseCookies.Should().ContainSingle(c => c.Name == "session" && c.Value == "abc123");
+    }
+
+    [Fact]
+    public async Task Send_ClearsResponseHeadersAndCookies_OnEachSend()
+    {
+        _sender
+            .SetupSequence(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "", 10,
+                new List<HttpHeader> { new HttpHeader("X-Foo", "1") })))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "", 10,
+                new List<HttpHeader>())));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+        vm.ResponseHeaders.Should().HaveCount(1);
+
+        await vm.SendCommand.Execute();
+        vm.ResponseHeaders.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ResponseHeadersTabLabel_NoResponse_ReturnsPlainHeaders()
+    {
+        var vm = CreateVm();
+        vm.ResponseHeadersTabLabel.Should().Be("Headers");
+    }
+
+    [Fact]
+    public async Task ResponseHeadersTabLabel_AfterSend_IncludesCount()
+    {
+        var responseHeaders = new List<HttpHeader>
+        {
+            new HttpHeader("Content-Type", "application/json"),
+            new HttpHeader("X-Request-Id", "123")
+        };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "", 10, responseHeaders)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseHeadersTabLabel.Should().Be("Headers (2)");
+    }
 }

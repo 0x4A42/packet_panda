@@ -141,6 +141,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _urlParamsSyncSub = this.WhenAnyValue(vm => vm.Url)
             .Subscribe(_ => SyncParamsFromUrl());
 
+        ResponseHeaders.CollectionChanged += (_, _) =>
+            this.RaisePropertyChanged(nameof(ResponseHeadersTabLabel));
+
         CaptureSnapshot();
     }
 
@@ -221,6 +224,12 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public ObservableCollection<QueryParamRowViewModel> QueryParams { get; } = new();
     public ReactiveCommand<Unit, Unit> AddQueryParamCommand { get; }
+
+    public ObservableCollection<HttpHeader> ResponseHeaders { get; } = new();
+    public ObservableCollection<CookieViewModel> ResponseCookies { get; } = new();
+
+    public string ResponseHeadersTabLabel =>
+        ResponseHeaders.Count == 0 ? "Headers" : $"Headers ({ResponseHeaders.Count})";
 
     public AuthType SelectedAuthType
     {
@@ -433,10 +442,23 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                 ResponseBody = ok.Response.Body;
                 ElapsedMilliseconds = ok.Response.ElapsedMilliseconds;
                 ErrorMessage = null;
+
+                ResponseHeaders.Clear();
+                ResponseCookies.Clear();
+                if (ok.Response.Headers is not null)
+                {
+                    foreach (var h in ok.Response.Headers)
+                        ResponseHeaders.Add(h);
+                    foreach (var h in ok.Response.Headers.Where(h =>
+                        string.Equals(h.Name, "Set-Cookie", StringComparison.OrdinalIgnoreCase)))
+                        ResponseCookies.Add(CookieViewModel.FromHeader(h.Value));
+                }
                 break;
             case SendResult.Error err:
                 ErrorMessage = err.Message;
                 StatusCode = null; ResponseBody = null; ElapsedMilliseconds = null;
+                ResponseHeaders.Clear();
+                ResponseCookies.Clear();
                 break;
         }
     }
