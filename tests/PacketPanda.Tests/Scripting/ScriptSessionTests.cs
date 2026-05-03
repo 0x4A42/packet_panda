@@ -52,4 +52,47 @@ public sealed class ScriptSessionTests
         var act = () => expect.to.include("xyz");
         act.Should().Throw<Exception>().WithMessage("*include*");
     }
+
+    [Fact]
+    public void PpEnvironment_Get_ReadsFromActiveEnv()
+    {
+        var env = new PacketPanda.Core.Environments.Environment(
+            "test", "/path",
+            new Dictionary<string, string> { ["token"] = "abc" });
+        var overlay = new Dictionary<string, string>();
+        var ppEnv = new PpEnvironment(env, overlay);
+
+        ppEnv.get("token").Should().Be("abc");
+    }
+
+    [Fact]
+    public void PpEnvironment_Set_WritesToOverlay()
+    {
+        var overlay = new Dictionary<string, string>();
+        var ppEnv = new PpEnvironment(null, overlay);
+
+        ppEnv.set("key", "value");
+
+        overlay["key"].Should().Be("value");
+    }
+
+    [Fact]
+    public void PpEnvironment_Get_OverlayTakesPrecedence()
+    {
+        var env = new PacketPanda.Core.Environments.Environment(
+            "test", "/path",
+            new Dictionary<string, string> { ["k"] = "original" });
+        var overlay = new Dictionary<string, string> { ["k"] = "overridden" };
+        var ppEnv = new PpEnvironment(env, overlay);
+
+        ppEnv.get("k").Should().Be("overridden");
+    }
+
+    [Fact]
+    public void PpEnvironment_Get_ReturnsNullForMissingKey()
+    {
+        var ppEnv = new PpEnvironment(null, new Dictionary<string, string>());
+
+        ppEnv.get("missing").Should().BeNull();
+    }
 }
