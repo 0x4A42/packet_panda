@@ -190,4 +190,51 @@ public class HttpRequestSenderTests : IDisposable
         var sentHeaders = _server.LogEntries.Single().RequestMessage!.Headers!;
         sentHeaders.Should().NotContainKey("Authorization");
     }
+
+    [Fact]
+    public async Task Send_EnabledQueryParams_AppendedToUrl()
+    {
+        _server.Given(Request.Create().WithPath("/search").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200).WithBody(""));
+
+        var request = new HttpRequest(HttpMethod.Get, _server.Url + "/search",
+            QueryParams: [new QueryParam("q", "hello"), new QueryParam("page", "2")]);
+
+        await _sender.SendAsync(request);
+
+        var requestedUrl = _server.LogEntries.Single().RequestMessage!.Url;
+        requestedUrl.Should().Contain("q=hello");
+        requestedUrl.Should().Contain("page=2");
+    }
+
+    [Fact]
+    public async Task Send_DisabledQueryParams_NotAppendedToUrl()
+    {
+        _server.Given(Request.Create().WithPath("/search").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200).WithBody(""));
+
+        var request = new HttpRequest(HttpMethod.Get, _server.Url + "/search",
+            QueryParams: [new QueryParam("debug", "1", Enabled: false)]);
+
+        await _sender.SendAsync(request);
+
+        var requestedUrl = _server.LogEntries.Single().RequestMessage!.Url;
+        requestedUrl.Should().NotContain("debug");
+    }
+
+    [Fact]
+    public async Task Send_PopulatesResponseHeaders()
+    {
+        _server.Given(Request.Create().WithPath("/h").UsingGet())
+               .RespondWith(Response.Create().WithStatusCode(200)
+                   .WithHeader("X-Request-Id", "abc123")
+                   .WithBody(""));
+
+        var result = await _sender.SendAsync(new HttpRequest(HttpMethod.Get, _server.Url + "/h"));
+
+        var ok = result.Should().BeOfType<SendResult.Ok>().Subject;
+        ok.Response.Headers.Should().NotBeNull();
+        ok.Response.Headers!.Should().Contain(h =>
+            h.Name.Equals("X-Request-Id", StringComparison.OrdinalIgnoreCase) && h.Value == "abc123");
+    }
 }

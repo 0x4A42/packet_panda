@@ -31,7 +31,14 @@ public sealed class HttpRequestSender : IHttpRequestSender
             using var response = await _httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             stopwatch.Stop();
-            return new SendResult.Ok(new HttpResponse((int)response.StatusCode, body, stopwatch.ElapsedMilliseconds));
+
+            var responseHeaders = response.Headers
+                .Concat(response.Content.Headers)
+                .Select(h => new HttpHeader(h.Key, string.Join(", ", h.Value)))
+                .ToList();
+
+            return new SendResult.Ok(new HttpResponse(
+                (int)response.StatusCode, body, stopwatch.ElapsedMilliseconds, responseHeaders));
         }
         catch (HttpRequestException ex)
         {
@@ -69,6 +76,19 @@ public sealed class HttpRequestSender : IHttpRequestSender
         {
             var sep = url.Contains('?') ? '&' : '?';
             url = $"{url}{sep}{Uri.EscapeDataString(qpAuth.Name)}={Uri.EscapeDataString(qpAuth.Value)}";
+        }
+
+        if (request.QueryParams is { Count: > 0 })
+        {
+            var enabled = request.QueryParams
+                .Where(p => p.Enabled && !string.IsNullOrEmpty(p.Key))
+                .Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}")
+                .ToList();
+            if (enabled.Count > 0)
+            {
+                var sep = url.Contains('?') ? '&' : '?';
+                url = $"{url}{sep}{string.Join("&", enabled)}";
+            }
         }
 
         var message = new HttpRequestMessage(method, url);
