@@ -7,5 +7,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Jint" Version="4.8.0" />
+  </ItemGroup>
+
 
 </Project>
