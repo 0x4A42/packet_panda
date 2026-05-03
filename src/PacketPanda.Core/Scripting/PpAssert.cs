@@ -11,7 +11,7 @@ public sealed class PpExpect
 public sealed class PpExpectTo
 {
     private readonly object? _value;
-    internal PpExpectTo(object? value) { _value = value; }
+    public PpExpectTo(object? value) { _value = value; }
 
     // .be returns self so .to.be.above(n) chains correctly
     public PpExpectTo be => this;
