@@ -27,7 +27,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="12">
+    <Grid RowDefinitions="Auto,*,220" RowSpacing="8" Margin="12">
 
         <!-- URL bar: method selector | URL | Send | 💾 ▾ -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="4">
@@ -112,48 +112,73 @@
 
             <!-- Headers tab -->
             <TabItem Header="Headers">
-                <Grid RowDefinitions="*,Auto" Margin="0,4">
-                    <ScrollViewer Grid.Row="0" MaxHeight="110">
-                        <ItemsControl ItemsSource="{Binding Headers}">
-                            <ItemsControl.ItemTemplate>
+                <DataGrid Margin="0,4"
+                          ItemsSource="{Binding Headers}"
+                          AutoGenerateColumns="False"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="1"
+                          BorderBrush="#DDDDDD"
+                          RowHeight="34"
+                          HeadersVisibility="Column"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:HeaderRowViewModel">
-                                    <Grid ColumnDefinitions="Auto,*,*,Auto" ColumnSpacing="4" Margin="0,2">
-                                        <CheckBox Grid.Column="0"
-                                                  IsChecked="{Binding Enabled}"
-                                                  VerticalAlignment="Center" />
-                                        <TextBox Grid.Column="1"
-                                                 Text="{Binding Name}"
-                                                 Watermark="Name"
-                                                 FontFamily="Consolas,Menlo,monospace"
-                                                 FontSize="12" />
-                                        <TextBox Grid.Column="2"
-                                                 Text="{Binding Value}"
-                                                 Watermark="Value or {{variable}}"
-                                                 FontFamily="Consolas,Menlo,monospace"
-                                                 FontSize="12" />
-                                        <Button Grid.Column="3"
-                                                Content="✕"
-                                                Command="{Binding RemoveCommand}"
-                                                Background="Transparent"
-                                                BorderThickness="0"
-                                                Padding="6,4"
-                                                Foreground="#888888" />
-                                    </Grid>
+                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                    <Button Grid.Row="1"
-                            Content="+ Add Header"
-                            Command="{Binding AddHeaderCommand}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0,4"
-                            HorizontalAlignment="Left"
-                            Foreground="#207AC1"
-                            FontSize="12"
-                            Cursor="Hand" />
-                </Grid>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Name" Width="2*" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:HeaderRowViewModel">
+                                    <TextBox Text="{Binding Name}"
+                                             Watermark="Name"
+                                             FontFamily="Consolas,Menlo,monospace"
+                                             FontSize="12"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="6,0"
+                                             VerticalContentAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Value" Width="2*" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:HeaderRowViewModel">
+                                    <TextBox Text="{Binding Value}"
+                                             Watermark="Value or {variable}"
+                                             FontFamily="Consolas,Menlo,monospace"
+                                             FontSize="12"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="6,0"
+                                             VerticalContentAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:HeaderRowViewModel">
+                                    <Button Content="✕"
+                                            Command="{Binding RemoveCommand}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="4,0"
+                                            FontSize="11"
+                                            Foreground="#AAAAAA"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Cursor="Hand" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
             </TabItem>
 
             <!-- Auth tab -->
@@ -259,7 +284,8 @@
                      IsReadOnly="True"
                      AcceptsReturn="True"
                      TextWrapping="Wrap"
-                     FontFamily="Consolas,Menlo,monospace" />
+                     FontFamily="Consolas,Menlo,monospace"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
         </Grid>
 
         <Popup x:Name="VarPopup"

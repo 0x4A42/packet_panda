@@ -85,10 +85,13 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RequestBody)
             .Subscribe(_ => RecomputeDirty());
 
-        AddHeaderCommand = ReactiveCommand.Create(() =>
-            Headers.Add(new HeaderRowViewModel(row => { Headers.Remove(row); RecomputeDirty(); })));
+        AddHeaderCommand = ReactiveCommand.Create(() => Headers.Add(CreateHeaderRow()));
 
-        void OnHeaderRowChanged(object? s, PropertyChangedEventArgs e) => RecomputeDirty();
+        void OnHeaderRowChanged(object? s, PropertyChangedEventArgs e)
+        {
+            EnsureTrailingEmptyRow();
+            RecomputeDirty();
+        }
         Headers.CollectionChanged += (_, e) =>
         {
             if (e.NewItems != null)
@@ -99,6 +102,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                     row.PropertyChanged -= OnHeaderRowChanged;
             RecomputeDirty();
         };
+        EnsureTrailingEmptyRow();
 
         _authDirtySub = this.WhenAnyValue(
             vm => vm.SelectedAuthType,
@@ -262,7 +266,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public HttpRequest BuildRequest()
     {
         var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-        var headers = Headers.Select(h => new HttpHeader(h.Name, h.Value, h.Enabled)).ToList();
+        var headers = Headers
+            .Where(h => !string.IsNullOrEmpty(h.Name))
+            .Select(h => new HttpHeader(h.Name, h.Value, h.Enabled))
+            .ToList();
         AuthConfig auth = SelectedAuthType switch
         {
             AuthType.Bearer => new BearerAuth(BearerToken),
@@ -277,8 +284,14 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     {
         Headers.Clear();
         foreach (var h in headers)
-            Headers.Add(new HeaderRowViewModel(row => { Headers.Remove(row); RecomputeDirty(); })
-                { Enabled = h.Enabled, Name = h.Name, Value = h.Value });
+        {
+            var row = CreateHeaderRow();
+            row.Enabled = h.Enabled;
+            row.Name = h.Name;
+            row.Value = h.Value;
+            Headers.Add(row);
+        }
+        EnsureTrailingEmptyRow();
     }
 
     public void LoadAuth(AuthConfig auth)
@@ -412,8 +425,20 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey());
     }
 
+    private HeaderRowViewModel CreateHeaderRow() =>
+        new HeaderRowViewModel(row => { Headers.Remove(row); EnsureTrailingEmptyRow(); });
+
+    private void EnsureTrailingEmptyRow()
+    {
+        var last = Headers.LastOrDefault();
+        if (last is null || !string.IsNullOrEmpty(last.Name) || !string.IsNullOrEmpty(last.Value))
+            Headers.Add(CreateHeaderRow());
+    }
+
     private string ComputeHeadersKey() =>
-        string.Join("|", Headers.Select(h => $"{h.Enabled}:{h.Name}:{h.Value}"));
+        string.Join("|", Headers
+            .Where(h => !string.IsNullOrEmpty(h.Name))
+            .Select(h => $"{h.Enabled}:{h.Name}:{h.Value}"));
 
     private string ComputeAuthKey() => SelectedAuthType switch
     {
