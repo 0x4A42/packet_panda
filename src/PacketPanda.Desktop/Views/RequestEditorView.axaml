@@ -331,7 +331,7 @@
 
         </TabControl>
 
-        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="IndianRed"
@@ -348,15 +348,75 @@
                 <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat='{}{0} ms'}" />
             </StackPanel>
 
-            <TextBlock Grid.Row="2" Text="Response body" Opacity="0.7" />
+            <TabControl Grid.Row="2">
 
-            <TextBox Grid.Row="3"
-                     Text="{Binding ResponseBody}"
-                     IsReadOnly="True"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     FontFamily="Consolas,Menlo,monospace"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                <!-- Body tab -->
+                <TabItem Header="Body">
+                    <TextBox Text="{Binding ResponseBody}"
+                             IsReadOnly="True"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             FontFamily="Consolas,Menlo,monospace"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                </TabItem>
+
+                <!-- Cookies tab -->
+                <TabItem Header="Cookies">
+                    <DataGrid ItemsSource="{Binding ResponseCookies}"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="1"
+                              BorderBrush="#DDDDDD"
+                              RowHeight="34"
+                              HeadersVisibility="Column"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name"
+                                               Binding="{Binding Name}"
+                                               Width="2*"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                            <DataGridTextColumn Header="Value"
+                                               Binding="{Binding Value}"
+                                               Width="3*"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <!-- Headers tab -->
+                <TabItem Header="{Binding ResponseHeadersTabLabel}">
+                    <DataGrid ItemsSource="{Binding ResponseHeaders}"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="1"
+                              BorderBrush="#DDDDDD"
+                              RowHeight="34"
+                              HeadersVisibility="Column"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name"
+                                               Binding="{Binding Name}"
+                                               Width="2*"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                            <DataGridTextColumn Header="Value"
+                                               Binding="{Binding Value}"
+                                               Width="3*"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+            </TabControl>
         </Grid>
 
         <Popup x:Name="VarPopup"
