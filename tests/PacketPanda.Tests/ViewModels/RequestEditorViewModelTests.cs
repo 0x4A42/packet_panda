@@ -363,25 +363,33 @@ public sealed class RequestEditorViewModelTests
     }
 
     [Fact]
+    public void Headers_FreshViewModel_HasOneTrailingEmptyRow()
+    {
+        var vm = CreateVm();
+        vm.Headers.Should().HaveCount(1);
+        vm.Headers[0].Name.Should().BeEmpty();
+    }
+
+    [Fact]
     public void AddHeader_AddsRowToHeaders()
     {
         var vm = CreateVm();
         vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
-        vm.Headers.Should().HaveCount(1);
+        vm.Headers.Should().HaveCount(2);
     }
 
     [Fact]
-    public void RemoveHeader_RemovesRowFromHeaders()
+    public void RemoveHeader_TrailingEmptyRowAlwaysPresent()
     {
         var vm = CreateVm();
         vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
-        var row = vm.Headers.Single();
-        row.RemoveCommand.Execute(Unit.Default).Subscribe();
-        vm.Headers.Should().BeEmpty();
+        vm.Headers[0].RemoveCommand.Execute(Unit.Default).Subscribe();
+        vm.Headers.Should().HaveCount(1);
+        vm.Headers[0].Name.Should().BeEmpty();
     }
 
     [Fact]
-    public void Headers_AddRow_MarksDirty()
+    public void Headers_AddEmptyRow_DoesNotMarkDirty()
     {
         var vm = CreateVm();
         vm.Url = "https://example.com";
@@ -389,7 +397,7 @@ public sealed class RequestEditorViewModelTests
 
         vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
 
-        vm.IsDirty.Should().BeTrue();
+        vm.IsDirty.Should().BeFalse();
     }
 
     [Fact]
@@ -397,10 +405,9 @@ public sealed class RequestEditorViewModelTests
     {
         var vm = CreateVm();
         vm.Url = "https://example.com";
-        vm.AddHeaderCommand.Execute(Unit.Default).Subscribe();
         vm.MarkSaved();
 
-        vm.Headers.Single().Name = "X-Foo";
+        vm.Headers[0].Name = "X-Foo";
 
         vm.IsDirty.Should().BeTrue();
     }
@@ -483,7 +490,7 @@ public sealed class RequestEditorViewModelTests
     }
 
     [Fact]
-    public void LoadHeaders_PopulatesHeadersCollection()
+    public void LoadHeaders_PopulatesHeadersCollectionWithTrailingEmptyRow()
     {
         var vm = CreateVm();
         var headers = new List<HttpHeader>
@@ -494,12 +501,13 @@ public sealed class RequestEditorViewModelTests
 
         vm.LoadHeaders(headers);
 
-        vm.Headers.Should().HaveCount(2);
+        vm.Headers.Should().HaveCount(3); // 2 real + 1 trailing empty
         vm.Headers[0].Name.Should().Be("X-Foo");
         vm.Headers[0].Value.Should().Be("bar");
         vm.Headers[0].Enabled.Should().BeTrue();
         vm.Headers[1].Name.Should().Be("X-Off");
         vm.Headers[1].Enabled.Should().BeFalse();
+        vm.Headers[2].Name.Should().BeEmpty();
     }
 
     [Fact]
