@@ -240,12 +240,14 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             this.RaisePropertyChanged(nameof(IsApiKeyAuth));
             this.RaisePropertyChanged(nameof(IsBearerAuth));
             this.RaisePropertyChanged(nameof(IsBasicAuth));
+            this.RaisePropertyChanged(nameof(IsNoAuth));
         }
     }
 
     public bool IsApiKeyAuth => SelectedAuthType == AuthType.ApiKey;
     public bool IsBearerAuth => SelectedAuthType == AuthType.Bearer;
     public bool IsBasicAuth => SelectedAuthType == AuthType.Basic;
+    public bool IsNoAuth => SelectedAuthType == AuthType.None;
 
     public string ApiKeyName
     {
