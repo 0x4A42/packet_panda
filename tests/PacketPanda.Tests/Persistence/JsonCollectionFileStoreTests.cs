@@ -395,7 +395,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
                     [new HttpHeader("X-Foo", "bar"), new HttpHeader("X-Off", "skip", Enabled: false)],
-                    new NoAuth())
+                    new NoAuth(), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
         var loaded = await _store.LoadAsync(_tempPath);
@@ -412,7 +412,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    Array.Empty<HttpHeader>(), new BearerAuth("tok"))
+                    Array.Empty<HttpHeader>(), new BearerAuth("tok"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
         var loaded = await _store.LoadAsync(_tempPath);
@@ -427,7 +427,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    Array.Empty<HttpHeader>(), new BasicAuth("u", "p"))
+                    Array.Empty<HttpHeader>(), new BasicAuth("u", "p"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
         var loaded = await _store.LoadAsync(_tempPath);
@@ -442,7 +442,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    Array.Empty<HttpHeader>(), new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam))
+                    Array.Empty<HttpHeader>(), new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
         var loaded = await _store.LoadAsync(_tempPath);
@@ -457,7 +457,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    Array.Empty<HttpHeader>(), new NoAuth())
+                    Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
 
@@ -475,7 +475,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    [new HttpHeader("X-Keep", "v")], new BearerAuth("tok"))
+                    [new HttpHeader("X-Keep", "v")], new BearerAuth("tok"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
 

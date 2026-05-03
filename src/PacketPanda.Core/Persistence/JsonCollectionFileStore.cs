@@ -133,7 +133,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     };
                 }
 
-                result.Add(new RequestNode(id, name, collectionPath, method, url, body, headers, auth));
+                result.Add(new RequestNode(id, name, collectionPath, method, url, body, headers, auth, Array.Empty<QueryParam>()));
             }
             else if (item.TryGetProperty("item", out var subItems))
             {
@@ -305,7 +305,8 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     Url = updated.Url,
                     Body = updated.Body,
                     Headers = updated.Headers ?? req.Headers,
-                    Auth = updated.Auth ?? req.Auth
+                    Auth = updated.Auth ?? req.Auth,
+                    QueryParams = updated.QueryParams ?? req.QueryParams
                 },
             RequestNode => child,
             FolderNode f => UpdateInTree(f, requestId, updated),
