@@ -10,6 +10,8 @@
 
     <UserControl.Resources>
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
+        <conv:AuthTypeDisplayConverter x:Key="AuthTypeDisplayConverter" />
+        <conv:ApiKeyTargetDisplayConverter x:Key="ApiKeyTargetDisplayConverter" />
     </UserControl.Resources>
 
     <!-- Force the inner text-presenter foreground to transparent so the FluentTheme
@@ -25,7 +27,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8" Margin="12">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="12">
 
         <!-- URL bar: method selector | URL | Send | 💾 ▾ -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="4">
@@ -80,32 +82,160 @@
             </StackPanel>
         </Grid>
 
-        <TextBlock Grid.Row="1" Text="Body (JSON, optional)" Opacity="0.7" />
+        <TabControl Grid.Row="1" MinHeight="160">
 
-        <Panel Grid.Row="2" Height="120" Background="White">
-            <TextBox x:Name="BodyEditor"
-                     Text="{Binding RequestBody}"
-                     AcceptsReturn="True"
-                     AcceptsTab="True"
-                     Foreground="Transparent"
-                     Background="Transparent"
-                     CaretBrush="#1E1E1E"
-                     FontFamily="Consolas,Menlo,monospace"
-                     FontSize="13"
-                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     TextWrapping="NoWrap"
-                     Padding="9,5,9,5" />
-            <TextBlock x:Name="BodyOverlay"
-                       Foreground="#1E1E1E"
-                       FontFamily="Consolas,Menlo,monospace"
-                       FontSize="13"
-                       Padding="9,5,9,5"
-                       TextWrapping="NoWrap"
-                       IsHitTestVisible="False" />
-        </Panel>
+            <!-- Body tab -->
+            <TabItem Header="Body">
+                <Panel Background="White">
+                    <TextBox x:Name="BodyEditor"
+                             Text="{Binding RequestBody}"
+                             AcceptsReturn="True"
+                             AcceptsTab="True"
+                             Foreground="Transparent"
+                             Background="Transparent"
+                             CaretBrush="#1E1E1E"
+                             FontFamily="Consolas,Menlo,monospace"
+                             FontSize="13"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             TextWrapping="NoWrap"
+                             Padding="9,5,9,5" />
+                    <TextBlock x:Name="BodyOverlay"
+                               Foreground="#1E1E1E"
+                               FontFamily="Consolas,Menlo,monospace"
+                               FontSize="13"
+                               Padding="9,5,9,5"
+                               TextWrapping="NoWrap"
+                               IsHitTestVisible="False" />
+                </Panel>
+            </TabItem>
 
-        <Grid Grid.Row="3" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+            <!-- Headers tab -->
+            <TabItem Header="Headers">
+                <Grid RowDefinitions="*,Auto" Margin="0,4">
+                    <ScrollViewer Grid.Row="0" MaxHeight="110">
+                        <ItemsControl ItemsSource="{Binding Headers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HeaderRowViewModel">
+                                    <Grid ColumnDefinitions="Auto,*,*,Auto" ColumnSpacing="4" Margin="0,2">
+                                        <CheckBox Grid.Column="0"
+                                                  IsChecked="{Binding Enabled}"
+                                                  VerticalAlignment="Center" />
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Name}"
+                                                 Watermark="Name"
+                                                 FontFamily="Consolas,Menlo,monospace"
+                                                 FontSize="12" />
+                                        <TextBox Grid.Column="2"
+                                                 Text="{Binding Value}"
+                                                 Watermark="Value or {{variable}}"
+                                                 FontFamily="Consolas,Menlo,monospace"
+                                                 FontSize="12" />
+                                        <Button Grid.Column="3"
+                                                Content="✕"
+                                                Command="{Binding RemoveCommand}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="6,4"
+                                                Foreground="#888888" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <Button Grid.Row="1"
+                            Content="+ Add Header"
+                            Command="{Binding AddHeaderCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0,4"
+                            HorizontalAlignment="Left"
+                            Foreground="#207AC1"
+                            FontSize="12"
+                            Cursor="Hand" />
+                </Grid>
+            </TabItem>
+
+            <!-- Auth tab -->
+            <TabItem Header="Auth">
+                <StackPanel Spacing="8" Margin="0,6">
+                    <ComboBox ItemsSource="{Binding AvailableAuthTypes}"
+                              SelectedItem="{Binding SelectedAuthType}"
+                              MinWidth="160">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource AuthTypeDisplayConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <!-- Bearer Token -->
+                    <StackPanel IsVisible="{Binding IsBearerAuth}" Spacing="4">
+                        <TextBlock Text="Token" Opacity="0.7" FontSize="12" />
+                        <TextBox Text="{Binding BearerToken}"
+                                 Watermark="Token or {{variable}}"
+                                 FontFamily="Consolas,Menlo,monospace"
+                                 FontSize="12" />
+                    </StackPanel>
+
+                    <!-- API Key -->
+                    <StackPanel IsVisible="{Binding IsApiKeyAuth}" Spacing="4">
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Key name" Opacity="0.7" FontSize="12" />
+                                <TextBox Text="{Binding ApiKeyName}"
+                                         Watermark="e.g. X-API-Key"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="12" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Key value" Opacity="0.7" FontSize="12" />
+                                <TextBox Text="{Binding ApiKeyValue}"
+                                         Watermark="Value or {{variable}}"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="12" />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Add to" Opacity="0.7" FontSize="12" />
+                            <ComboBox ItemsSource="{Binding AvailableApiKeyTargets}"
+                                      SelectedItem="{Binding ApiKeyTarget}"
+                                      MinWidth="160">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Converter={StaticResource ApiKeyTargetDisplayConverter}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Basic Auth -->
+                    <StackPanel IsVisible="{Binding IsBasicAuth}" Spacing="4">
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Username" Opacity="0.7" FontSize="12" />
+                                <TextBox Text="{Binding BasicUsername}"
+                                         Watermark="Username or {{variable}}"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="12" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Password" Opacity="0.7" FontSize="12" />
+                                <TextBox Text="{Binding BasicPassword}"
+                                         Watermark="Password or {{variable}}"
+                                         PasswordChar="●"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="12" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+        </TabControl>
+
+        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="IndianRed"
