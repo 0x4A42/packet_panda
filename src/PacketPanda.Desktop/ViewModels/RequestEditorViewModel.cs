@@ -44,6 +44,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private string _basicPassword = string.Empty;
     private IDisposable? _authDirtySub;
     private IDisposable? _authDirtySubPassword;
+    private readonly System.Reactive.Subjects.Subject<string> _savedSuccessfully = new();
 
     private sealed record RequestSnapshot(
         HttpMethod Method,
@@ -185,6 +186,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
+    public System.IObservable<string> SavedSuccessfully => _savedSuccessfully;
 
     public AuthType SelectedAuthType
     {
@@ -386,6 +388,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             await _collectionStore.UpdateRequestAsync(CollectionFilePath, RequestId, BuildRequest());
             CaptureSnapshot();
             ErrorMessage = null;
+            _savedSuccessfully.OnNext(CollectionFilePath);
         }
         catch (RequestFileException ex)
         {
@@ -399,6 +402,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _dirtySub?.Dispose();
         _authDirtySub?.Dispose();
         _authDirtySubPassword?.Dispose();
+        _savedSuccessfully.Dispose();
     }
 
     private void RecomputeDirty()
