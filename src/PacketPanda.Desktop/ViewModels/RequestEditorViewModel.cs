@@ -46,12 +46,16 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private IDisposable? _authDirtySubPassword;
     private readonly System.Reactive.Subjects.Subject<string> _savedSuccessfully = new();
 
+    private bool _syncingParams;
+    private IDisposable? _urlParamsSyncSub;
+
     private sealed record RequestSnapshot(
         HttpMethod Method,
         string Url,
         string? Body,
         string HeadersKey,
-        string AuthKey);
+        string AuthKey,
+        string ParamsKey);
 
     public RequestEditorViewModel(
         IHttpRequestSender sender,
@@ -113,6 +117,32 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
         _authDirtySubPassword = this.WhenAnyValue(vm => vm.BasicPassword)
             .Subscribe(_ => RecomputeDirty());
+
+        AddQueryParamCommand = ReactiveCommand.Create(() => QueryParams.Add(CreateParamRow()));
+
+        void OnParamRowChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            EnsureTrailingEmptyParamRow();
+            if (!_syncingParams) SyncUrlFromParams();
+            RecomputeDirty();
+        }
+        QueryParams.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems != null)
+                foreach (QueryParamRowViewModel row in e.NewItems)
+                    row.PropertyChanged += OnParamRowChanged;
+            if (e.OldItems != null)
+                foreach (QueryParamRowViewModel row in e.OldItems)
+                    row.PropertyChanged -= OnParamRowChanged;
+            RecomputeDirty();
+        };
+        EnsureTrailingEmptyParamRow();
+
+        _urlParamsSyncSub = this.WhenAnyValue(vm => vm.Url)
+            .Subscribe(_ => SyncParamsFromUrl());
+
+        ResponseHeaders.CollectionChanged += (_, _) =>
+            this.RaisePropertyChanged(nameof(ResponseHeadersTabLabel));
 
         CaptureSnapshot();
     }
@@ -192,6 +222,15 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
     public System.IObservable<string> SavedSuccessfully => _savedSuccessfully;
 
+    public ObservableCollection<QueryParamRowViewModel> QueryParams { get; } = new();
+    public ReactiveCommand<Unit, Unit> AddQueryParamCommand { get; }
+
+    public ObservableCollection<HttpHeader> ResponseHeaders { get; } = new();
+    public ObservableCollection<CookieViewModel> ResponseCookies { get; } = new();
+
+    public string ResponseHeadersTabLabel =>
+        ResponseHeaders.Count == 0 ? "Headers" : $"Headers ({ResponseHeaders.Count})";
+
     public AuthType SelectedAuthType
     {
         get => _selectedAuthType;
@@ -201,12 +240,14 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             this.RaisePropertyChanged(nameof(IsApiKeyAuth));
             this.RaisePropertyChanged(nameof(IsBearerAuth));
             this.RaisePropertyChanged(nameof(IsBasicAuth));
+            this.RaisePropertyChanged(nameof(IsNoAuth));
         }
     }
 
     public bool IsApiKeyAuth => SelectedAuthType == AuthType.ApiKey;
     public bool IsBearerAuth => SelectedAuthType == AuthType.Bearer;
     public bool IsBasicAuth => SelectedAuthType == AuthType.Basic;
+    public bool IsNoAuth => SelectedAuthType == AuthType.None;
 
     public string ApiKeyName
     {
@@ -277,7 +318,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             AuthType.Basic  => new BasicAuth(BasicUsername, BasicPassword),
             _               => new NoAuth()
         };
-        return new HttpRequest(SelectedMethod, Url, body, headers, auth);
+        var queryParams = QueryParams
+            .Where(p => p.Enabled && !string.IsNullOrEmpty(p.Key))
+            .Select(p => new QueryParam(p.Key, p.Value, p.Enabled))
+            .ToList();
+        return new HttpRequest(SelectedMethod, Url, body, headers, auth, queryParams);
     }
 
     public void LoadHeaders(IReadOnlyList<HttpHeader> headers)
@@ -317,6 +362,20 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                 SelectedAuthType = AuthType.None;
                 break;
         }
+    }
+
+    public void LoadQueryParams(IReadOnlyList<QueryParam> queryParams)
+    {
+        QueryParams.Clear();
+        foreach (var qp in queryParams)
+        {
+            var row = CreateParamRow();
+            row.Enabled = qp.Enabled;
+            row.Key = qp.Key;
+            row.Value = qp.Value;
+            QueryParams.Add(row);
+        }
+        EnsureTrailingEmptyParamRow();
     }
 
     private async Task SendAsync()
@@ -385,10 +444,23 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                 ResponseBody = ok.Response.Body;
                 ElapsedMilliseconds = ok.Response.ElapsedMilliseconds;
                 ErrorMessage = null;
+
+                ResponseHeaders.Clear();
+                ResponseCookies.Clear();
+                if (ok.Response.Headers is not null)
+                {
+                    foreach (var h in ok.Response.Headers)
+                        ResponseHeaders.Add(h);
+                    foreach (var h in ok.Response.Headers.Where(h =>
+                        string.Equals(h.Name, "Set-Cookie", StringComparison.OrdinalIgnoreCase)))
+                        ResponseCookies.Add(CookieViewModel.FromHeader(h.Value));
+                }
                 break;
             case SendResult.Error err:
                 ErrorMessage = err.Message;
                 StatusCode = null; ResponseBody = null; ElapsedMilliseconds = null;
+                ResponseHeaders.Clear();
+                ResponseCookies.Clear();
                 break;
         }
     }
@@ -415,6 +487,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _dirtySub?.Dispose();
         _authDirtySub?.Dispose();
         _authDirtySubPassword?.Dispose();
+        _urlParamsSyncSub?.Dispose();
         _savedSuccessfully.Dispose();
     }
 
@@ -422,7 +495,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     {
         var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
         IsDirty = _savedSnapshot != new RequestSnapshot(
-            SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey());
+            SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey());
     }
 
     private HeaderRowViewModel CreateHeaderRow() =>
@@ -448,10 +521,88 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _               => "none"
     };
 
+    private QueryParamRowViewModel CreateParamRow() =>
+        new QueryParamRowViewModel(row => { QueryParams.Remove(row); EnsureTrailingEmptyParamRow(); });
+
+    private void EnsureTrailingEmptyParamRow()
+    {
+        var last = QueryParams.LastOrDefault();
+        if (last is null || !string.IsNullOrEmpty(last.Key) || !string.IsNullOrEmpty(last.Value))
+            QueryParams.Add(CreateParamRow());
+    }
+
+    private string ComputeParamsKey() =>
+        string.Join("|", QueryParams
+            .Where(p => !string.IsNullOrEmpty(p.Key))
+            .Select(p => $"{p.Enabled}:{p.Key}:{p.Value}"));
+
+    private void SyncUrlFromParams()
+    {
+        if (_syncingParams) return;
+        _syncingParams = true;
+        try
+        {
+            var baseUrl = Url.Contains('?') ? Url[..Url.IndexOf('?')] : Url;
+            var enabledParams = QueryParams
+                .Where(p => p.Enabled && !string.IsNullOrEmpty(p.Key))
+                .Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}")
+                .ToList();
+            Url = enabledParams.Count > 0
+                ? $"{baseUrl}?{string.Join("&", enabledParams)}"
+                : baseUrl;
+        }
+        finally { _syncingParams = false; }
+    }
+
+    private void SyncParamsFromUrl()
+    {
+        if (_syncingParams) return;
+        _syncingParams = true;
+        try
+        {
+            var queryStart = Url.IndexOf('?');
+            var pairs = queryStart >= 0
+                ? Url[(queryStart + 1)..]
+                    .Split('&', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(p => p.Split('=', 2))
+                    .Where(p => p.Length == 2 && !string.IsNullOrEmpty(p[0]))
+                    .Select(p => (Key: Uri.UnescapeDataString(p[0]), Value: Uri.UnescapeDataString(p[1])))
+                    .ToList()
+                : new List<(string Key, string Value)>();
+
+            foreach (var row in QueryParams.Where(r => r.Enabled && !string.IsNullOrEmpty(r.Key)).ToList())
+            {
+                if (!pairs.Any(p => p.Key == row.Key))
+                    QueryParams.Remove(row);
+            }
+
+            foreach (var (key, value) in pairs)
+            {
+                var existing = QueryParams.FirstOrDefault(r => r.Enabled && r.Key == key);
+                if (existing is not null)
+                    existing.Value = value;
+                else
+                {
+                    var row = CreateParamRow();
+                    row.Key = key;
+                    row.Value = value;
+                    var trailingIdx = QueryParams.Count - 1;
+                    if (trailingIdx >= 0 && string.IsNullOrEmpty(QueryParams[trailingIdx].Key))
+                        QueryParams.Insert(trailingIdx, row);
+                    else
+                        QueryParams.Add(row);
+                }
+            }
+
+            EnsureTrailingEmptyParamRow();
+        }
+        finally { _syncingParams = false; }
+    }
+
     private void CaptureSnapshot()
     {
         var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-        _savedSnapshot = new RequestSnapshot(SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey());
+        _savedSnapshot = new RequestSnapshot(SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey());
         IsDirty = false;
     }
 

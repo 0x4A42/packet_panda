@@ -5,4 +5,5 @@ public sealed record HttpRequest(
     string Url,
     string? Body = null,
     IReadOnlyList<HttpHeader>? Headers = null,
-    AuthConfig? Auth = null);
+    AuthConfig? Auth = null,
+    IReadOnlyList<QueryParam>? QueryParams = null);

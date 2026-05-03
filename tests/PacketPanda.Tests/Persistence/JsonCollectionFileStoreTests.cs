@@ -395,7 +395,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
                     [new HttpHeader("X-Foo", "bar"), new HttpHeader("X-Off", "skip", Enabled: false)],
-                    new NoAuth())
+                    new NoAuth(), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
         var loaded = await _store.LoadAsync(_tempPath);
@@ -412,7 +412,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    Array.Empty<HttpHeader>(), new BearerAuth("tok"))
+                    Array.Empty<HttpHeader>(), new BearerAuth("tok"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
         var loaded = await _store.LoadAsync(_tempPath);
@@ -427,7 +427,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    Array.Empty<HttpHeader>(), new BasicAuth("u", "p"))
+                    Array.Empty<HttpHeader>(), new BasicAuth("u", "p"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
         var loaded = await _store.LoadAsync(_tempPath);
@@ -442,7 +442,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    Array.Empty<HttpHeader>(), new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam))
+                    Array.Empty<HttpHeader>(), new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
         var loaded = await _store.LoadAsync(_tempPath);
@@ -457,7 +457,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    Array.Empty<HttpHeader>(), new NoAuth())
+                    Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
 
@@ -475,7 +475,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
                 new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
-                    [new HttpHeader("X-Keep", "v")], new BearerAuth("tok"))
+                    [new HttpHeader("X-Keep", "v")], new BearerAuth("tok"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
 
@@ -488,5 +488,94 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         req.Url.Should().Be("https://updated");
         req.Headers.Should().ContainSingle(h => h.Name == "X-Keep");
         req.Auth.Should().Be(new BearerAuth("tok"));
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_ParsesQueryParams()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1", "name": "Search",
+                "request": {
+                  "method": "GET",
+                  "header": [],
+                  "url": {
+                    "raw": "https://api.example.com/search?q=hello",
+                    "query": [
+                      { "key": "q", "value": "hello" },
+                      { "key": "debug", "value": "1", "disabled": true }
+                    ]
+                  },
+                  "body": null
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.QueryParams.Should().HaveCount(2);
+        req.QueryParams[0].Key.Should().Be("q");
+        req.QueryParams[0].Value.Should().Be("hello");
+        req.QueryParams[0].Enabled.Should().BeTrue();
+        req.QueryParams[1].Key.Should().Be("debug");
+        req.QueryParams[1].Value.Should().Be("1");
+        req.QueryParams[1].Enabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_LegacyStringUrl_HasEmptyQueryParams()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1", "name": "Get",
+                "request": {
+                  "method": "GET",
+                  "header": [],
+                  "url": "https://api.example.com/users",
+                  "body": null
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.QueryParams.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Save_ThenLoad_RoundTripsQueryParams()
+    {
+        var queryParams = new List<QueryParam>
+        {
+            new QueryParam("q", "hello", true),
+            new QueryParam("debug", "1", false)
+        };
+
+        var root = new FolderNode(Guid.NewGuid().ToString(), "Col", new List<CollectionNode>
+        {
+            new RequestNode("r1", "Search", _tempPath, HttpMethod.Get,
+                "https://api.example.com/search?q=hello", null,
+                Array.Empty<HttpHeader>(), new NoAuth(), queryParams)
+        });
+        var collection = new Collection("Col", _tempPath, root);
+        await _store.SaveAsync(_tempPath, collection);
+
+        var loaded = await _store.LoadAsync(_tempPath);
+        var req = loaded.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.QueryParams.Should().HaveCount(2);
+        req.QueryParams[0].Key.Should().Be("q");
+        req.QueryParams[0].Value.Should().Be("hello");
+        req.QueryParams[0].Enabled.Should().BeTrue();
+        req.QueryParams[1].Key.Should().Be("debug");
+        req.QueryParams[1].Value.Should().Be("1");
+        req.QueryParams[1].Enabled.Should().BeFalse();
     }
 }

@@ -27,7 +27,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,220" RowSpacing="8" Margin="12">
+    <Grid RowDefinitions="Auto,*,8,220" RowSpacing="8" Margin="12">
 
         <!-- URL bar: method selector | URL | Send | 💾 ▾ -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="4">
@@ -84,30 +84,190 @@
 
         <TabControl Grid.Row="1" MinHeight="160">
 
-            <!-- Body tab -->
-            <TabItem Header="Body">
-                <Panel Background="White">
-                    <TextBox x:Name="BodyEditor"
-                             Text="{Binding RequestBody}"
-                             AcceptsReturn="True"
-                             AcceptsTab="True"
-                             Foreground="Transparent"
-                             Background="Transparent"
-                             CaretBrush="#1E1E1E"
-                             FontFamily="Consolas,Menlo,monospace"
-                             FontSize="13"
-                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             TextWrapping="NoWrap"
-                             Padding="9,5,9,5" />
-                    <TextBlock x:Name="BodyOverlay"
-                               Foreground="#1E1E1E"
-                               FontFamily="Consolas,Menlo,monospace"
-                               FontSize="13"
-                               Padding="9,5,9,5"
-                               TextWrapping="NoWrap"
-                               IsHitTestVisible="False" />
-                </Panel>
+            <!-- Params tab -->
+            <TabItem Header="Params">
+                <DataGrid Margin="0,4"
+                          ItemsSource="{Binding QueryParams}"
+                          AutoGenerateColumns="False"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="1"
+                          BorderBrush="#DDDDDD"
+                          RowHeight="34"
+                          HeadersVisibility="Column"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:QueryParamRowViewModel">
+                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Key" Width="2*" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:QueryParamRowViewModel">
+                                    <TextBox Text="{Binding Key}"
+                                             Watermark="Key"
+                                             FontFamily="Consolas,Menlo,monospace"
+                                             FontSize="12"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="6,0"
+                                             VerticalContentAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Value" Width="2*" IsReadOnly="False">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:QueryParamRowViewModel">
+                                    <TextBox Text="{Binding Value}"
+                                             Watermark="Value or {variable}"
+                                             FontFamily="Consolas,Menlo,monospace"
+                                             FontSize="12"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             Padding="6,0"
+                                             VerticalContentAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate x:DataType="vm:QueryParamRowViewModel">
+                                    <Button Content="✕"
+                                            Command="{Binding RemoveCommand}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="4,0"
+                                            FontSize="11"
+                                            Foreground="#AAAAAA"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Cursor="Hand" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <!-- Auth tab -->
+            <TabItem Header="Authorisation">
+                <Grid ColumnDefinitions="200,Auto,*" Margin="0,6">
+
+                    <!-- Left: type selector + description -->
+                    <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,0,0">
+                        <TextBlock Text="Auth Type" FontSize="11" Opacity="0.6" />
+                        <ComboBox ItemsSource="{Binding AvailableAuthTypes}"
+                                  SelectedItem="{Binding SelectedAuthType}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource AuthTypeDisplayConverter}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock IsVisible="{Binding IsBearerAuth}"
+                                   Text="The Authorisation header will be automatically generated when you send the request."
+                                   TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
+                        <TextBlock IsVisible="{Binding IsApiKeyAuth}"
+                                   Text="The API key will be added to the request as a header or query parameter."
+                                   TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
+                        <TextBlock IsVisible="{Binding IsBasicAuth}"
+                                   Text="The credentials will be Base64-encoded and sent in the Authorisation header."
+                                   TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
+                        <TextBlock IsVisible="{Binding IsNoAuth}"
+                                   Text="This request does not use any authorisation."
+                                   TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
+                    </StackPanel>
+
+                    <!-- Divider -->
+                    <Border Grid.Column="1" Width="1" Background="#DDDDDD" Margin="16,0" />
+
+                    <!-- Right: auth fields -->
+                    <StackPanel Grid.Column="2" Spacing="10" VerticalAlignment="Top">
+
+                        <!-- Bearer Token -->
+                        <Grid ColumnDefinitions="90,*" ColumnSpacing="12"
+                              IsVisible="{Binding IsBearerAuth}">
+                            <TextBlock Grid.Column="0" Text="Token"
+                                       VerticalAlignment="Center"
+                                       FontSize="12" Opacity="0.7" />
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding BearerToken}"
+                                     Watermark="Token or {{variable}}"
+                                     FontFamily="Consolas,Menlo,monospace"
+                                     FontSize="12" />
+                        </Grid>
+
+                        <!-- API Key -->
+                        <StackPanel IsVisible="{Binding IsApiKeyAuth}" Spacing="10">
+                            <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
+                                <TextBlock Grid.Column="0" Text="Key"
+                                           VerticalAlignment="Center"
+                                           FontSize="12" Opacity="0.7" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding ApiKeyName}"
+                                         Watermark="e.g. X-API-Key"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="12" />
+                            </Grid>
+                            <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
+                                <TextBlock Grid.Column="0" Text="Value"
+                                           VerticalAlignment="Center"
+                                           FontSize="12" Opacity="0.7" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding ApiKeyValue}"
+                                         Watermark="Value or {{variable}}"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="12" />
+                            </Grid>
+                            <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
+                                <TextBlock Grid.Column="0" Text="Add to"
+                                           VerticalAlignment="Center"
+                                           FontSize="12" Opacity="0.7" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableApiKeyTargets}"
+                                          SelectedItem="{Binding ApiKeyTarget}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Converter={StaticResource ApiKeyTargetDisplayConverter}}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Basic Auth -->
+                        <StackPanel IsVisible="{Binding IsBasicAuth}" Spacing="10">
+                            <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
+                                <TextBlock Grid.Column="0" Text="Username"
+                                           VerticalAlignment="Center"
+                                           FontSize="12" Opacity="0.7" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding BasicUsername}"
+                                         Watermark="Username or {{variable}}"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="12" />
+                            </Grid>
+                            <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
+                                <TextBlock Grid.Column="0" Text="Password"
+                                           VerticalAlignment="Center"
+                                           FontSize="12" Opacity="0.7" />
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding BasicPassword}"
+                                         Watermark="Password or {{variable}}"
+                                         PasswordChar="●"
+                                         FontFamily="Consolas,Menlo,monospace"
+                                         FontSize="12" />
+                            </Grid>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Grid>
             </TabItem>
 
             <!-- Headers tab -->
@@ -181,86 +341,42 @@
                 </DataGrid>
             </TabItem>
 
-            <!-- Auth tab -->
-            <TabItem Header="Auth">
-                <StackPanel Spacing="8" Margin="0,6">
-                    <ComboBox ItemsSource="{Binding AvailableAuthTypes}"
-                              SelectedItem="{Binding SelectedAuthType}"
-                              MinWidth="160">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Converter={StaticResource AuthTypeDisplayConverter}}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-
-                    <!-- Bearer Token -->
-                    <StackPanel IsVisible="{Binding IsBearerAuth}" Spacing="4">
-                        <TextBlock Text="Token" Opacity="0.7" FontSize="12" />
-                        <TextBox Text="{Binding BearerToken}"
-                                 Watermark="Token or {{variable}}"
-                                 FontFamily="Consolas,Menlo,monospace"
-                                 FontSize="12" />
-                    </StackPanel>
-
-                    <!-- API Key -->
-                    <StackPanel IsVisible="{Binding IsApiKeyAuth}" Spacing="4">
-                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                            <StackPanel Grid.Column="0" Spacing="4">
-                                <TextBlock Text="Key name" Opacity="0.7" FontSize="12" />
-                                <TextBox Text="{Binding ApiKeyName}"
-                                         Watermark="e.g. X-API-Key"
-                                         FontFamily="Consolas,Menlo,monospace"
-                                         FontSize="12" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Spacing="4">
-                                <TextBlock Text="Key value" Opacity="0.7" FontSize="12" />
-                                <TextBox Text="{Binding ApiKeyValue}"
-                                         Watermark="Value or {{variable}}"
-                                         FontFamily="Consolas,Menlo,monospace"
-                                         FontSize="12" />
-                            </StackPanel>
-                        </Grid>
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Add to" Opacity="0.7" FontSize="12" />
-                            <ComboBox ItemsSource="{Binding AvailableApiKeyTargets}"
-                                      SelectedItem="{Binding ApiKeyTarget}"
-                                      MinWidth="160">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Converter={StaticResource ApiKeyTargetDisplayConverter}}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Basic Auth -->
-                    <StackPanel IsVisible="{Binding IsBasicAuth}" Spacing="4">
-                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                            <StackPanel Grid.Column="0" Spacing="4">
-                                <TextBlock Text="Username" Opacity="0.7" FontSize="12" />
-                                <TextBox Text="{Binding BasicUsername}"
-                                         Watermark="Username or {{variable}}"
-                                         FontFamily="Consolas,Menlo,monospace"
-                                         FontSize="12" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Spacing="4">
-                                <TextBlock Text="Password" Opacity="0.7" FontSize="12" />
-                                <TextBox Text="{Binding BasicPassword}"
-                                         Watermark="Password or {{variable}}"
-                                         PasswordChar="●"
-                                         FontFamily="Consolas,Menlo,monospace"
-                                         FontSize="12" />
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </StackPanel>
+            <!-- Body tab -->
+            <TabItem Header="Body">
+                <Panel Background="White">
+                    <TextBox x:Name="BodyEditor"
+                             Text="{Binding RequestBody}"
+                             AcceptsReturn="True"
+                             AcceptsTab="True"
+                             Foreground="Transparent"
+                             Background="Transparent"
+                             CaretBrush="#1E1E1E"
+                             FontFamily="Consolas,Menlo,monospace"
+                             FontSize="13"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             TextWrapping="NoWrap"
+                             Padding="9,5,9,5" />
+                    <TextBlock x:Name="BodyOverlay"
+                               Foreground="#1E1E1E"
+                               FontFamily="Consolas,Menlo,monospace"
+                               FontSize="13"
+                               Padding="9,5,9,5"
+                               TextWrapping="NoWrap"
+                               IsHitTestVisible="False" />
+                </Panel>
             </TabItem>
 
         </TabControl>
 
-        <Grid Grid.Row="2" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+        <GridSplitter Grid.Row="2"
+                      ResizeDirection="Rows"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      Background="#E0E0E0"
+                      Cursor="SizeNorthSouth" />
+
+        <Grid Grid.Row="3" RowDefinitions="Auto,Auto,*" RowSpacing="8">
             <TextBlock Grid.Row="0"
                        Text="{Binding ErrorMessage}"
                        Foreground="IndianRed"
@@ -277,15 +393,75 @@
                 <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat='{}{0} ms'}" />
             </StackPanel>
 
-            <TextBlock Grid.Row="2" Text="Response body" Opacity="0.7" />
+            <TabControl Grid.Row="2">
 
-            <TextBox Grid.Row="3"
-                     Text="{Binding ResponseBody}"
-                     IsReadOnly="True"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     FontFamily="Consolas,Menlo,monospace"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                <!-- Body tab -->
+                <TabItem Header="Body">
+                    <TextBox Text="{Binding ResponseBody}"
+                             IsReadOnly="True"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             FontFamily="Consolas,Menlo,monospace"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                </TabItem>
+
+                <!-- Cookies tab -->
+                <TabItem Header="Cookies">
+                    <DataGrid ItemsSource="{Binding ResponseCookies}"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="1"
+                              BorderBrush="#DDDDDD"
+                              RowHeight="34"
+                              HeadersVisibility="Column"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name"
+                                               Binding="{Binding Name}"
+                                               Width="2*"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                            <DataGridTextColumn Header="Value"
+                                               Binding="{Binding Value}"
+                                               Width="3*"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <!-- Headers tab -->
+                <TabItem Header="{Binding ResponseHeadersTabLabel}">
+                    <DataGrid ItemsSource="{Binding ResponseHeaders}"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="1"
+                              BorderBrush="#DDDDDD"
+                              RowHeight="34"
+                              HeadersVisibility="Column"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name"
+                                               Binding="{Binding Name}"
+                                               Width="2*"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                            <DataGridTextColumn Header="Value"
+                                               Binding="{Binding Value}"
+                                               Width="3*"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+            </TabControl>
         </Grid>
 
         <Popup x:Name="VarPopup"

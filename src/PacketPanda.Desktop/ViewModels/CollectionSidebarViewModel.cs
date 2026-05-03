@@ -402,7 +402,7 @@ public class CollectionViewModel : ReactiveObject
     {
         var id = Guid.NewGuid().ToString();
         var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null,
-            Array.Empty<HttpHeader>(), new NoAuth());
+            Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
         var newChildren = _collection.Root.Children.Append(newNode).ToList();
         var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
         await _store.SaveAsync(candidate.FilePath, candidate);
@@ -426,7 +426,7 @@ public class CollectionViewModel : ReactiveObject
     {
         var id = Guid.NewGuid().ToString();
         var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null,
-            Array.Empty<HttpHeader>(), new NoAuth());
+            Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
         var (newRoot, found) = InsertIntoFolder(_collection.Root, folderId, newNode);
         if (!found) return;
         var candidate = _collection with { Root = newRoot };
