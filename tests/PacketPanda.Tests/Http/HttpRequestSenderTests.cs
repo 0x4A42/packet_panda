@@ -113,7 +113,7 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
-    public async Task SendAsync_BearerAuth_InjectsAuthorizationHeader()
+    public async Task SendAsync_BearerAuth_InjectsAuthorisationHeader()
     {
         _server.Given(Request.Create().WithPath("/h").UsingGet())
                .RespondWith(Response.Create().WithStatusCode(200));
@@ -180,7 +180,7 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
-    public async Task SendAsync_NoAuth_DoesNotInjectAuthorizationHeader()
+    public async Task SendAsync_NoAuth_DoesNotInjectAuthorisationHeader()
     {
         _server.Given(Request.Create().WithPath("/h").UsingGet())
                .RespondWith(Response.Create().WithStatusCode(200));

@@ -171,16 +171,16 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
                         <TextBlock IsVisible="{Binding IsBearerAuth}"
-                                   Text="The Authorization header will be automatically generated when you send the request."
+                                   Text="The Authorisation header will be automatically generated when you send the request."
                                    TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
                         <TextBlock IsVisible="{Binding IsApiKeyAuth}"
                                    Text="The API key will be added to the request as a header or query parameter."
                                    TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
                         <TextBlock IsVisible="{Binding IsBasicAuth}"
-                                   Text="The credentials will be Base64-encoded and sent in the Authorization header."
+                                   Text="The credentials will be Base64-encoded and sent in the Authorisation header."
                                    TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
                         <TextBlock IsVisible="{Binding IsNoAuth}"
-                                   Text="This request does not use any authorization."
+                                   Text="This request does not use any authorisation."
                                    TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
                     </StackPanel>
 
