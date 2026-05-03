@@ -89,13 +89,29 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     method = HttpMethod.Get;
 
                 var url = string.Empty;
+                var queryParams = new List<QueryParam>();
                 if (requestEl.TryGetProperty("url", out var urlEl))
                 {
-                    if (urlEl.ValueKind == JsonValueKind.Object &&
-                        urlEl.TryGetProperty("raw", out var rawEl))
-                        url = rawEl.GetString() ?? string.Empty;
+                    if (urlEl.ValueKind == JsonValueKind.Object)
+                    {
+                        if (urlEl.TryGetProperty("raw", out var rawEl))
+                            url = rawEl.GetString() ?? string.Empty;
+
+                        if (urlEl.TryGetProperty("query", out var queryArr))
+                        {
+                            foreach (var q in queryArr.EnumerateArray())
+                            {
+                                var key = q.TryGetProperty("key", out var kEl) ? kEl.GetString() ?? string.Empty : string.Empty;
+                                var val = q.TryGetProperty("value", out var vEl) ? vEl.GetString() ?? string.Empty : string.Empty;
+                                var disabled = q.TryGetProperty("disabled", out var dEl) && dEl.GetBoolean();
+                                queryParams.Add(new QueryParam(key, val, !disabled));
+                            }
+                        }
+                    }
                     else if (urlEl.ValueKind == JsonValueKind.String)
+                    {
                         url = urlEl.GetString() ?? string.Empty;
+                    }
                 }
 
                 string? body = null;
@@ -133,7 +149,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     };
                 }
 
-                result.Add(new RequestNode(id, name, collectionPath, method, url, body, headers, auth, Array.Empty<QueryParam>()));
+                result.Add(new RequestNode(id, name, collectionPath, method, url, body, headers, auth, queryParams));
             }
             else if (item.TryGetProperty("item", out var subItems))
             {
@@ -171,6 +187,19 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                 // URL
                 writer.WriteStartObject("url");
                 writer.WriteString("raw", req.Url);
+                if (req.QueryParams.Count > 0)
+                {
+                    writer.WriteStartArray("query");
+                    foreach (var q in req.QueryParams)
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("key", q.Key);
+                        writer.WriteString("value", q.Value);
+                        if (!q.Enabled) writer.WriteBoolean("disabled", true);
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+                }
                 writer.WriteEndObject();
 
                 // Body
