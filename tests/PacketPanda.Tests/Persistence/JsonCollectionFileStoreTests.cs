@@ -468,4 +468,25 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         loaded.Root.Children.Single().Should().BeOfType<RequestNode>()
             .Which.Auth.Should().BeOfType<NoAuth>();
     }
+
+    [Fact]
+    public async Task UpdateRequestAsync_PartialRequest_PreservesExistingHeadersAndAuth()
+    {
+        var col = new Collection("C", _tempPath,
+            new FolderNode("root", "C", [
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                    [new HttpHeader("X-Keep", "v")], new BearerAuth("tok"))
+            ]));
+        await _store.SaveAsync(_tempPath, col);
+
+        await _store.UpdateRequestAsync(_tempPath, "r1",
+            new HttpRequest(HttpMethod.Post, "https://updated", null));
+
+        var loaded = await _store.LoadAsync(_tempPath);
+        var req = loaded.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Method.Should().Be(HttpMethod.Post);
+        req.Url.Should().Be("https://updated");
+        req.Headers.Should().ContainSingle(h => h.Name == "X-Keep");
+        req.Auth.Should().Be(new BearerAuth("tok"));
+    }
 }

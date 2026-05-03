@@ -304,8 +304,8 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     Method = updated.Method,
                     Url = updated.Url,
                     Body = updated.Body,
-                    Headers = updated.Headers ?? Array.Empty<HttpHeader>(),
-                    Auth = updated.Auth ?? new NoAuth()
+                    Headers = updated.Headers ?? req.Headers,
+                    Auth = updated.Auth ?? req.Auth
                 },
             RequestNode => child,
             FolderNode f => UpdateInTree(f, requestId, updated),
