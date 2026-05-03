@@ -545,4 +545,125 @@ public sealed class RequestEditorViewModelTests
         vm.BasicUsername.Should().Be("admin");
         vm.BasicPassword.Should().Be("pass");
     }
+
+    // ── Query Params ────────────────────────────────────────────
+
+    [Fact]
+    public void QueryParams_FreshViewModel_HasOneTrailingEmptyRow()
+    {
+        var vm = CreateVm();
+        vm.QueryParams.Should().HaveCount(1);
+        vm.QueryParams[0].Key.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddQueryParam_AddsRow()
+    {
+        var vm = CreateVm();
+        vm.AddQueryParamCommand.Execute(Unit.Default).Subscribe();
+        vm.QueryParams.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void AddQueryParam_EmptyRow_DoesNotMarkDirty()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.MarkSaved();
+
+        vm.AddQueryParamCommand.Execute(Unit.Default).Subscribe();
+
+        vm.IsDirty.Should().BeFalse();
+    }
+
+    [Fact]
+    public void QueryParam_EditKey_MarksDirty()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.MarkSaved();
+
+        vm.QueryParams[0].Key = "foo";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void LoadQueryParams_PopulatesCollectionWithTrailingEmptyRow()
+    {
+        var vm = CreateVm();
+        var qp = new List<QueryParam>
+        {
+            new QueryParam("foo", "bar", true),
+            new QueryParam("debug", "1", false)
+        };
+
+        vm.LoadQueryParams(qp);
+
+        vm.QueryParams.Should().HaveCount(3); // 2 real + 1 trailing empty
+        vm.QueryParams[0].Key.Should().Be("foo");
+        vm.QueryParams[0].Value.Should().Be("bar");
+        vm.QueryParams[0].Enabled.Should().BeTrue();
+        vm.QueryParams[1].Key.Should().Be("debug");
+        vm.QueryParams[1].Enabled.Should().BeFalse();
+        vm.QueryParams[2].Key.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BuildRequest_ExcludesDisabledAndEmptyKeyQueryParams()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.QueryParams[0].Key = "active";
+        vm.QueryParams[0].Value = "true";
+        vm.AddQueryParamCommand.Execute(Unit.Default).Subscribe();
+        vm.QueryParams[1].Key = "debug";
+        vm.QueryParams[1].Value = "1";
+        vm.QueryParams[1].Enabled = false;
+
+        var req = vm.BuildRequest();
+
+        req.QueryParams.Should().HaveCount(1);
+        req.QueryParams![0].Key.Should().Be("active");
+        req.QueryParams[0].Value.Should().Be("true");
+    }
+
+    [Fact]
+    public void Url_WithQueryString_PopulatesParamRows()
+    {
+        var vm = CreateVm();
+
+        vm.Url = "https://api.example.com/search?q=hello&page=2";
+
+        var namedRows = vm.QueryParams.Where(p => !string.IsNullOrEmpty(p.Key)).ToList();
+        namedRows.Should().HaveCount(2);
+        namedRows[0].Key.Should().Be("q");
+        namedRows[0].Value.Should().Be("hello");
+        namedRows[1].Key.Should().Be("page");
+        namedRows[1].Value.Should().Be("2");
+    }
+
+    [Fact]
+    public void ParamRow_EditKey_UpdatesUrl()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://api.example.com";
+
+        vm.QueryParams[0].Key = "foo";
+        vm.QueryParams[0].Value = "bar";
+
+        vm.Url.Should().Be("https://api.example.com?foo=bar");
+    }
+
+    [Fact]
+    public void ParamRow_Disabled_ExcludedFromUrl()
+    {
+        var vm = CreateVm();
+        vm.LoadQueryParams(new[] { new QueryParam("foo", "bar", true) });
+
+        vm.QueryParams[0].Enabled = false;
+
+        vm.Url.Should().NotContain("foo");
+        vm.QueryParams.Should().Contain(p => p.Key == "foo" && !p.Enabled);
+    }
 }
