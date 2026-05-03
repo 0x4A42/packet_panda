@@ -51,7 +51,8 @@ public class ShellViewModelTests
     {
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
-        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null);
+        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null,
+            Array.Empty<HttpHeader>(), new NoAuth());
 
         // Load a fake collection so the sidebar wires up the callback -> RequestOpened
         var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
@@ -73,7 +74,8 @@ public class ShellViewModelTests
     {
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
-        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null);
+        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null,
+            Array.Empty<HttpHeader>(), new NoAuth());
 
         var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
             new FolderNode("root", "root", [rn]));

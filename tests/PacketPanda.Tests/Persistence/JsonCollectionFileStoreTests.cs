@@ -255,4 +255,238 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         req.Method.Should().Be(HttpMethod.Post);
         req.Url.Should().Be("http://new");
     }
+
+    [Fact]
+    public async Task Load_RequestNode_ParsesHeaders()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1", "name": "R",
+                "request": {
+                  "method": "GET",
+                  "header": [
+                    { "key": "X-Foo", "value": "bar" },
+                    { "key": "X-Disabled", "value": "skip", "disabled": true }
+                  ],
+                  "url": { "raw": "https://example.com" },
+                  "body": null
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+
+        req.Headers.Should().HaveCount(2);
+        req.Headers[0].Should().Be(new HttpHeader("X-Foo", "bar", true));
+        req.Headers[1].Should().Be(new HttpHeader("X-Disabled", "skip", false));
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_MissingAuth_ReturnsNoAuth()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1", "name": "R",
+                "request": {
+                  "method": "GET", "header": [],
+                  "url": { "raw": "https://example.com" }, "body": null
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Auth.Should().BeOfType<NoAuth>();
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_ParsesBearerAuth()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1", "name": "R",
+                "request": {
+                  "method": "GET", "header": [],
+                  "url": { "raw": "https://example.com" }, "body": null,
+                  "auth": {
+                    "type": "bearer",
+                    "bearer": [{ "key": "token", "value": "tok123", "type": "string" }]
+                  }
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Auth.Should().Be(new BearerAuth("tok123"));
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_ParsesApiKeyAuth()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1", "name": "R",
+                "request": {
+                  "method": "GET", "header": [],
+                  "url": { "raw": "https://example.com" }, "body": null,
+                  "auth": {
+                    "type": "apikey",
+                    "apikey": [
+                      { "key": "key", "value": "X-API-Key", "type": "string" },
+                      { "key": "value", "value": "mykey", "type": "string" },
+                      { "key": "in", "value": "header", "type": "string" }
+                    ]
+                  }
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Auth.Should().Be(new ApiKeyAuth("X-API-Key", "mykey", ApiKeyTarget.Header));
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_ParsesBasicAuth()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1", "name": "R",
+                "request": {
+                  "method": "GET", "header": [],
+                  "url": { "raw": "https://example.com" }, "body": null,
+                  "auth": {
+                    "type": "basic",
+                    "basic": [
+                      { "key": "username", "value": "admin", "type": "string" },
+                      { "key": "password", "value": "s3cr3t", "type": "string" }
+                    ]
+                  }
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Auth.Should().Be(new BasicAuth("admin", "s3cr3t"));
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_RoundTrip_PreservesHeaders()
+    {
+        var col = new Collection("C", _tempPath,
+            new FolderNode("root", "C", [
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                    [new HttpHeader("X-Foo", "bar"), new HttpHeader("X-Off", "skip", Enabled: false)],
+                    new NoAuth())
+            ]));
+        await _store.SaveAsync(_tempPath, col);
+        var loaded = await _store.LoadAsync(_tempPath);
+
+        var req = loaded.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Headers.Should().HaveCount(2);
+        req.Headers[0].Should().Be(new HttpHeader("X-Foo", "bar", true));
+        req.Headers[1].Should().Be(new HttpHeader("X-Off", "skip", false));
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_RoundTrip_PreservesBearerAuth()
+    {
+        var col = new Collection("C", _tempPath,
+            new FolderNode("root", "C", [
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                    Array.Empty<HttpHeader>(), new BearerAuth("tok"))
+            ]));
+        await _store.SaveAsync(_tempPath, col);
+        var loaded = await _store.LoadAsync(_tempPath);
+
+        loaded.Root.Children.Single().Should().BeOfType<RequestNode>()
+            .Which.Auth.Should().Be(new BearerAuth("tok"));
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_RoundTrip_PreservesBasicAuth()
+    {
+        var col = new Collection("C", _tempPath,
+            new FolderNode("root", "C", [
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                    Array.Empty<HttpHeader>(), new BasicAuth("u", "p"))
+            ]));
+        await _store.SaveAsync(_tempPath, col);
+        var loaded = await _store.LoadAsync(_tempPath);
+
+        loaded.Root.Children.Single().Should().BeOfType<RequestNode>()
+            .Which.Auth.Should().Be(new BasicAuth("u", "p"));
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_RoundTrip_PreservesApiKeyAuthWithQueryParamTarget()
+    {
+        var col = new Collection("C", _tempPath,
+            new FolderNode("root", "C", [
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                    Array.Empty<HttpHeader>(), new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam))
+            ]));
+        await _store.SaveAsync(_tempPath, col);
+        var loaded = await _store.LoadAsync(_tempPath);
+
+        loaded.Root.Children.Single().Should().BeOfType<RequestNode>()
+            .Which.Auth.Should().Be(new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam));
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_RoundTrip_NoAuth_OmitsAuthKeyAndReturnsNoAuth()
+    {
+        var col = new Collection("C", _tempPath,
+            new FolderNode("root", "C", [
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                    Array.Empty<HttpHeader>(), new NoAuth())
+            ]));
+        await _store.SaveAsync(_tempPath, col);
+
+        var json = await File.ReadAllTextAsync(_tempPath);
+        json.Should().NotContain("\"auth\"");
+
+        var loaded = await _store.LoadAsync(_tempPath);
+        loaded.Root.Children.Single().Should().BeOfType<RequestNode>()
+            .Which.Auth.Should().BeOfType<NoAuth>();
+    }
+
+    [Fact]
+    public async Task UpdateRequestAsync_PartialRequest_PreservesExistingHeadersAndAuth()
+    {
+        var col = new Collection("C", _tempPath,
+            new FolderNode("root", "C", [
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                    [new HttpHeader("X-Keep", "v")], new BearerAuth("tok"))
+            ]));
+        await _store.SaveAsync(_tempPath, col);
+
+        await _store.UpdateRequestAsync(_tempPath, "r1",
+            new HttpRequest(HttpMethod.Post, "https://updated", null));
+
+        var loaded = await _store.LoadAsync(_tempPath);
+        var req = loaded.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Method.Should().Be(HttpMethod.Post);
+        req.Url.Should().Be("https://updated");
+        req.Headers.Should().ContainSingle(h => h.Name == "X-Keep");
+        req.Auth.Should().Be(new BearerAuth("tok"));
+    }
 }
