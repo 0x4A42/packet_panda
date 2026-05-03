@@ -248,6 +248,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         editor.RequestBody = node.Body;
         editor.LoadHeaders(node.Headers);
         editor.LoadAuth(node.Auth);
+        editor.LoadQueryParams(node.QueryParams);
         editor.MarkSaved();
 
         var tab = new TabViewModel(editor, _dialog);
