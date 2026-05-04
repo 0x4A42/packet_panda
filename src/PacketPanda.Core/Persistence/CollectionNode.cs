@@ -17,5 +17,7 @@ public sealed record RequestNode(
     string? Body,
     IReadOnlyList<HttpHeader> Headers,
     AuthConfig Auth,
-    IReadOnlyList<QueryParam> QueryParams)
+    IReadOnlyList<QueryParam> QueryParams,
+    string? PreRequestScript = null,
+    string? PostResponseScript = null)
     : CollectionNode(Id, Name);

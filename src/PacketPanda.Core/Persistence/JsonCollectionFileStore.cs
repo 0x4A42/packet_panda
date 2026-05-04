@@ -60,10 +60,11 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
         catch (Exception ex) { throw new RequestFileException($"Could not write file: {ex.Message}", ex); }
     }
 
-    public async Task UpdateRequestAsync(string collectionPath, string requestId, HttpRequest updated)
+    public async Task UpdateRequestAsync(string collectionPath, string requestId, HttpRequest updated,
+        string? preRequestScript = null, string? postResponseScript = null)
     {
         var collection = await LoadAsync(collectionPath);
-        var newRoot = UpdateInTree(collection.Root, requestId, updated);
+        var newRoot = UpdateInTree(collection.Root, requestId, updated, preRequestScript, postResponseScript);
         await SaveAsync(collectionPath, collection with { Root = newRoot });
     }
 
@@ -323,7 +324,8 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
         writer.WriteEndObject();
     }
 
-    private static FolderNode UpdateInTree(FolderNode folder, string requestId, HttpRequest updated)
+    private static FolderNode UpdateInTree(FolderNode folder, string requestId, HttpRequest updated,
+        string? preRequestScript, string? postResponseScript)
     {
         var newChildren = folder.Children.Select(child => child switch
         {
@@ -335,10 +337,12 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     Body = updated.Body,
                     Headers = updated.Headers ?? req.Headers,
                     Auth = updated.Auth ?? req.Auth,
-                    QueryParams = updated.QueryParams ?? req.QueryParams
+                    QueryParams = updated.QueryParams ?? req.QueryParams,
+                    PreRequestScript = preRequestScript,
+                    PostResponseScript = postResponseScript
                 },
             RequestNode => child,
-            FolderNode f => UpdateInTree(f, requestId, updated),
+            FolderNode f => UpdateInTree(f, requestId, updated, preRequestScript, postResponseScript),
             _ => child
         }).ToList();
         return folder with { Children = newChildren };

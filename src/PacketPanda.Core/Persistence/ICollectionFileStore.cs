@@ -6,5 +6,6 @@ public interface ICollectionFileStore
 {
     Task<Collection> LoadAsync(string path);
     Task SaveAsync(string path, Collection collection);
-    Task UpdateRequestAsync(string collectionPath, string requestId, HttpRequest updated);
+    Task UpdateRequestAsync(string collectionPath, string requestId, HttpRequest updated,
+        string? preRequestScript = null, string? postResponseScript = null);
 }
