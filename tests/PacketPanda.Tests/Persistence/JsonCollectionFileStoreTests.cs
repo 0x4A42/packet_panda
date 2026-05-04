@@ -578,4 +578,140 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         req.QueryParams[1].Value.Should().Be("1");
         req.QueryParams[1].Enabled.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task Load_RequestNode_ParsesPreRequestScript()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1",
+                "name": "R",
+                "request": {
+                  "method": "GET",
+                  "header": [],
+                  "url": { "raw": "https://example.com" },
+                  "body": null
+                },
+                "event": [
+                  {
+                    "listen": "prerequest",
+                    "script": { "type": "text/javascript", "exec": ["pp.environment.set('x', '1');", "// comment"] }
+                  }
+                ],
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+
+        req.PreRequestScript.Should().Be("pp.environment.set('x', '1');\n// comment");
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_ParsesPostResponseScript()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1",
+                "name": "R",
+                "request": {
+                  "method": "GET",
+                  "header": [],
+                  "url": { "raw": "https://example.com" },
+                  "body": null
+                },
+                "event": [
+                  {
+                    "listen": "test",
+                    "script": { "type": "text/javascript", "exec": ["pp.test('ok', function() {});"] }
+                  }
+                ],
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+
+        req.PostResponseScript.Should().Be("pp.test('ok', function() {});");
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_MissingEventArray_HasNullScripts()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1",
+                "name": "R",
+                "request": {
+                  "method": "GET",
+                  "header": [],
+                  "url": { "raw": "https://example.com" },
+                  "body": null
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+
+        req.PreRequestScript.Should().BeNull();
+        req.PostResponseScript.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Save_ThenLoad_RoundTripsPreRequestScript()
+    {
+        var original = MinimalCollection("C", """
+            [
+              {
+                "id": "r1",
+                "name": "R",
+                "request": { "method": "GET", "header": [], "url": { "raw": "https://x.com" }, "body": null },
+                "response": []
+              }
+            ]
+            """);
+        await File.WriteAllTextAsync(_tempPath, original);
+
+        await _store.UpdateRequestAsync(_tempPath, "r1",
+            new PacketPanda.Core.Http.HttpRequest(PacketPanda.Core.Http.HttpMethod.Get, "https://x.com"),
+            preRequestScript: "pp.environment.set('k','v');");
+
+        var col = await _store.LoadAsync(_tempPath);
+        var req = col.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.PreRequestScript.Should().Be("pp.environment.set('k','v');");
+    }
+
+    [Fact]
+    public async Task Save_ThenLoad_RoundTripsPostResponseScript()
+    {
+        var original = MinimalCollection("C", """
+            [
+              {
+                "id": "r1",
+                "name": "R",
+                "request": { "method": "GET", "header": [], "url": { "raw": "https://x.com" }, "body": null },
+                "response": []
+              }
+            ]
+            """);
+        await File.WriteAllTextAsync(_tempPath, original);
+
+        await _store.UpdateRequestAsync(_tempPath, "r1",
+            new PacketPanda.Core.Http.HttpRequest(PacketPanda.Core.Http.HttpMethod.Get, "https://x.com"),
+            postResponseScript: "pp.test('x', function(){});");
+
+        var col = await _store.LoadAsync(_tempPath);
+        var req = col.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.PostResponseScript.Should().Be("pp.test('x', function(){});");
+    }
 }

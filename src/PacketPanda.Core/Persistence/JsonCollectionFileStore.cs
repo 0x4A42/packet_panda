@@ -150,7 +150,29 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     };
                 }
 
-                result.Add(new RequestNode(id, name, collectionPath, method, url, body, headers, auth, queryParams));
+                // Parse scripts from event array
+                string? preRequestScript = null;
+                string? postResponseScript = null;
+                if (item.TryGetProperty("event", out var eventArr))
+                {
+                    foreach (var ev in eventArr.EnumerateArray())
+                    {
+                        var listen = ev.TryGetProperty("listen", out var listenEl) ? listenEl.GetString() : null;
+                        if (listen is null) continue;
+                        if (!ev.TryGetProperty("script", out var scriptEl)) continue;
+                        if (!scriptEl.TryGetProperty("exec", out var execEl)) continue;
+                        var lines = execEl.EnumerateArray()
+                            .Select(l => l.GetString() ?? string.Empty)
+                            .ToList();
+                        var text = string.Join("\n", lines);
+                        if (string.IsNullOrWhiteSpace(text)) continue;
+                        if (listen == "prerequest") preRequestScript = text;
+                        else if (listen == "test") postResponseScript = text;
+                    }
+                }
+
+                result.Add(new RequestNode(id, name, collectionPath, method, url, body, headers, auth, queryParams,
+                    preRequestScript, postResponseScript));
             }
             else if (item.TryGetProperty("item", out var subItems))
             {
@@ -221,6 +243,18 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     WriteAuth(writer, req.Auth);
 
                 writer.WriteEndObject();
+
+                // Scripts (event array)
+                if (!string.IsNullOrEmpty(req.PreRequestScript) || !string.IsNullOrEmpty(req.PostResponseScript))
+                {
+                    writer.WriteStartArray("event");
+                    if (!string.IsNullOrEmpty(req.PreRequestScript))
+                        WriteScriptEvent(writer, "prerequest", req.PreRequestScript);
+                    if (!string.IsNullOrEmpty(req.PostResponseScript))
+                        WriteScriptEvent(writer, "test", req.PostResponseScript);
+                    writer.WriteEndArray();
+                }
+
                 writer.WriteStartArray("response");
                 writer.WriteEndArray();
             }
@@ -324,6 +358,20 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
         writer.WriteEndObject();
     }
 
+    private static void WriteScriptEvent(Utf8JsonWriter writer, string listen, string script)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("listen", listen);
+        writer.WriteStartObject("script");
+        writer.WriteString("type", "text/javascript");
+        writer.WriteStartArray("exec");
+        foreach (var line in script.Split('\n'))
+            writer.WriteStringValue(line);
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+        writer.WriteEndObject();
+    }
+
     private static FolderNode UpdateInTree(FolderNode folder, string requestId, HttpRequest updated,
         string? preRequestScript, string? postResponseScript)
     {
@@ -338,8 +386,8 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     Headers = updated.Headers ?? req.Headers,
                     Auth = updated.Auth ?? req.Auth,
                     QueryParams = updated.QueryParams ?? req.QueryParams,
-                    PreRequestScript = preRequestScript,
-                    PostResponseScript = postResponseScript
+                    PreRequestScript = preRequestScript ?? req.PreRequestScript,
+                    PostResponseScript = postResponseScript ?? req.PostResponseScript
                 },
             RequestNode => child,
             FolderNode f => UpdateInTree(f, requestId, updated, preRequestScript, postResponseScript),
