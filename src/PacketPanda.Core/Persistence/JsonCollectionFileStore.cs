@@ -365,7 +365,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
         writer.WriteStartObject("script");
         writer.WriteString("type", "text/javascript");
         writer.WriteStartArray("exec");
-        foreach (var line in script.Split('\n'))
+        foreach (var line in script.Replace("\r\n", "\n").Split('\n'))
             writer.WriteStringValue(line);
         writer.WriteEndArray();
         writer.WriteEndObject();
