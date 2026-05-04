@@ -38,9 +38,9 @@ internal sealed class PpResponse
             var jsonLiteral = System.Text.Json.JsonSerializer.Serialize(_body);
             return _engine.Evaluate($"JSON.parse({jsonLiteral})");
         }
-        catch
+        catch (Exception ex)
         {
-            throw new InvalidOperationException("Response body is not valid JSON");
+            throw new InvalidOperationException("Response body is not valid JSON", ex);
         }
     }
 }

@@ -7,7 +7,7 @@ using Environment = PacketPanda.Core.Environments.Environment;
 
 namespace PacketPanda.Core.Scripting;
 
-public sealed class ScriptSession
+public sealed class ScriptSession : IDisposable
 {
     private readonly Engine _engine;
     private readonly List<TestResult> _results = new();
@@ -55,11 +55,13 @@ public sealed class ScriptSession
 
     public PpExpect expect(object? value) => new(value);
 
+    public void Dispose() => _engine.Dispose();
+
     public void RunPreRequest(string script)
     {
         try { _engine.Execute(script); }
-        catch (JavaScriptException ex) { throw new ScriptException(ex.Message); }
-        catch (Exception ex) { throw new ScriptException(ex.Message); }
+        catch (JavaScriptException ex) { throw new ScriptException(ex.Message, ex); }
+        catch (Exception ex) { throw new ScriptException(ex.Message, ex); }
     }
 
     public void RunPostResponse(string script, HttpResponse response)
