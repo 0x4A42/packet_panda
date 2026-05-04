@@ -130,7 +130,8 @@ public sealed class RequestEditorViewModelTests
     {
         _collectionStore
             .Setup(s => s.UpdateRequestAsync("/col.json", "req-1",
-                It.Is<HttpRequest>(r => r.Url == "https://example.com" && r.Method == HttpMethod.Delete)))
+                It.Is<HttpRequest>(r => r.Url == "https://example.com" && r.Method == HttpMethod.Delete),
+                It.IsAny<string?>(), It.IsAny<string?>()))
             .Returns(Task.CompletedTask);
 
         var vm = CreateVm();
@@ -141,7 +142,8 @@ public sealed class RequestEditorViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        _collectionStore.Verify(s => s.UpdateRequestAsync("/col.json", "req-1", It.IsAny<HttpRequest>()), Times.Once);
+        _collectionStore.Verify(s => s.UpdateRequestAsync("/col.json", "req-1", It.IsAny<HttpRequest>(),
+            It.IsAny<string?>(), It.IsAny<string?>()), Times.Once);
     }
 
     [Fact]
@@ -154,14 +156,16 @@ public sealed class RequestEditorViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        _collectionStore.Verify(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()), Times.Never);
+        _collectionStore.Verify(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>(),
+            It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
     public async Task Save_Success_ClearsErrorMessageAndMarksSaved()
     {
         _collectionStore
-            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()))
+            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>(),
+                It.IsAny<string?>(), It.IsAny<string?>()))
             .Returns(Task.CompletedTask);
 
         var vm = CreateVm();
@@ -180,7 +184,8 @@ public sealed class RequestEditorViewModelTests
     public async Task Save_Failure_SetsErrorMessage()
     {
         _collectionStore
-            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()))
+            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>(),
+                It.IsAny<string?>(), It.IsAny<string?>()))
             .ThrowsAsync(new RequestFileException("Could not write file: access denied"));
 
         var vm = CreateVm();
@@ -247,7 +252,8 @@ public sealed class RequestEditorViewModelTests
     public async Task IsDirty_IsFalseAfterSuccessfulSave()
     {
         _collectionStore
-            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()))
+            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>(),
+                It.IsAny<string?>(), It.IsAny<string?>()))
             .Returns(Task.CompletedTask);
 
         var vm = CreateVm();
@@ -264,7 +270,8 @@ public sealed class RequestEditorViewModelTests
     public async Task IsDirty_StaysTrueAfterFailedSave()
     {
         _collectionStore
-            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>()))
+            .Setup(s => s.UpdateRequestAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<HttpRequest>(),
+                It.IsAny<string?>(), It.IsAny<string?>()))
             .ThrowsAsync(new RequestFileException("disk full"));
 
         var vm = CreateVm();
@@ -749,5 +756,155 @@ public sealed class RequestEditorViewModelTests
         await vm.SendCommand.Execute();
 
         vm.ResponseHeadersTabLabel.Should().Be("Headers (2)");
+    }
+
+    // ── Scripting ────────────────────────────────────────────────
+
+    [Fact]
+    public void LoadScripts_SetsPreRequestAndPostResponseScript()
+    {
+        var vm = CreateVm();
+
+        vm.LoadScripts("pp.environment.set('x','1');", "pp.test('ok', function(){});");
+
+        vm.PreRequestScript.Should().Be("pp.environment.set('x','1');");
+        vm.PostResponseScript.Should().Be("pp.test('ok', function(){});");
+    }
+
+    [Fact]
+    public void LoadScripts_NullValues_SetsEmptyStrings()
+    {
+        var vm = CreateVm();
+
+        vm.LoadScripts(null, null);
+
+        vm.PreRequestScript.Should().Be(string.Empty);
+        vm.PostResponseScript.Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public void LoadScripts_ResetsSelectedSectionToPreRequest()
+    {
+        var vm = CreateVm();
+        vm.SelectedScriptSection = ScriptSection.PostResponse;
+
+        vm.LoadScripts("x", "y");
+
+        vm.SelectedScriptSection.Should().Be(ScriptSection.PreRequest);
+    }
+
+    [Fact]
+    public void IsDirty_PreRequestScriptChanged_ReturnsTrue()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.LoadScripts(string.Empty, string.Empty);
+        vm.MarkSaved();
+
+        vm.PreRequestScript = "pp.environment.set('x','1');";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsDirty_PostResponseScriptChanged_ReturnsTrue()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.LoadScripts(string.Empty, string.Empty);
+        vm.MarkSaved();
+
+        vm.PostResponseScript = "pp.test('ok', function(){});";
+
+        vm.IsDirty.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SendAsync_PreRequestScriptError_SetsErrorMessageAndAbortsHttp()
+    {
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.PreRequestScript = "throw new Error('abort');";
+
+        await vm.SendCommand.Execute();
+
+        vm.ErrorMessage.Should().Contain("abort");
+        vm.StatusCode.Should().BeNull();
+        _sender.Verify(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendAsync_ValidPreRequestScript_ProceedsToHttpCall()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.PreRequestScript = "pp.environment.set('x','1');";
+
+        await vm.SendCommand.Execute();
+
+        _sender.Verify(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+        vm.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task SendAsync_PostResponseScript_PopulatesTestResults()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.PostResponseScript = "pp.test('status ok', function() { pp.expect(pp.response.status).to.equal(200); });";
+
+        await vm.SendCommand.Execute();
+
+        vm.TestResults.Should().ContainSingle(r => r.Name == "status ok" && r.Passed);
+    }
+
+    [Fact]
+    public async Task SendAsync_FailingTest_RecordedInTestResults()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.PostResponseScript = "pp.test('wrong', function() { pp.expect(200).to.equal(404); });";
+
+        await vm.SendCommand.Execute();
+
+        vm.TestResults.Should().ContainSingle(r => r.Name == "wrong" && !r.Passed);
+    }
+
+    [Fact]
+    public void TestsTabLabel_NoResults_ReturnsTests()
+    {
+        var vm = CreateVm();
+        vm.TestsTabLabel.Should().Be("Tests");
+    }
+
+    [Fact]
+    public async Task TestsTabLabel_AfterSendWithPassingTests_ShowsCount()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+        vm.PostResponseScript = """
+            pp.test('t1', function() { pp.expect(1).to.equal(1); });
+            pp.test('t2', function() { pp.expect(1).to.equal(2); });
+            """;
+
+        await vm.SendCommand.Execute();
+
+        vm.TestsTabLabel.Should().Be("Tests (1/2)");
     }
 }

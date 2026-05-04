@@ -4,6 +4,7 @@ using System.Reactive;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
+using PacketPanda.Core.Scripting;
 using ReactiveUI;
 using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
@@ -49,13 +50,19 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private bool _syncingParams;
     private IDisposable? _urlParamsSyncSub;
 
+    private string _preRequestScript = string.Empty;
+    private string _postResponseScript = string.Empty;
+    private ScriptSection _selectedScriptSection = ScriptSection.PreRequest;
+
     private sealed record RequestSnapshot(
         HttpMethod Method,
         string Url,
         string? Body,
         string HeadersKey,
         string AuthKey,
-        string ParamsKey);
+        string ParamsKey,
+        string PreRequestScript,
+        string PostResponseScript);
 
     public RequestEditorViewModel(
         IHttpRequestSender sender,
@@ -144,6 +151,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         ResponseHeaders.CollectionChanged += (_, _) =>
             this.RaisePropertyChanged(nameof(ResponseHeadersTabLabel));
 
+        TestResults.CollectionChanged += (_, _) =>
+            this.RaisePropertyChanged(nameof(TestsTabLabel));
+
         CaptureSnapshot();
     }
 
@@ -230,6 +240,47 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public string ResponseHeadersTabLabel =>
         ResponseHeaders.Count == 0 ? "Headers" : $"Headers ({ResponseHeaders.Count})";
+
+    public string PreRequestScript
+    {
+        get => _preRequestScript;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _preRequestScript, value ?? string.Empty);
+            RecomputeDirty();
+        }
+    }
+
+    public string PostResponseScript
+    {
+        get => _postResponseScript;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _postResponseScript, value ?? string.Empty);
+            RecomputeDirty();
+        }
+    }
+
+    public ScriptSection SelectedScriptSection
+    {
+        get => _selectedScriptSection;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedScriptSection, value);
+            this.RaisePropertyChanged(nameof(IsPreRequestScript));
+            this.RaisePropertyChanged(nameof(IsPostResponseScript));
+        }
+    }
+
+    public bool IsPreRequestScript => SelectedScriptSection == ScriptSection.PreRequest;
+    public bool IsPostResponseScript => SelectedScriptSection == ScriptSection.PostResponse;
+
+    public ObservableCollection<TestResultViewModel> TestResults { get; } = new();
+
+    public string TestsTabLabel =>
+        TestResults.Count == 0
+            ? "Tests"
+            : $"Tests ({TestResults.Count(r => r.Passed)}/{TestResults.Count})";
 
     public AuthType SelectedAuthType
     {
@@ -378,6 +429,13 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         EnsureTrailingEmptyParamRow();
     }
 
+    public void LoadScripts(string? preRequest, string? postResponse)
+    {
+        PreRequestScript = preRequest ?? string.Empty;
+        PostResponseScript = postResponse ?? string.Empty;
+        SelectedScriptSection = ScriptSection.PreRequest;
+    }
+
     private async Task SendAsync()
     {
         ErrorMessage = null;
@@ -434,12 +492,38 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
 
         var body = string.IsNullOrEmpty(bodyResult.Text) ? null : bodyResult.Text;
+
+        // Pre-request script
+        using var session = new ScriptSession(_activeEnv);
+        if (!string.IsNullOrWhiteSpace(PreRequestScript))
+        {
+            try { session.RunPreRequest(PreRequestScript); }
+            catch (ScriptException ex)
+            {
+                ErrorMessage = ex.Message;
+                StatusCode = null; ResponseBody = null; ElapsedMilliseconds = null;
+                return;
+            }
+        }
+
         var result = await _sender.SendAsync(
             new HttpRequest(SelectedMethod, urlResult.Text, body, resolvedHeaders, resolvedAuth));
 
         switch (result)
         {
             case SendResult.Ok ok:
+                // Post-response script
+                if (!string.IsNullOrWhiteSpace(PostResponseScript))
+                    session.RunPostResponse(PostResponseScript, ok.Response);
+
+                // Apply any environment writes from scripts
+                foreach (var (key, value) in session.EnvironmentUpdates)
+                    await (_updateVariable?.Invoke(key, value, VariableTarget.ActiveEnv) ?? Task.CompletedTask);
+
+                TestResults.Clear();
+                foreach (var r in session.TestResults)
+                    TestResults.Add(new TestResultViewModel(r.Name, r.Passed, r.ErrorMessage));
+
                 StatusCode = ok.Response.StatusCode;
                 ResponseBody = ok.Response.Body;
                 ElapsedMilliseconds = ok.Response.ElapsedMilliseconds;
@@ -456,9 +540,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                         ResponseCookies.Add(CookieViewModel.FromHeader(h.Value));
                 }
                 break;
+
             case SendResult.Error err:
                 ErrorMessage = err.Message;
                 StatusCode = null; ResponseBody = null; ElapsedMilliseconds = null;
+                TestResults.Clear();
                 ResponseHeaders.Clear();
                 ResponseCookies.Clear();
                 break;
@@ -470,7 +556,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         if (RequestId is null || CollectionFilePath is null) return;
         try
         {
-            await _collectionStore.UpdateRequestAsync(CollectionFilePath, RequestId, BuildRequest());
+            await _collectionStore.UpdateRequestAsync(
+                CollectionFilePath, RequestId, BuildRequest(),
+                preRequestScript: PreRequestScript,
+                postResponseScript: PostResponseScript);
             CaptureSnapshot();
             ErrorMessage = null;
             _savedSuccessfully.OnNext(CollectionFilePath);
@@ -495,7 +584,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     {
         var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
         IsDirty = _savedSnapshot != new RequestSnapshot(
-            SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey());
+            SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
+            PreRequestScript, PostResponseScript);
     }
 
     private HeaderRowViewModel CreateHeaderRow() =>
@@ -602,7 +692,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private void CaptureSnapshot()
     {
         var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
-        _savedSnapshot = new RequestSnapshot(SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey());
+        _savedSnapshot = new RequestSnapshot(
+            SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
+            PreRequestScript, PostResponseScript);
         IsDirty = false;
     }
 
