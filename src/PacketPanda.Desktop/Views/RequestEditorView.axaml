@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
              xmlns:conv="using:PacketPanda.Desktop.Converters"
+             xmlns:aedit="using:AvaloniaEdit"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
              x:Class="PacketPanda.Desktop.Views.RequestEditorView"
              x:DataType="vm:RequestEditorViewModel">
@@ -367,6 +368,60 @@
                 </Panel>
             </TabItem>
 
+            <!-- Scripts tab -->
+            <TabItem Header="Scripts">
+                <Grid ColumnDefinitions="110,1,*">
+
+                    <!-- Left: section selector -->
+                    <StackPanel Grid.Column="0" Spacing="0" VerticalAlignment="Top" Margin="0,4,0,0">
+                        <Button x:Name="PreRequestSectionBtn"
+                                Content="Pre-request"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,8"
+                                FontSize="12"
+                                Command="{Binding SelectPreRequestCommand}" />
+                        <Button x:Name="PostResponseSectionBtn"
+                                Content="Post-response"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,8"
+                                FontSize="12"
+                                Command="{Binding SelectPostResponseCommand}" />
+                    </StackPanel>
+
+                    <!-- Divider -->
+                    <Border Grid.Column="1" Width="1" Background="#DDDDDD" Margin="0,4" />
+
+                    <!-- Right: editors (toggled by IsVisible) -->
+                    <aedit:TextEditor x:Name="PreRequestEditor"
+                                      Grid.Column="2"
+                                      IsVisible="{Binding IsPreRequestScript}"
+                                      SyntaxHighlighting="JavaScript"
+                                      ShowLineNumbers="True"
+                                      FontFamily="Consolas,Menlo,monospace"
+                                      FontSize="12"
+                                      Margin="4,4,0,0"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto" />
+
+                    <aedit:TextEditor x:Name="PostResponseEditor"
+                                      Grid.Column="2"
+                                      IsVisible="{Binding IsPostResponseScript}"
+                                      SyntaxHighlighting="JavaScript"
+                                      ShowLineNumbers="True"
+                                      FontFamily="Consolas,Menlo,monospace"
+                                      FontSize="12"
+                                      Margin="4,4,0,0"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto" />
+                </Grid>
+            </TabItem>
+
         </TabControl>
 
         <GridSplitter Grid.Row="2"
@@ -459,6 +514,35 @@
                                                FontSize="12" />
                         </DataGrid.Columns>
                     </DataGrid>
+                </TabItem>
+
+                <!-- Tests tab -->
+                <TabItem Header="{Binding TestsTabLabel}">
+                    <ItemsControl ItemsSource="{Binding TestResults}" Margin="0,4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TestResultViewModel">
+                                <Grid ColumnDefinitions="20,*" Margin="0,2">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Passed, Converter={x:Static conv:BoolToPassFailConverter.Instance}}"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12"
+                                               Foreground="{Binding Passed, Converter={x:Static conv:BoolToPassFailBrushConverter.Instance}}"
+                                               VerticalAlignment="Top" />
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding ErrorMessage}"
+                                                   FontSize="11"
+                                                   Foreground="IndianRed"
+                                                   FontStyle="Italic"
+                                                   TextWrapping="Wrap"
+                                                   IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </TabItem>
 
             </TabControl>

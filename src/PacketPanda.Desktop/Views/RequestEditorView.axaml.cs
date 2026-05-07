@@ -78,6 +78,42 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
                 VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.GlobalsVariables, vm.ActiveEnvVariables);
             })
             .DisposeWith(_subs);
+
+        // VM → AvaloniaEdit: sync when VM property changes
+        vm.WhenAnyValue(v => v.PreRequestScript)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(text =>
+            {
+                if (PreRequestEditor.Document.Text != text)
+                    PreRequestEditor.Document.Text = text;
+            })
+            .DisposeWith(_subs);
+
+        vm.WhenAnyValue(v => v.PostResponseScript)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(text =>
+            {
+                if (PostResponseEditor.Document.Text != text)
+                    PostResponseEditor.Document.Text = text;
+            })
+            .DisposeWith(_subs);
+
+        // AvaloniaEdit → VM: sync when user types
+        EventHandler preScriptChanged = (_, _) =>
+        {
+            if (vm.PreRequestScript != PreRequestEditor.Document.Text)
+                vm.PreRequestScript = PreRequestEditor.Document.Text;
+        };
+        PreRequestEditor.Document.TextChanged += preScriptChanged;
+        Disposable.Create(() => PreRequestEditor.Document.TextChanged -= preScriptChanged).DisposeWith(_subs);
+
+        EventHandler postScriptChanged = (_, _) =>
+        {
+            if (vm.PostResponseScript != PostResponseEditor.Document.Text)
+                vm.PostResponseScript = PostResponseEditor.Document.Text;
+        };
+        PostResponseEditor.Document.TextChanged += postScriptChanged;
+        Disposable.Create(() => PostResponseEditor.Document.TextChanged -= postScriptChanged).DisposeWith(_subs);
     }
 
     private void OnEditorPointerMoved(TextBox editor, string? text, PointerEventArgs e)

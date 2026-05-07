@@ -92,6 +92,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
         SendCommand = ReactiveCommand.CreateFromTask(SendAsync, canSend);
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
+        SelectPreRequestCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PreRequest; });
+        SelectPostResponseCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PostResponse; });
 
         _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RequestBody)
             .Subscribe(_ => RecomputeDirty());
@@ -227,6 +229,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public ReactiveCommand<Unit, Unit> SendCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
+    public ReactiveCommand<Unit, Unit> SelectPreRequestCommand { get; }
+    public ReactiveCommand<Unit, Unit> SelectPostResponseCommand { get; }
 
     public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
