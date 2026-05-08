@@ -178,4 +178,23 @@ public sealed class CollectionSidebarViewModelTests
 
         vm.Collections.Should().HaveCount(2);
     }
+
+    [Fact]
+    public async Task RunCollectionCommand_InvokesOnFolderRunRequestedWithRoot()
+    {
+        var root = new FolderNode(Guid.NewGuid().ToString(), "My Collection", []);
+        var collection = new Collection("My Collection", "/my.json", root);
+        FolderNode? captured = null;
+
+        var vm = new CollectionViewModel(
+            collection,
+            _storeMock.Object,
+            _dialogMock.Object,
+            _ => { },
+            onFolderRunRequested: f => captured = f);
+
+        await vm.RunCollectionCommand.Execute();
+
+        captured.Should().BeSameAs(root);
+    }
 }

@@ -231,6 +231,7 @@ public class CollectionViewModel : ReactiveObject
         CancelRenameCommand = ReactiveCommand.Create(CancelRenameCollection);
         DuplicateCommand = ReactiveCommand.CreateFromTask(DuplicateCollectionAsync);
         DeleteCommand = ReactiveCommand.CreateFromTask(DeleteCollectionAsync);
+        RunCollectionCommand = ReactiveCommand.Create(() => _onFolderRunRequested?.Invoke(_collection.Root));
     }
 
     public string Name => _collection.Name;
@@ -291,6 +292,7 @@ public class CollectionViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> CancelRenameCommand { get; }
     public ReactiveCommand<Unit, Unit> DuplicateCommand { get; }
     public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
+    public ReactiveCommand<Unit, Unit> RunCollectionCommand { get; }
 
     private CollectionNodeViewModel BuildNodeVm(CollectionNode node)
     {
