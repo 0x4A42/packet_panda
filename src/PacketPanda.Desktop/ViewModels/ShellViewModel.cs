@@ -380,7 +380,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public void OpenDocInTab(string filePath)
     {
         var existing = Tabs.FirstOrDefault(t => t.Content is DocsViewerViewModel
-            && t.Content.CurrentFilePath == filePath);
+            && t.FilePath == filePath);
         if (existing is not null)
         {
             ActiveTab = existing;
