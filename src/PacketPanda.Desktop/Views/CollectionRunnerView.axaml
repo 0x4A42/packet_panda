@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             x:Class="PacketPanda.Desktop.Views.CollectionRunnerView"
+             x:DataType="vm:CollectionRunnerViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Header bar -->
+        <DockPanel Grid.Row="0" Margin="12,8,12,4" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left"
+                       Text="{Binding DisplayTitle}"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button DockPanel.Dock="Right"
+                    Content="Run"
+                    Command="{Binding RunCommand}"
+                    Width="72"
+                    HorizontalContentAlignment="Center" />
+        </DockPanel>
+
+        <!-- Results grid -->
+        <DataGrid Grid.Row="1"
+                  Margin="0"
+                  ItemsSource="{Binding RunResults}"
+                  AutoGenerateColumns="False"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="0"
+                  RowHeight="34"
+                  HeadersVisibility="Column"
+                  CanUserReorderColumns="False"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="False"
+                  IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name"
+                                    Binding="{Binding RequestName}"
+                                    Width="*" />
+                <DataGridTextColumn Header="Method"
+                                    Binding="{Binding Method}"
+                                    Width="80" />
+                <DataGridTextColumn Header="Status"
+                                    Binding="{Binding StatusLabel}"
+                                    Width="90" />
+                <DataGridTextColumn Header="Code"
+                                    Binding="{Binding StatusCode}"
+                                    Width="56" />
+                <DataGridTextColumn Header="Time"
+                                    Binding="{Binding DurationLabel}"
+                                    Width="72" />
+                <DataGridTextColumn Header="Tests"
+                                    Binding="{Binding TestsLabel}"
+                                    Width="64" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Summary bar -->
+        <Border Grid.Row="2"
+                Padding="12,6"
+                Background="#F5F5F5"
+                BorderBrush="#DDDDDD"
+                BorderThickness="0,1,0,0">
+            <TextBlock Text="{Binding SummaryText}"
+                       FontSize="12"
+                       Opacity="0.7" />
+        </Border>
+    </Grid>
+</UserControl>

@@ -340,6 +340,9 @@
                     <DataTemplate DataType="vm:EnvironmentEditorViewModel">
                         <views:EnvironmentEditorView />
                     </DataTemplate>
+                    <DataTemplate DataType="vm:CollectionRunnerViewModel">
+                        <views:CollectionRunnerView />
+                    </DataTemplate>
                 </ContentControl.DataTemplates>
             </ContentControl>
         </Grid>
