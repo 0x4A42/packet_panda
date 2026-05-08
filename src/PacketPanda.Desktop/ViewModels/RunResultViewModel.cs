@@ -62,6 +62,8 @@ public sealed class RunResultViewModel : ReactiveObject
         }
     }
 
+    public string MethodLabel => Method.ToString().ToUpperInvariant();
+
     public string StatusLabel => Status switch
     {
         RunStatus.Pending => "Pending",

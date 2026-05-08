@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Disposables;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
@@ -9,12 +10,13 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
 
-public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent
+public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDisposable
 {
     private readonly FolderNode _folder;
     private readonly IHttpRequestSender _sender;
     private readonly IVariableResolver _resolver;
-    private readonly IObservable<EnvironmentContext?> _activeEnvironment;
+    private readonly Func<string, string, VariableTarget, Task>? _updateVariable;
+    private readonly IDisposable _envSub;
 
     private bool _isRunning;
     private string _summaryText = string.Empty;
@@ -24,13 +26,14 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent
         FolderNode folder,
         IHttpRequestSender sender,
         IVariableResolver resolver,
-        IObservable<EnvironmentContext?> activeEnvironment)
+        IObservable<EnvironmentContext?> activeEnvironment,
+        Func<string, string, VariableTarget, Task>? updateVariable = null)
     {
         _folder = folder;
         _sender = sender;
         _resolver = resolver;
-        _activeEnvironment = activeEnvironment;
-        _activeEnvironment.Subscribe(ctx => _currentEnvCtx = ctx);
+        _updateVariable = updateVariable;
+        _envSub = activeEnvironment.Subscribe(ctx => _currentEnvCtx = ctx);
 
         var results = FlattenFolder(folder).Select(r => new RunResultViewModel
         {
@@ -105,6 +108,10 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent
                         if (!string.IsNullOrWhiteSpace(req.PostResponseScript))
                             session.RunPostResponse(req.PostResponseScript, ok.Response);
 
+                        if (_updateVariable is not null)
+                            foreach (var (key, value) in session.EnvironmentUpdates)
+                                await _updateVariable(key, value, VariableTarget.ActiveEnv);
+
                         var testResults = session.TestResults.ToList();
                         row.StatusCode = ok.Response.StatusCode;
                         row.DurationMs = ok.Response.ElapsedMilliseconds;
@@ -139,6 +146,8 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent
         SummaryText = $"{passed} passed · {failed} failed · {flatRequests.Count} total";
         IsRunning = false;
     }
+
+    public void Dispose() => _envSub.Dispose();
 
     private static IEnumerable<RequestNode> FlattenFolder(FolderNode folder)
     {

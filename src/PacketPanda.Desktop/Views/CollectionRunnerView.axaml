@@ -1,8 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             xmlns:conv="using:PacketPanda.Desktop.Converters"
              x:Class="PacketPanda.Desktop.Views.CollectionRunnerView"
              x:DataType="vm:CollectionRunnerViewModel">
+
+    <UserControl.Resources>
+        <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
+    </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto">
 
@@ -37,9 +42,22 @@
                 <DataGridTextColumn Header="Name"
                                     Binding="{Binding RequestName}"
                                     Width="*" />
-                <DataGridTextColumn Header="Method"
-                                    Binding="{Binding Method}"
-                                    Width="80" />
+                <DataGridTemplateColumn Header="Method" Width="80">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RunResultViewModel">
+                            <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding MethodLabel}"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           Foreground="White" />
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Status"
                                     Binding="{Binding StatusLabel}"
                                     Width="90" />

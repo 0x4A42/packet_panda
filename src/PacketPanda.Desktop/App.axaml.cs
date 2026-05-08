@@ -53,7 +53,8 @@ public partial class App : Application
                     folder,
                     sender,
                     variableResolver,
-                    shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<EnvironmentContext?>(null)));
+                    shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<EnvironmentContext?>(null),
+                    updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target)));
             mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;

@@ -142,6 +142,36 @@ public sealed class CollectionRunnerViewModelTests
     }
 
     [Fact]
+    public void DisplayTitle_IsFolderName()
+    {
+        var folder = MakeFolder("My Folder", []);
+        var vm = CreateVm(folder);
+        vm.DisplayTitle.Should().Be("Runner: My Folder");
+    }
+
+    [Fact]
+    public async Task RunCommand_PassingTest_SetsPassWithTestCounts()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
+
+        var req = new RequestNode(Guid.NewGuid().ToString(), "R1", "/col.json",
+            HttpMethod.Get, "https://example.com", new NoBody(),
+            Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>(),
+            PostResponseScript: "pp.test('status ok', function() { pp.expect(pp.response.status).to.equal(200); });");
+
+        var folder = MakeFolder("Root", [req]);
+        var vm = CreateVm(folder);
+
+        await vm.RunCommand.Execute();
+
+        vm.RunResults[0].Status.Should().Be(RunStatus.Pass);
+        vm.RunResults[0].TestsTotal.Should().Be(1);
+        vm.RunResults[0].TestsPassed.Should().Be(1);
+    }
+
+    [Fact]
     public async Task RunCommand_SecondRun_ResetsResultsBeforeRunning()
     {
         _sender
