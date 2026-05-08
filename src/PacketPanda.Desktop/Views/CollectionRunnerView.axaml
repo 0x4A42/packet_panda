@@ -45,7 +45,7 @@
                 <DataGridTextColumn Header="Name"
                                     Binding="{Binding RequestName}"
                                     Width="200" />
-                <DataGridTemplateColumn Header="Method" Width="80">
+                <DataGridTemplateColumn Header="Method" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:RunResultViewModel">
                             <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
@@ -72,7 +72,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Code" Width="56">
+                <DataGridTemplateColumn Header="Code" Width="76">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:RunResultViewModel">
                             <TextBlock Text="{Binding StatusCode}"
@@ -85,18 +85,32 @@
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Time"
                                     Binding="{Binding DurationLabel}"
-                                    Width="72" />
+                                    Width="88" />
                 <DataGridTextColumn Header="Tests"
                                     Binding="{Binding TestsLabel}"
-                                    Width="64" />
+                                    Width="80" />
+                <DataGridTemplateColumn Width="60" CanUserResize="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RunResultViewModel">
+                            <Button Content="↺"
+                                    FontSize="14"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="4,0"
+                                    Command="{Binding $parent[DataGrid].((vm:CollectionRunnerViewModel)DataContext).ReRunCommand}"
+                                    CommandParameter="{Binding}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 
         <!-- Detail panel (visible when a row is selected) -->
         <Border Grid.Row="2"
                 IsVisible="{Binding HasSelectedResult}"
-                MinHeight="200"
-                MaxHeight="300"
+                Height="220"
                 BorderBrush="#DDDDDD"
                 BorderThickness="0,1,0,0">
             <TabControl>
@@ -114,6 +128,8 @@
                 </TabItem>
                 <TabItem Header="Headers">
                     <DataGrid ItemsSource="{Binding SelectedResult.ResponseHeaders}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
                               AutoGenerateColumns="False"
                               GridLinesVisibility="Horizontal"
                               BorderThickness="0"
@@ -135,6 +151,8 @@
                 </TabItem>
                 <TabItem Header="Cookies">
                     <DataGrid ItemsSource="{Binding SelectedResult.Cookies}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
                               AutoGenerateColumns="False"
                               GridLinesVisibility="Horizontal"
                               BorderThickness="0"
