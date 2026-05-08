@@ -157,7 +157,9 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
                     row.TestsTotal = testResults.Count;
                     row.TestsPassed = testResults.Count(t => t.Passed);
 
-                    row.Status = testResults.Any(t => !t.Passed) ? RunStatus.Fail : RunStatus.Pass;
+                    row.Status = (testResults.Any(t => !t.Passed) || ok.Response.StatusCode >= 400)
+                        ? RunStatus.Fail
+                        : RunStatus.Pass;
                     break;
 
                 case SendResult.Error err:

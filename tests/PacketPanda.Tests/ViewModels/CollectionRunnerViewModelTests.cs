@@ -253,6 +253,22 @@ public sealed class CollectionRunnerViewModelTests
     }
 
     [Fact]
+    public async Task RunCommand_4xxResponse_SetsStatusToFail()
+    {
+        var response = new HttpResponse(429, "rate limited", 10);
+        _sender.Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(new SendResult.Ok(response));
+
+        var folder = MakeFolder("Root", [MakeRequest("R1")]);
+        var vm = CreateVm(folder);
+
+        await vm.RunCommand.Execute();
+
+        vm.RunResults[0].Status.Should().Be(RunStatus.Fail);
+        vm.RunResults[0].StatusCode.Should().Be(429);
+    }
+
+    [Fact]
     public async Task ReRunCommand_RerequestsAndUpdatesRow()
     {
         _sender
