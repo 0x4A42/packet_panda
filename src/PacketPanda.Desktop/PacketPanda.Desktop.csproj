@@ -26,10 +26,17 @@
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Markdown.Avalonia" Version="11.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PacketPanda.Core\PacketPanda.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\docs\*.md"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="docs\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
