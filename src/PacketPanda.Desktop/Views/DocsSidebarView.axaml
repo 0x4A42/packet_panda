@@ -5,18 +5,13 @@
              x:DataType="vm:DocsSidebarViewModel">
 
     <ListBox ItemsSource="{Binding DocItems}"
-             Background="Transparent">
+             Background="Transparent"
+             SelectionChanged="OnDocItemSelected">
         <ListBox.ItemTemplate>
             <DataTemplate DataType="vm:DocItemViewModel">
-                <Button Content="{Binding DisplayName}"
-                        Command="{Binding $parent[ListBox].DataContext.OpenDocCommand}"
-                        CommandParameter="{Binding}"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Padding="8,6"
-                        Cursor="Hand" />
+                <TextBlock Text="{Binding DisplayName}"
+                           Padding="8,6"
+                           Cursor="Hand" />
             </DataTemplate>
         </ListBox.ItemTemplate>
     </ListBox>
