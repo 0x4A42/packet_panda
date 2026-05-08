@@ -13,6 +13,7 @@
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
         <conv:AuthTypeDisplayConverter x:Key="AuthTypeDisplayConverter" />
         <conv:ApiKeyTargetDisplayConverter x:Key="ApiKeyTargetDisplayConverter" />
+        <conv:BodyModeDisplayConverter x:Key="BodyModeDisplayConverter" />
     </UserControl.Resources>
 
     <!-- Force the inner text-presenter foreground to transparent so the FluentTheme
@@ -343,29 +344,128 @@
             </TabItem>
 
             <!-- Body tab -->
-            <TabItem Header="Body">
-                <Panel Background="White">
-                    <TextBox x:Name="BodyEditor"
-                             Text="{Binding RequestBody}"
-                             AcceptsReturn="True"
-                             AcceptsTab="True"
-                             Foreground="Transparent"
-                             Background="Transparent"
-                             CaretBrush="#1E1E1E"
-                             FontFamily="Consolas,Menlo,monospace"
-                             FontSize="13"
-                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             TextWrapping="NoWrap"
-                             Padding="9,5,9,5" />
-                    <TextBlock x:Name="BodyOverlay"
-                               Foreground="#1E1E1E"
-                               FontFamily="Consolas,Menlo,monospace"
-                               FontSize="13"
-                               Padding="9,5,9,5"
-                               TextWrapping="NoWrap"
-                               IsHitTestVisible="False" />
-                </Panel>
+            <TabItem Header="Body" IsEnabled="{Binding IsBodyEnabled}">
+                <Grid RowDefinitions="Auto,*">
+
+                    <!-- Mode selector -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="2" Margin="0,4,0,4">
+                        <ComboBox ItemsSource="{Binding AvailableBodyModes}"
+                                  SelectedItem="{Binding SelectedBodyMode}"
+                                  MinWidth="90">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource BodyModeDisplayConverter}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Raw body editor (JSON / Text / XML) -->
+                    <Panel Grid.Row="1" Background="White"
+                           IsVisible="{Binding IsRawBodyMode}">
+                        <TextBox x:Name="BodyEditor"
+                                 Text="{Binding RawBodyText}"
+                                 AcceptsReturn="True"
+                                 AcceptsTab="True"
+                                 Foreground="Transparent"
+                                 Background="Transparent"
+                                 CaretBrush="#1E1E1E"
+                                 FontFamily="Consolas,Menlo,monospace"
+                                 FontSize="13"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 TextWrapping="NoWrap"
+                                 Padding="9,5,9,5" />
+                        <TextBlock x:Name="BodyOverlay"
+                                   Foreground="#1E1E1E"
+                                   FontFamily="Consolas,Menlo,monospace"
+                                   FontSize="13"
+                                   Padding="9,5,9,5"
+                                   TextWrapping="NoWrap"
+                                   IsHitTestVisible="False" />
+                    </Panel>
+
+                    <!-- Form-urlencoded editor -->
+                    <DataGrid Grid.Row="1"
+                              Margin="0,4"
+                              IsVisible="{Binding IsFormBodyMode}"
+                              ItemsSource="{Binding FormRows}"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="1"
+                              BorderBrush="#DDDDDD"
+                              RowHeight="34"
+                              HeadersVisibility="Column"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:FormRowViewModel">
+                                        <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Name" Width="2*" IsReadOnly="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:FormRowViewModel">
+                                        <TextBox Text="{Binding Name}"
+                                                 Watermark="Name"
+                                                 FontFamily="Consolas,Menlo,monospace"
+                                                 FontSize="12"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 Padding="6,0"
+                                                 VerticalContentAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Value" Width="2*" IsReadOnly="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:FormRowViewModel">
+                                        <TextBox Text="{Binding Value}"
+                                                 Watermark="Value"
+                                                 FontFamily="Consolas,Menlo,monospace"
+                                                 FontSize="12"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 Padding="6,0"
+                                                 VerticalContentAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:FormRowViewModel">
+                                        <Button Content="✕"
+                                                Command="{Binding RemoveCommand}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="4,0"
+                                                FontSize="11"
+                                                Foreground="#AAAAAA"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Cursor="Hand" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- None placeholder -->
+                    <Border Grid.Row="1"
+                            IsVisible="{Binding IsNoneBodyMode}"
+                            Padding="12">
+                        <TextBlock Text="This request has no body."
+                                   Opacity="0.45"
+                                   FontSize="12"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
             </TabItem>
 
             <!-- Scripts tab -->
