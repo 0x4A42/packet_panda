@@ -187,4 +187,44 @@ public sealed class CollectionRunnerViewModelTests
         vm.RunResults.Should().HaveCount(1);
         vm.RunResults[0].Status.Should().Be(RunStatus.Pass);
     }
+
+    [Fact]
+    public async Task RunCommand_SuccessfulRequest_StoresResponseBodyAndHeaders()
+    {
+        var headers = new List<HttpHeader> { new("Content-Type", "application/json") };
+        var response = new HttpResponse(200, "{\"ok\":true}", 10, headers);
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(response));
+
+        var folder = MakeFolder("Root", [MakeRequest("R1")]);
+        var vm = CreateVm(folder);
+
+        await vm.RunCommand.Execute();
+
+        vm.RunResults[0].ResponseBody.Should().Be("{\"ok\":true}");
+        vm.RunResults[0].ResponseHeaders.Should().ContainSingle(h => h.Name == "Content-Type");
+    }
+
+    [Fact]
+    public async Task RunCommand_SecondRun_ClearsResponseBodyFromFirstRun()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "first body", 10)));
+
+        var folder = MakeFolder("Root", [MakeRequest("R1")]);
+        var vm = CreateVm(folder);
+
+        await vm.RunCommand.Execute();
+        vm.RunResults[0].ResponseBody.Should().Be("first body");
+
+        // Change the response for the second run
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Error("network failure"));
+
+        await vm.RunCommand.Execute();
+        vm.RunResults[0].ResponseBody.Should().BeNull();
+    }
 }

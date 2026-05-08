@@ -97,6 +97,8 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
             row.TestsPassed = 0;
             row.TestsTotal = 0;
             row.ErrorMessage = null;
+            row.ResponseBody = null;
+            row.ResponseHeaders = null;
         }
 
         var passed = 0;
