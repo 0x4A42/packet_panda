@@ -501,6 +501,21 @@ public class ShellViewModelTests
     }
 
     [Fact]
+    public void OpenDocInTab_SamePathTwice_DoesNotCreateDuplicateTab()
+    {
+        var shell = CreateShell();
+        const string docPath = "/fake/docs/scripting.md";
+
+        shell.OpenDocInTab(docPath);
+        var firstTab = shell.ActiveTab;
+
+        shell.OpenDocInTab(docPath);
+
+        shell.Tabs.Should().ContainSingle();
+        shell.ActiveTab.Should().BeSameAs(firstTab);
+    }
+
+    [Fact]
     public async Task SelectedEnvironment_PickerReplaceFiresNull_SelectionNotCleared()
     {
         // Regression: Avalonia ComboBox sends null through the two-way binding during a
