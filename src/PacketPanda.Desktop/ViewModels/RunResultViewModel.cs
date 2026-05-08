@@ -15,6 +15,8 @@ public sealed class RunResultViewModel : ReactiveObject
     private int _testsTotal;
 
     private string? _errorMessage;
+    private string? _responseBody;
+    private IReadOnlyList<HttpHeader>? _responseHeaders;
 
     public string RequestName { get; init; } = string.Empty;
     public HttpMethod Method { get; init; }
@@ -73,8 +75,21 @@ public sealed class RunResultViewModel : ReactiveObject
         }
     }
 
-    public string? ResponseBody { get; set; }
-    public IReadOnlyList<HttpHeader>? ResponseHeaders { get; set; }
+    public string? ResponseBody
+    {
+        get => _responseBody;
+        set => this.RaiseAndSetIfChanged(ref _responseBody, value);
+    }
+
+    public IReadOnlyList<HttpHeader>? ResponseHeaders
+    {
+        get => _responseHeaders;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _responseHeaders, value);
+            this.RaisePropertyChanged(nameof(Cookies));
+        }
+    }
 
     public IReadOnlyList<CookieEntry> Cookies => ResponseHeaders?
         .Where(h => h.Name.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
