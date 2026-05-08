@@ -41,6 +41,19 @@
                   CanUserResizeColumns="True"
                   CanUserSortColumns="False"
                   IsReadOnly="True">
+            <DataGrid.Styles>
+                <Style Selector="DataGridRow">
+                    <Setter Property="ContextFlyout">
+                        <Setter.Value>
+                            <MenuFlyout>
+                                <MenuItem Header="Go to request"
+                                          Command="{Binding $parent[DataGrid].DataContext.GoToRequestCommand}"
+                                          CommandParameter="{Binding}" />
+                            </MenuFlyout>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </DataGrid.Styles>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name"
                                     Binding="{Binding RequestName}"

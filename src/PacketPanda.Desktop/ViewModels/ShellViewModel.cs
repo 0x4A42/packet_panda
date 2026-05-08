@@ -255,7 +255,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
-    private Task OpenRequestNodeInTabAsync(RequestNode node)
+    internal Task OpenRequestNodeInTabAsync(RequestNode node)
     {
         var existing = Tabs.FirstOrDefault(t => t.Content is RequestEditorViewModel r && r.RequestId == node.Id);
         if (existing is not null) { ActiveTab = existing; return Task.CompletedTask; }

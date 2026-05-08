@@ -16,6 +16,7 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
     private readonly IHttpRequestSender _sender;
     private readonly IVariableResolver _resolver;
     private readonly Func<string, string, VariableTarget, Task>? _updateVariable;
+    private readonly Func<RequestNode, Task>? _openRequest;
     private readonly IDisposable _envSub;
     private readonly List<RequestNode> _flatRequests;
 
@@ -29,17 +30,19 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
         IHttpRequestSender sender,
         IVariableResolver resolver,
         IObservable<EnvironmentContext?> activeEnvironment,
-        Func<string, string, VariableTarget, Task>? updateVariable = null)
+        Func<string, string, VariableTarget, Task>? updateVariable = null,
+        Func<RequestNode, Task>? openRequest = null)
     {
         _folder = folder;
         _sender = sender;
         _resolver = resolver;
         _updateVariable = updateVariable;
+        _openRequest = openRequest;
         _envSub = activeEnvironment.Subscribe(ctx => _currentEnvCtx = ctx);
 
         _flatRequests = FlattenFolder(folder).ToList();
         foreach (var r in _flatRequests)
-            RunResults.Add(new RunResultViewModel { RequestName = r.Name, Method = r.Method });
+            RunResults.Add(new RunResultViewModel { RequestName = r.Name, Method = r.Method, Node = r });
 
         RunCommand = ReactiveCommand.CreateFromTask(
             ExecuteRunAsync,
@@ -48,11 +51,19 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
         ReRunCommand = ReactiveCommand.CreateFromTask<RunResultViewModel>(
             ReRunRequestAsync,
             this.WhenAnyValue(vm => vm.IsRunning, running => !running));
+
+        GoToRequestCommand = ReactiveCommand.CreateFromTask<RunResultViewModel>(
+            async row =>
+            {
+                if (row.Node is not null && _openRequest is not null)
+                    await _openRequest(row.Node);
+            });
     }
 
     public ObservableCollection<RunResultViewModel> RunResults { get; } = new();
     public ReactiveCommand<Unit, Unit> RunCommand { get; }
     public ReactiveCommand<RunResultViewModel, Unit> ReRunCommand { get; }
+    public ReactiveCommand<RunResultViewModel, Unit> GoToRequestCommand { get; }
 
     public RunResultViewModel? SelectedResult
     {

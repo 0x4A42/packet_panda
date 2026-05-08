@@ -1,4 +1,5 @@
 using PacketPanda.Core.Http;
+using PacketPanda.Core.Persistence;
 using ReactiveUI;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
@@ -20,6 +21,7 @@ public sealed class RunResultViewModel : ReactiveObject
 
     public string RequestName { get; init; } = string.Empty;
     public HttpMethod Method { get; init; }
+    public RequestNode? Node { get; init; }
 
     public string? ErrorMessage
     {

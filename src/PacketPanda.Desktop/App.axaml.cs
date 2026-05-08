@@ -54,7 +54,8 @@ public partial class App : Application
                     sender,
                     variableResolver,
                     shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<EnvironmentContext?>(null),
-                    updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target)));
+                    updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
+                    openRequest: node => shell!.OpenRequestNodeInTabAsync(node)));
             mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;
