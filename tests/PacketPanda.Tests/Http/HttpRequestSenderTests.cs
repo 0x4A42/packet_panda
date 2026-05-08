@@ -237,4 +237,46 @@ public class HttpRequestSenderTests : IDisposable
         ok.Response.Headers!.Should().Contain(h =>
             h.Name.Equals("X-Request-Id", StringComparison.OrdinalIgnoreCase) && h.Value == "abc123");
     }
+
+    [Fact]
+    public async Task Patch_SendsWithPatchMethod()
+    {
+        _server
+            .Given(Request.Create().WithPath("/item/1").UsingMethod("PATCH"))
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("patched"));
+
+        var result = await _sender.SendAsync(
+            new HttpRequest(HttpMethod.Patch, _server.Url + "/item/1"));
+
+        result.Should().BeOfType<SendResult.Ok>()
+            .Which.Response.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task Head_SendsWithHeadMethod_ReturnsOk()
+    {
+        _server
+            .Given(Request.Create().WithPath("/check").UsingMethod("HEAD"))
+            .RespondWith(Response.Create().WithStatusCode(200));
+
+        var result = await _sender.SendAsync(
+            new HttpRequest(HttpMethod.Head, _server.Url + "/check"));
+
+        result.Should().BeOfType<SendResult.Ok>()
+            .Which.Response.StatusCode.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task Options_SendsWithOptionsMethod()
+    {
+        _server
+            .Given(Request.Create().WithPath("/resource").UsingMethod("OPTIONS"))
+            .RespondWith(Response.Create().WithStatusCode(204));
+
+        var result = await _sender.SendAsync(
+            new HttpRequest(HttpMethod.Options, _server.Url + "/resource"));
+
+        result.Should().BeOfType<SendResult.Ok>()
+            .Which.Response.StatusCode.Should().Be(204);
+    }
 }

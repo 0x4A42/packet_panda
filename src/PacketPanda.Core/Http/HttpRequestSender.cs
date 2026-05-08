@@ -64,10 +64,13 @@ public sealed class HttpRequestSender : IHttpRequestSender
     {
         var method = request.Method switch
         {
-            HttpMethod.Get => SystemHttpMethod.Get,
-            HttpMethod.Post => SystemHttpMethod.Post,
-            HttpMethod.Put => SystemHttpMethod.Put,
-            HttpMethod.Delete => SystemHttpMethod.Delete,
+            HttpMethod.Get     => SystemHttpMethod.Get,
+            HttpMethod.Post    => SystemHttpMethod.Post,
+            HttpMethod.Put     => SystemHttpMethod.Put,
+            HttpMethod.Delete  => SystemHttpMethod.Delete,
+            HttpMethod.Patch   => SystemHttpMethod.Patch,
+            HttpMethod.Head    => SystemHttpMethod.Head,
+            HttpMethod.Options => new SystemHttpMethod("OPTIONS"),
             _ => throw new ArgumentOutOfRangeException(nameof(request), request.Method, "Unsupported method")
         };
 

@@ -351,7 +351,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         HttpMethod.Get,
         HttpMethod.Post,
         HttpMethod.Put,
-        HttpMethod.Delete
+        HttpMethod.Delete,
+        HttpMethod.Patch,
+        HttpMethod.Head,
+        HttpMethod.Options
     };
 
     public Task UpdateVariableAsync(string name, string value, VariableTarget target) =>

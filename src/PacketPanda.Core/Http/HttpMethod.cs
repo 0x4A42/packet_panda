@@ -5,5 +5,8 @@ public enum HttpMethod
     Get,
     Post,
     Put,
-    Delete
+    Delete,
+    Patch,
+    Head,
+    Options
 }
