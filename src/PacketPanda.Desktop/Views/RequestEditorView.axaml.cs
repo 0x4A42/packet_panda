@@ -32,7 +32,7 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         UrlEditor.PointerExited += (_, _) => StartPopupCloseTimer();
 
         BodyEditor.PointerMoved += (_, e) =>
-            OnEditorPointerMoved(BodyEditor, (DataContext as RequestEditorViewModel)?.RequestBody, e);
+            OnEditorPointerMoved(BodyEditor, (DataContext as RequestEditorViewModel)?.RawBodyText, e);
         BodyEditor.PointerExited += (_, _) => StartPopupCloseTimer();
 
         PopupValueBox.KeyDown += OnPopupValueBoxKeyDown;
@@ -65,9 +65,9 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
             .Subscribe(_ => VariableTextHighlighter.Apply(UrlOverlay, vm.Url, vm.GlobalsVariables, vm.ActiveEnvVariables))
             .DisposeWith(_subs);
 
-        vm.WhenAnyValue(x => x.RequestBody)
+        vm.WhenAnyValue(x => x.RawBodyText)
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(_ => VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.GlobalsVariables, vm.ActiveEnvVariables))
+            .Subscribe(_ => VariableTextHighlighter.Apply(BodyOverlay, vm.RawBodyText, vm.GlobalsVariables, vm.ActiveEnvVariables))
             .DisposeWith(_subs);
 
         vm.WhenAnyValue(x => x.ActiveEnvironmentVariables)
@@ -75,7 +75,7 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
             .Subscribe(_ =>
             {
                 VariableTextHighlighter.Apply(UrlOverlay, vm.Url, vm.GlobalsVariables, vm.ActiveEnvVariables);
-                VariableTextHighlighter.Apply(BodyOverlay, vm.RequestBody, vm.GlobalsVariables, vm.ActiveEnvVariables);
+                VariableTextHighlighter.Apply(BodyOverlay, vm.RawBodyText, vm.GlobalsVariables, vm.ActiveEnvVariables);
             })
             .DisposeWith(_subs);
 

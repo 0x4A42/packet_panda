@@ -99,7 +99,8 @@ public sealed class RequestEditorViewModelTests
         var vm = CreateVm();
         vm.Url = "https://example.com";
         vm.SelectedMethod = HttpMethod.Post;
-        vm.RequestBody = "{\"x\":1}";
+        vm.SelectedBodyMode = BodyMode.Json;
+        vm.RawBodyText = "{\"x\":1}";
 
         await vm.SendCommand.Execute();
 
@@ -118,7 +119,6 @@ public sealed class RequestEditorViewModelTests
 
         var vm = CreateVm();
         vm.Url = "https://example.com";
-        vm.RequestBody = "";
 
         await vm.SendCommand.Execute();
 
@@ -233,7 +233,8 @@ public sealed class RequestEditorViewModelTests
     {
         var vm = CreateVm();
 
-        vm.RequestBody = "{}";
+        vm.SelectedBodyMode = BodyMode.Json;
+        vm.RawBodyText = "{}";
 
         vm.IsDirty.Should().BeTrue();
     }
@@ -906,5 +907,86 @@ public sealed class RequestEditorViewModelTests
         await vm.SendCommand.Execute();
 
         vm.TestsTabLabel.Should().Be("Tests (1/2)");
+    }
+
+    [Fact]
+    public void LoadBody_JsonBody_SetsJsonModeAndText()
+    {
+        var vm = CreateVm();
+        vm.LoadBody(new JsonBody("{\"x\":1}"));
+        vm.SelectedBodyMode.Should().Be(BodyMode.Json);
+        vm.RawBodyText.Should().Be("{\"x\":1}");
+    }
+
+    [Fact]
+    public void LoadBody_FormBody_SetsFormModeAndRows()
+    {
+        var vm = CreateVm();
+        var fields = new List<FormField>
+        {
+            new("username", "alice", true),
+            new("password", "secret", false)
+        };
+        vm.LoadBody(new FormBody(fields));
+        vm.SelectedBodyMode.Should().Be(BodyMode.Form);
+        vm.FormRows.Should().HaveCount(3); // 2 real + 1 trailing empty
+        vm.FormRows[0].Name.Should().Be("username");
+        vm.FormRows[1].Name.Should().Be("password");
+        vm.FormRows[1].Enabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoadBody_NoBody_SetsNoneMode()
+    {
+        var vm = CreateVm();
+        vm.LoadBody(new NoBody());
+        vm.SelectedBodyMode.Should().Be(BodyMode.None);
+        vm.RawBodyText.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BuildRequest_JsonMode_ReturnsJsonBody()
+    {
+        var vm = CreateVm();
+        vm.SelectedBodyMode = BodyMode.Json;
+        vm.RawBodyText = "{\"x\":1}";
+        vm.Url = "https://api.example.com";
+
+        var req = vm.BuildRequest();
+
+        req.Body.Should().BeOfType<JsonBody>()
+            .Which.Text.Should().Be("{\"x\":1}");
+    }
+
+    [Fact]
+    public void BuildRequest_FormMode_ReturnsFormBody()
+    {
+        var vm = CreateVm();
+        vm.SelectedBodyMode = BodyMode.Form;
+        vm.Url = "https://api.example.com";
+        var row = vm.FormRows.First(r => string.IsNullOrEmpty(r.Name));
+        row.Name = "key";
+        row.Value = "val";
+
+        var req = vm.BuildRequest();
+
+        var form = req.Body.Should().BeOfType<FormBody>().Subject;
+        form.Fields.Should().Contain(f => f.Name == "key" && f.Value == "val");
+    }
+
+    [Fact]
+    public void SelectedMethod_Head_IsBodyEnabledFalse()
+    {
+        var vm = CreateVm();
+        vm.SelectedMethod = HttpMethod.Head;
+        vm.IsBodyEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SelectedMethod_Post_IsBodyEnabledTrue()
+    {
+        var vm = CreateVm();
+        vm.SelectedMethod = HttpMethod.Post;
+        vm.IsBodyEnabled.Should().BeTrue();
     }
 }

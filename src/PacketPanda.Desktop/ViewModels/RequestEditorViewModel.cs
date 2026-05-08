@@ -26,7 +26,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     private HttpMethod _selectedMethod = HttpMethod.Get;
     private string _url = string.Empty;
-    private string? _requestBody;
+    private BodyMode _selectedBodyMode = BodyMode.None;
+    private string _rawBodyText = string.Empty;
     private int? _statusCode;
     private long? _elapsedMilliseconds;
     private string? _responseBody;
@@ -57,7 +58,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private sealed record RequestSnapshot(
         HttpMethod Method,
         string Url,
-        string? Body,
+        BodyMode BodyMode,
+        string RawBodyText,
+        string FormKey,
         string HeadersKey,
         string AuthKey,
         string ParamsKey,
@@ -95,7 +98,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SelectPreRequestCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PreRequest; });
         SelectPostResponseCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PostResponse; });
 
-        _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RequestBody)
+        _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RawBodyText, vm => vm.SelectedBodyMode)
             .Subscribe(_ => RecomputeDirty());
 
         AddHeaderCommand = ReactiveCommand.Create(() => Headers.Add(CreateHeaderRow()));
@@ -150,6 +153,24 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _urlParamsSyncSub = this.WhenAnyValue(vm => vm.Url)
             .Subscribe(_ => SyncParamsFromUrl());
 
+        FormRows = new ObservableCollection<FormRowViewModel>();
+        void OnFormRowChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            EnsureTrailingEmptyFormRow();
+            RecomputeDirty();
+        }
+        FormRows.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems != null)
+                foreach (FormRowViewModel row in e.NewItems)
+                    row.PropertyChanged += OnFormRowChanged;
+            if (e.OldItems != null)
+                foreach (FormRowViewModel row in e.OldItems)
+                    row.PropertyChanged -= OnFormRowChanged;
+            RecomputeDirty();
+        };
+        EnsureTrailingEmptyFormRow();
+
         ResponseHeaders.CollectionChanged += (_, _) =>
             this.RaisePropertyChanged(nameof(ResponseHeadersTabLabel));
 
@@ -176,7 +197,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public HttpMethod SelectedMethod
     {
         get => _selectedMethod;
-        set => this.RaiseAndSetIfChanged(ref _selectedMethod, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedMethod, value);
+            this.RaisePropertyChanged(nameof(IsBodyEnabled));
+        }
     }
 
     public string Url
@@ -185,11 +210,34 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         set => this.RaiseAndSetIfChanged(ref _url, value ?? string.Empty);
     }
 
-    public string? RequestBody
+    public BodyMode SelectedBodyMode
     {
-        get => _requestBody;
-        set => this.RaiseAndSetIfChanged(ref _requestBody, value);
+        get => _selectedBodyMode;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedBodyMode, value);
+            this.RaisePropertyChanged(nameof(IsRawBodyMode));
+            this.RaisePropertyChanged(nameof(IsFormBodyMode));
+            this.RaisePropertyChanged(nameof(IsNoneBodyMode));
+            RecomputeDirty();
+        }
     }
+
+    public string RawBodyText
+    {
+        get => _rawBodyText;
+        set => this.RaiseAndSetIfChanged(ref _rawBodyText, value ?? string.Empty);
+    }
+
+    public ObservableCollection<FormRowViewModel> FormRows { get; private set; } = new();
+
+    public bool IsRawBodyMode  => SelectedBodyMode is BodyMode.Json or BodyMode.Text or BodyMode.Xml;
+    public bool IsFormBodyMode => SelectedBodyMode == BodyMode.Form;
+    public bool IsNoneBodyMode => SelectedBodyMode == BodyMode.None;
+    public bool IsBodyEnabled  => SelectedMethod != HttpMethod.Head;
+
+    public BodyMode[] AvailableBodyModes { get; } =
+        [BodyMode.None, BodyMode.Json, BodyMode.Text, BodyMode.Xml, BodyMode.Form];
 
     public int? StatusCode
     {
@@ -364,9 +412,6 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public HttpRequest BuildRequest()
     {
-        var bodyConfig = string.IsNullOrEmpty(RequestBody)
-            ? (BodyConfig)new NoBody()
-            : new JsonBody(RequestBody);   // temporary — Task 4 replaces with proper mode selection
         var headers = Headers
             .Where(h => !string.IsNullOrEmpty(h.Name))
             .Select(h => new HttpHeader(h.Name, h.Value, h.Enabled))
@@ -382,8 +427,21 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             .Where(p => p.Enabled && !string.IsNullOrEmpty(p.Key))
             .Select(p => new QueryParam(p.Key, p.Value, p.Enabled))
             .ToList();
-        return new HttpRequest(SelectedMethod, Url, bodyConfig, headers, auth, queryParams);
+        return new HttpRequest(SelectedMethod, Url, BuildBodyConfig(), headers, auth, queryParams);
     }
+
+    private BodyConfig BuildBodyConfig() => SelectedBodyMode switch
+    {
+        BodyMode.Json => new JsonBody(RawBodyText),
+        BodyMode.Text => new PlainTextBody(RawBodyText),
+        BodyMode.Xml  => new XmlBody(RawBodyText),
+        BodyMode.Form => new FormBody(
+            FormRows
+                .Where(r => !string.IsNullOrEmpty(r.Name))
+                .Select(r => new FormField(r.Name, r.Value, r.Enabled))
+                .ToList()),
+        _ => new NoBody()
+    };
 
     public void LoadHeaders(IReadOnlyList<HttpHeader> headers)
     {
@@ -440,14 +498,38 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public void LoadBody(BodyConfig body)
     {
-        // Stub — replaced in Task 4 with full BodyMode support
-        RequestBody = body switch
+        switch (body)
         {
-            JsonBody j      => j.Text,
-            PlainTextBody t => t.Text,
-            XmlBody x       => x.Text,
-            _               => null
-        };
+            case JsonBody json:
+                SelectedBodyMode = BodyMode.Json;
+                RawBodyText = json.Text;
+                break;
+            case PlainTextBody text:
+                SelectedBodyMode = BodyMode.Text;
+                RawBodyText = text.Text;
+                break;
+            case XmlBody xml:
+                SelectedBodyMode = BodyMode.Xml;
+                RawBodyText = xml.Text;
+                break;
+            case FormBody form:
+                SelectedBodyMode = BodyMode.Form;
+                FormRows.Clear();
+                foreach (var f in form.Fields)
+                {
+                    var row = CreateFormRow();
+                    row.Enabled = f.Enabled;
+                    row.Name = f.Name;
+                    row.Value = f.Value;
+                    FormRows.Add(row);
+                }
+                EnsureTrailingEmptyFormRow();
+                break;
+            default:
+                SelectedBodyMode = BodyMode.None;
+                RawBodyText = string.Empty;
+                break;
+        }
     }
 
     public void LoadScripts(string? preRequest, string? postResponse)
@@ -462,8 +544,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         ErrorMessage = null;
 
         var urlResult = _resolver.Resolve(Url, _activeEnv);
-        var bodyResult = _resolver.Resolve(RequestBody ?? string.Empty, _activeEnv);
-        var unresolvedNames = new List<string>(urlResult.UnresolvedNames.Concat(bodyResult.UnresolvedNames));
+        var unresolvedNames = new List<string>(urlResult.UnresolvedNames);
 
         var resolvedHeaders = new List<HttpHeader>();
         foreach (var row in Headers.Where(h => h.Enabled))
@@ -512,9 +593,46 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             return;
         }
 
-        BodyConfig resolvedBody = string.IsNullOrEmpty(bodyResult.Text)
-            ? new NoBody()
-            : new JsonBody(bodyResult.Text);   // temporary — Task 4 replaces
+        BodyConfig resolvedBody;
+        switch (SelectedBodyMode)
+        {
+            case BodyMode.Json:
+            {
+                var r = _resolver.Resolve(RawBodyText, _activeEnv);
+                unresolvedNames.AddRange(r.UnresolvedNames);
+                resolvedBody = new JsonBody(r.Text);
+                break;
+            }
+            case BodyMode.Text:
+            {
+                var r = _resolver.Resolve(RawBodyText, _activeEnv);
+                unresolvedNames.AddRange(r.UnresolvedNames);
+                resolvedBody = new PlainTextBody(r.Text);
+                break;
+            }
+            case BodyMode.Xml:
+            {
+                var r = _resolver.Resolve(RawBodyText, _activeEnv);
+                unresolvedNames.AddRange(r.UnresolvedNames);
+                resolvedBody = new XmlBody(r.Text);
+                break;
+            }
+            case BodyMode.Form:
+            {
+                var fields = new List<FormField>();
+                foreach (var row in FormRows.Where(r => r.Enabled && !string.IsNullOrEmpty(r.Name)))
+                {
+                    var r = _resolver.Resolve(row.Value, _activeEnv);
+                    unresolvedNames.AddRange(r.UnresolvedNames);
+                    fields.Add(new FormField(row.Name, r.Text, true));
+                }
+                resolvedBody = new FormBody(fields);
+                break;
+            }
+            default:
+                resolvedBody = new NoBody();
+                break;
+        }
 
         // Pre-request script
         using var session = new ScriptSession(_activeEnv);
@@ -605,9 +723,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     private void RecomputeDirty()
     {
-        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
         IsDirty = _savedSnapshot != new RequestSnapshot(
-            SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
+            SelectedMethod, Url, SelectedBodyMode, RawBodyText, ComputeFormKey(),
+            ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
             PreRequestScript, PostResponseScript);
     }
 
@@ -714,11 +832,26 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     private void CaptureSnapshot()
     {
-        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
         _savedSnapshot = new RequestSnapshot(
-            SelectedMethod, Url, body, ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
+            SelectedMethod, Url, SelectedBodyMode, RawBodyText, ComputeFormKey(),
+            ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
             PreRequestScript, PostResponseScript);
         IsDirty = false;
+    }
+
+    private string ComputeFormKey() =>
+        string.Join("|", FormRows
+            .Where(r => !string.IsNullOrEmpty(r.Name))
+            .Select(r => $"{r.Enabled}:{r.Name}:{r.Value}"));
+
+    private FormRowViewModel CreateFormRow() =>
+        new FormRowViewModel(row => { FormRows.Remove(row); EnsureTrailingEmptyFormRow(); });
+
+    private void EnsureTrailingEmptyFormRow()
+    {
+        var last = FormRows.LastOrDefault();
+        if (last is null || !string.IsNullOrEmpty(last.Name) || !string.IsNullOrEmpty(last.Value))
+            FormRows.Add(CreateFormRow());
     }
 
     public void MarkSaved() => CaptureSnapshot();
