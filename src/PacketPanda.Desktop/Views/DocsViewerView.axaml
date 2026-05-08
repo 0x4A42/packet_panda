@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             xmlns:md="using:Markdown.Avalonia"
+             x:Class="PacketPanda.Desktop.Views.DocsViewerView"
+             x:DataType="vm:DocsViewerViewModel">
+
+    <md:MarkdownScrollViewer Markdown="{Binding MarkdownContent}"
+                             Margin="16" />
+
+</UserControl>
