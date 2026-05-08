@@ -622,6 +622,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _requestOpenedSub.Dispose();
         _folderRunSub?.Dispose();
         _docOpenSub.Dispose();
+        DocsSidebar.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

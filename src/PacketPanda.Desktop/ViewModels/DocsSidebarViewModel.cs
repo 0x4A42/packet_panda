@@ -5,7 +5,7 @@ using ReactiveUI;
 
 namespace PacketPanda.Desktop.ViewModels;
 
-public class DocsSidebarViewModel : ReactiveObject
+public class DocsSidebarViewModel : ReactiveObject, IDisposable
 {
     private readonly Subject<string> _docOpenRequested = new();
 
@@ -29,4 +29,6 @@ public class DocsSidebarViewModel : ReactiveObject
     public ObservableCollection<DocItemViewModel> DocItems { get; }
     public ReactiveCommand<DocItemViewModel, Unit> OpenDocCommand { get; }
     public IObservable<string> DocOpenRequested => _docOpenRequested;
+
+    public void Dispose() => _docOpenRequested.Dispose();
 }
