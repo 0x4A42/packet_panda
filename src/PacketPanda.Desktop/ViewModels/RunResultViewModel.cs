@@ -12,8 +12,16 @@ public sealed class RunResultViewModel : ReactiveObject
     private int _testsPassed;
     private int _testsTotal;
 
+    private string? _errorMessage;
+
     public string RequestName { get; init; } = string.Empty;
     public HttpMethod Method { get; init; }
+
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
+    }
 
     public RunStatus Status
     {
@@ -22,6 +30,7 @@ public sealed class RunResultViewModel : ReactiveObject
         {
             this.RaiseAndSetIfChanged(ref _status, value);
             this.RaisePropertyChanged(nameof(StatusLabel));
+            this.RaisePropertyChanged(nameof(IsPass));
             this.RaisePropertyChanged(nameof(TestsLabel));
         }
     }
@@ -63,6 +72,8 @@ public sealed class RunResultViewModel : ReactiveObject
     }
 
     public string MethodLabel => Method.ToString().ToUpperInvariant();
+
+    public bool IsPass => Status == RunStatus.Pass;
 
     public string StatusLabel => Status switch
     {

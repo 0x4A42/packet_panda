@@ -585,14 +585,6 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                 break;
         }
 
-        var unresolved = unresolvedNames.Distinct(StringComparer.Ordinal).ToList();
-        if (unresolved.Count > 0)
-        {
-            ErrorMessage = $"Unresolved variables: {string.Join(", ", unresolved)}";
-            StatusCode = null; ResponseBody = null; ElapsedMilliseconds = null;
-            return;
-        }
-
         BodyConfig resolvedBody;
         switch (SelectedBodyMode)
         {
@@ -632,6 +624,14 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             default:
                 resolvedBody = new NoBody();
                 break;
+        }
+
+        var unresolved = unresolvedNames.Distinct(StringComparer.Ordinal).ToList();
+        if (unresolved.Count > 0)
+        {
+            ErrorMessage = $"Unresolved variables: {string.Join(", ", unresolved)}";
+            StatusCode = null; ResponseBody = null; ElapsedMilliseconds = null;
+            return;
         }
 
         // Pre-request script

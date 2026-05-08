@@ -76,12 +76,19 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
 
         var flatRequests = FlattenFolder(_folder).ToList();
 
-        RunResults.Clear();
-        foreach (var req in flatRequests)
-            RunResults.Add(new RunResultViewModel { RequestName = req.Name, Method = req.Method });
+        foreach (var row in RunResults)
+        {
+            row.Status = RunStatus.Pending;
+            row.StatusCode = null;
+            row.DurationMs = null;
+            row.TestsPassed = 0;
+            row.TestsTotal = 0;
+            row.ErrorMessage = null;
+        }
 
         var passed = 0;
         var failed = 0;
+        var errored = 0;
 
         for (var i = 0; i < flatRequests.Count; i++)
         {
@@ -130,20 +137,22 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
                         }
                         break;
 
-                    case SendResult.Error:
+                    case SendResult.Error err:
                         row.Status = RunStatus.Error;
-                        failed++;
+                        row.ErrorMessage = err.Message;
+                        errored++;
                         break;
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 row.Status = RunStatus.Error;
-                failed++;
+                row.ErrorMessage = ex.Message;
+                errored++;
             }
         }
 
-        SummaryText = $"{passed} passed · {failed} failed · {flatRequests.Count} total";
+        SummaryText = $"{passed} passed · {failed} failed · {errored} errors · {flatRequests.Count} total";
         IsRunning = false;
     }
 

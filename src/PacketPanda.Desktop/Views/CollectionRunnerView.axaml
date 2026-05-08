@@ -7,6 +7,7 @@
 
     <UserControl.Resources>
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
+        <conv:BoolToPassFailBrushConverter x:Key="PassFailBrushConverter" />
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto">
@@ -58,9 +59,17 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Status"
-                                    Binding="{Binding StatusLabel}"
-                                    Width="90" />
+                <DataGridTemplateColumn Header="Status" Width="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RunResultViewModel">
+                            <TextBlock Text="{Binding StatusLabel}"
+                                       Foreground="{Binding IsPass, Converter={StaticResource PassFailBrushConverter}}"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       Padding="6,0" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Code"
                                     Binding="{Binding StatusCode}"
                                     Width="56" />
