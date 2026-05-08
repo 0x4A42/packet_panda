@@ -4,6 +4,8 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
 
+public sealed record CookieEntry(string Name, string Value);
+
 public sealed class RunResultViewModel : ReactiveObject
 {
     private RunStatus _status = RunStatus.Pending;
@@ -69,6 +71,23 @@ public sealed class RunResultViewModel : ReactiveObject
             this.RaiseAndSetIfChanged(ref _testsTotal, value);
             this.RaisePropertyChanged(nameof(TestsLabel));
         }
+    }
+
+    public string? ResponseBody { get; set; }
+    public IReadOnlyList<HttpHeader>? ResponseHeaders { get; set; }
+
+    public IReadOnlyList<CookieEntry> Cookies => ResponseHeaders?
+        .Where(h => h.Name.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
+        .Select(ParseCookie)
+        .ToList() ?? [];
+
+    private static CookieEntry ParseCookie(HttpHeader h)
+    {
+        var part = h.Value.Split(';')[0].Trim();
+        var eq = part.IndexOf('=');
+        return eq >= 0
+            ? new CookieEntry(part[..eq].Trim(), part[(eq + 1)..].Trim())
+            : new CookieEntry(part, string.Empty);
     }
 
     public string MethodLabel => Method.ToString().ToUpperInvariant();

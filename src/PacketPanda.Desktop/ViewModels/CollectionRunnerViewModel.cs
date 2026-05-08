@@ -21,6 +21,7 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
     private bool _isRunning;
     private string _summaryText = string.Empty;
     private EnvironmentContext? _currentEnvCtx;
+    private RunResultViewModel? _selectedResult;
 
     public CollectionRunnerViewModel(
         FolderNode folder,
@@ -50,6 +51,12 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
 
     public ObservableCollection<RunResultViewModel> RunResults { get; } = new();
     public ReactiveCommand<Unit, Unit> RunCommand { get; }
+
+    public RunResultViewModel? SelectedResult
+    {
+        get => _selectedResult;
+        set => this.RaiseAndSetIfChanged(ref _selectedResult, value);
+    }
 
     public bool IsRunning
     {
@@ -122,6 +129,8 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
                         var testResults = session.TestResults.ToList();
                         row.StatusCode = ok.Response.StatusCode;
                         row.DurationMs = ok.Response.ElapsedMilliseconds;
+                        row.ResponseBody = ok.Response.Body;
+                        row.ResponseHeaders = ok.Response.Headers;
                         row.TestsTotal = testResults.Count;
                         row.TestsPassed = testResults.Count(t => t.Passed);
 
