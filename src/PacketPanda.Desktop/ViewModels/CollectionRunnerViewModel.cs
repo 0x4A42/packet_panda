@@ -178,9 +178,14 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
         var i = RunResults.IndexOf(row);
         if (i < 0 || i >= _flatRequests.Count) return;
 
+        row.Status = RunStatus.Pending;
+        row.StatusCode = null;
+        row.DurationMs = null;
+        row.TestsPassed = 0;
+        row.TestsTotal = 0;
+        row.ErrorMessage = null;
         row.ResponseBody = null;
         row.ResponseHeaders = null;
-        row.ErrorMessage = null;
 
         IsRunning = true;
         await RunSingleRequestAsync(_flatRequests[i], row);

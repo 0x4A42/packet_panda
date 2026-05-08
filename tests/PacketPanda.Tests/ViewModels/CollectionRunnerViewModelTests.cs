@@ -229,6 +229,30 @@ public sealed class CollectionRunnerViewModelTests
     }
 
     [Fact]
+    public async Task ReRunCommand_ErrorResponse_ClearsPreviousStatusCodeAndDuration()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 50)));
+
+        var folder = MakeFolder("Root", [MakeRequest("R1")]);
+        var vm = CreateVm(folder);
+
+        await vm.RunCommand.Execute();
+        vm.RunResults[0].StatusCode.Should().Be(200);
+
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Error("timeout"));
+
+        await vm.ReRunCommand.Execute(vm.RunResults[0]);
+
+        vm.RunResults[0].Status.Should().Be(RunStatus.Error);
+        vm.RunResults[0].StatusCode.Should().BeNull();
+        vm.RunResults[0].DurationMs.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ReRunCommand_RerequestsAndUpdatesRow()
     {
         _sender
