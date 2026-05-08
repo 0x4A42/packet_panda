@@ -227,4 +227,27 @@ public sealed class CollectionRunnerViewModelTests
         await vm.RunCommand.Execute();
         vm.RunResults[0].ResponseBody.Should().BeNull();
     }
+
+    [Fact]
+    public async Task ReRunCommand_RerequestsAndUpdatesRow()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "body", 10)));
+
+        var folder = MakeFolder("Root", [MakeRequest("R1")]);
+        var vm = CreateVm(folder);
+
+        await vm.RunCommand.Execute();
+        vm.RunResults[0].Status.Should().Be(RunStatus.Pass);
+
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(500, "error", 5)));
+
+        await vm.ReRunCommand.Execute(vm.RunResults[0]);
+
+        vm.RunResults[0].StatusCode.Should().Be(500);
+        vm.RunResults[0].ResponseBody.Should().Be("error");
+    }
 }

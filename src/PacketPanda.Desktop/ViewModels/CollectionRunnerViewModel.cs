@@ -17,6 +17,7 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
     private readonly IVariableResolver _resolver;
     private readonly Func<string, string, VariableTarget, Task>? _updateVariable;
     private readonly IDisposable _envSub;
+    private readonly List<RequestNode> _flatRequests;
 
     private bool _isRunning;
     private string _summaryText = string.Empty;
@@ -36,21 +37,22 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
         _updateVariable = updateVariable;
         _envSub = activeEnvironment.Subscribe(ctx => _currentEnvCtx = ctx);
 
-        var results = FlattenFolder(folder).Select(r => new RunResultViewModel
-        {
-            RequestName = r.Name,
-            Method = r.Method
-        });
-        foreach (var r in results)
-            RunResults.Add(r);
+        _flatRequests = FlattenFolder(folder).ToList();
+        foreach (var r in _flatRequests)
+            RunResults.Add(new RunResultViewModel { RequestName = r.Name, Method = r.Method });
 
         RunCommand = ReactiveCommand.CreateFromTask(
             ExecuteRunAsync,
+            this.WhenAnyValue(vm => vm.IsRunning, running => !running));
+
+        ReRunCommand = ReactiveCommand.CreateFromTask<RunResultViewModel>(
+            ReRunRequestAsync,
             this.WhenAnyValue(vm => vm.IsRunning, running => !running));
     }
 
     public ObservableCollection<RunResultViewModel> RunResults { get; } = new();
     public ReactiveCommand<Unit, Unit> RunCommand { get; }
+    public ReactiveCommand<RunResultViewModel, Unit> ReRunCommand { get; }
 
     public RunResultViewModel? SelectedResult
     {
@@ -87,8 +89,6 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
     {
         IsRunning = true;
 
-        var flatRequests = FlattenFolder(_folder).ToList();
-
         foreach (var row in RunResults)
         {
             row.Status = RunStatus.Pending;
@@ -105,71 +105,85 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
         var failed = 0;
         var errored = 0;
 
-        for (var i = 0; i < flatRequests.Count; i++)
+        for (var i = 0; i < _flatRequests.Count; i++)
         {
-            var req = flatRequests[i];
+            var req = _flatRequests[i];
             var row = RunResults[i];
-            row.Status = RunStatus.Running;
+            await RunSingleRequestAsync(req, row);
 
-            try
+            switch (row.Status)
             {
-                var env = _currentEnvCtx?.Merged;
-                var urlResult = _resolver.Resolve(req.Url, env);
-                var httpRequest = new HttpRequest(req.Method, urlResult.Text, req.Body);
-
-                using var session = new ScriptSession(env);
-
-                if (!string.IsNullOrWhiteSpace(req.PreRequestScript))
-                    session.RunPreRequest(req.PreRequestScript);
-
-                var sendResult = await _sender.SendAsync(httpRequest);
-
-                switch (sendResult)
-                {
-                    case SendResult.Ok ok:
-                        if (!string.IsNullOrWhiteSpace(req.PostResponseScript))
-                            session.RunPostResponse(req.PostResponseScript, ok.Response);
-
-                        if (_updateVariable is not null)
-                            foreach (var (key, value) in session.EnvironmentUpdates)
-                                await _updateVariable(key, value, VariableTarget.ActiveEnv);
-
-                        var testResults = session.TestResults.ToList();
-                        row.StatusCode = ok.Response.StatusCode;
-                        row.DurationMs = ok.Response.ElapsedMilliseconds;
-                        row.ResponseBody = ok.Response.Body;
-                        row.ResponseHeaders = ok.Response.Headers;
-                        row.TestsTotal = testResults.Count;
-                        row.TestsPassed = testResults.Count(t => t.Passed);
-
-                        if (testResults.Any(t => !t.Passed))
-                        {
-                            row.Status = RunStatus.Fail;
-                            failed++;
-                        }
-                        else
-                        {
-                            row.Status = RunStatus.Pass;
-                            passed++;
-                        }
-                        break;
-
-                    case SendResult.Error err:
-                        row.Status = RunStatus.Error;
-                        row.ErrorMessage = err.Message;
-                        errored++;
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                row.Status = RunStatus.Error;
-                row.ErrorMessage = ex.Message;
-                errored++;
+                case RunStatus.Pass: passed++; break;
+                case RunStatus.Fail: failed++; break;
+                case RunStatus.Error: errored++; break;
             }
         }
 
-        SummaryText = $"{passed} passed · {failed} failed · {errored} errors · {flatRequests.Count} total";
+        SummaryText = $"{passed} passed · {failed} failed · {errored} errors · {_flatRequests.Count} total";
+        IsRunning = false;
+    }
+
+    private async Task RunSingleRequestAsync(RequestNode req, RunResultViewModel row)
+    {
+        row.Status = RunStatus.Running;
+        try
+        {
+            var env = _currentEnvCtx?.Merged;
+            var urlResult = _resolver.Resolve(req.Url, env);
+            var httpRequest = new HttpRequest(req.Method, urlResult.Text, req.Body);
+
+            using var session = new ScriptSession(env);
+
+            if (!string.IsNullOrWhiteSpace(req.PreRequestScript))
+                session.RunPreRequest(req.PreRequestScript);
+
+            var sendResult = await _sender.SendAsync(httpRequest);
+
+            switch (sendResult)
+            {
+                case SendResult.Ok ok:
+                    if (!string.IsNullOrWhiteSpace(req.PostResponseScript))
+                        session.RunPostResponse(req.PostResponseScript, ok.Response);
+
+                    if (_updateVariable is not null)
+                        foreach (var (key, value) in session.EnvironmentUpdates)
+                            await _updateVariable(key, value, VariableTarget.ActiveEnv);
+
+                    var testResults = session.TestResults.ToList();
+                    row.StatusCode = ok.Response.StatusCode;
+                    row.DurationMs = ok.Response.ElapsedMilliseconds;
+                    row.ResponseBody = ok.Response.Body;
+                    row.ResponseHeaders = ok.Response.Headers;
+                    row.TestsTotal = testResults.Count;
+                    row.TestsPassed = testResults.Count(t => t.Passed);
+
+                    row.Status = testResults.Any(t => !t.Passed) ? RunStatus.Fail : RunStatus.Pass;
+                    break;
+
+                case SendResult.Error err:
+                    row.Status = RunStatus.Error;
+                    row.ErrorMessage = err.Message;
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            row.Status = RunStatus.Error;
+            row.ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task ReRunRequestAsync(RunResultViewModel row)
+    {
+        var i = RunResults.IndexOf(row);
+        if (i < 0 || i >= _flatRequests.Count) return;
+
+        row.ResponseBody = null;
+        row.ResponseHeaders = null;
+        row.ErrorMessage = null;
+
+        IsRunning = true;
+        await RunSingleRequestAsync(_flatRequests[i], row);
         IsRunning = false;
     }
 
