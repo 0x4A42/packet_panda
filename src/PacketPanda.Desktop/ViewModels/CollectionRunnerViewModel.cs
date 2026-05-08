@@ -55,8 +55,14 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
     public RunResultViewModel? SelectedResult
     {
         get => _selectedResult;
-        set => this.RaiseAndSetIfChanged(ref _selectedResult, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedResult, value);
+            this.RaisePropertyChanged(nameof(HasSelectedResult));
+        }
     }
+
+    public bool HasSelectedResult => _selectedResult != null;
 
     public bool IsRunning
     {
