@@ -14,7 +14,7 @@ public sealed record RequestNode(
     string CollectionFilePath,
     HttpMethod Method,
     string Url,
-    string? Body,
+    BodyConfig Body,
     IReadOnlyList<HttpHeader> Headers,
     AuthConfig Auth,
     IReadOnlyList<QueryParam> QueryParams,

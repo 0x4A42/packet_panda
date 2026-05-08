@@ -401,7 +401,8 @@ public class CollectionViewModel : ReactiveObject
     private async Task AddNewRequestAsync()
     {
         var id = Guid.NewGuid().ToString();
-        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null,
+        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty,
+            new NoBody(),
             Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
         var newChildren = _collection.Root.Children.Append(newNode).ToList();
         var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
@@ -425,7 +426,8 @@ public class CollectionViewModel : ReactiveObject
     private async Task AddNewRequestToFolderAsync(string folderId)
     {
         var id = Guid.NewGuid().ToString();
-        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null,
+        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty,
+            new NoBody(),
             Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
         var (newRoot, found) = InsertIntoFolder(_collection.Root, folderId, newNode);
         if (!found) return;

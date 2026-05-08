@@ -80,7 +80,7 @@ public class HttpRequestSenderTests : IDisposable
             .RespondWith(Response.Create().WithStatusCode(201).WithBody("created"));
 
         var result = await _sender.SendAsync(
-            new HttpRequest(HttpMethod.Post, _server.Url + "/echo", "{\"a\":1}"));
+            new HttpRequest(HttpMethod.Post, _server.Url + "/echo", new JsonBody("{\"a\":1}")));
 
         result.Should().BeOfType<SendResult.Ok>();
         var received = _server.LogEntries.Single();
@@ -278,5 +278,52 @@ public class HttpRequestSenderTests : IDisposable
 
         result.Should().BeOfType<SendResult.Ok>()
             .Which.Response.StatusCode.Should().Be(204);
+    }
+
+    [Fact]
+    public async Task Post_WithJsonBody_SetsJsonContentType()
+    {
+        _server
+            .Given(Request.Create().WithPath("/json-ct").UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("ok"));
+
+        await _sender.SendAsync(new HttpRequest(
+            HttpMethod.Post, _server.Url + "/json-ct",
+            Body: new JsonBody("{\"x\":1}")));
+
+        var received = _server.LogEntries.Single();
+        received.RequestMessage!.Headers!["Content-Type"].Single()
+            .Should().StartWith("application/json");
+    }
+
+    [Fact]
+    public async Task Post_WithFormBody_SetsFormUrlEncodedContentType()
+    {
+        _server
+            .Given(Request.Create().WithPath("/form-ct").UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("ok"));
+
+        var fields = new List<FormField> { new("key", "value", true) };
+        await _sender.SendAsync(new HttpRequest(
+            HttpMethod.Post, _server.Url + "/form-ct",
+            Body: new FormBody(fields)));
+
+        var received = _server.LogEntries.Single();
+        received.RequestMessage!.Headers!["Content-Type"].Single()
+            .Should().StartWith("application/x-www-form-urlencoded");
+    }
+
+    [Fact]
+    public async Task Post_WithNoBody_SendsNoContent()
+    {
+        _server
+            .Given(Request.Create().WithPath("/nobody").UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("ok"));
+
+        var result = await _sender.SendAsync(new HttpRequest(
+            HttpMethod.Post, _server.Url + "/nobody",
+            Body: new NoBody()));
+
+        result.Should().BeOfType<SendResult.Ok>();
     }
 }

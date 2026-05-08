@@ -13,7 +13,15 @@ public sealed class PpRequest
     {
         _url = req.Url;
         _method = req.Method.ToString().ToUpperInvariant();
-        _body = req.Body ?? string.Empty;
+        _body = req.Body switch
+        {
+            JsonBody j      => j.Text,
+            PlainTextBody t => t.Text,
+            XmlBody x       => x.Text,
+            FormBody f      => string.Join("&", f.Fields.Where(ff => ff.Enabled)
+                                  .Select(ff => $"{ff.Name}={ff.Value}")),
+            _               => string.Empty
+        };
     }
 
     public string url => _url;

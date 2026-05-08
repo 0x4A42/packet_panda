@@ -364,7 +364,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public HttpRequest BuildRequest()
     {
-        var body = string.IsNullOrEmpty(RequestBody) ? null : RequestBody;
+        var bodyConfig = string.IsNullOrEmpty(RequestBody)
+            ? (BodyConfig)new NoBody()
+            : new JsonBody(RequestBody);   // temporary — Task 4 replaces with proper mode selection
         var headers = Headers
             .Where(h => !string.IsNullOrEmpty(h.Name))
             .Select(h => new HttpHeader(h.Name, h.Value, h.Enabled))
@@ -380,7 +382,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             .Where(p => p.Enabled && !string.IsNullOrEmpty(p.Key))
             .Select(p => new QueryParam(p.Key, p.Value, p.Enabled))
             .ToList();
-        return new HttpRequest(SelectedMethod, Url, body, headers, auth, queryParams);
+        return new HttpRequest(SelectedMethod, Url, bodyConfig, headers, auth, queryParams);
     }
 
     public void LoadHeaders(IReadOnlyList<HttpHeader> headers)
@@ -434,6 +436,18 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             QueryParams.Add(row);
         }
         EnsureTrailingEmptyParamRow();
+    }
+
+    public void LoadBody(BodyConfig body)
+    {
+        // Stub — replaced in Task 4 with full BodyMode support
+        RequestBody = body switch
+        {
+            JsonBody j      => j.Text,
+            PlainTextBody t => t.Text,
+            XmlBody x       => x.Text,
+            _               => null
+        };
     }
 
     public void LoadScripts(string? preRequest, string? postResponse)
@@ -498,7 +512,9 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             return;
         }
 
-        var body = string.IsNullOrEmpty(bodyResult.Text) ? null : bodyResult.Text;
+        BodyConfig resolvedBody = string.IsNullOrEmpty(bodyResult.Text)
+            ? new NoBody()
+            : new JsonBody(bodyResult.Text);   // temporary — Task 4 replaces
 
         // Pre-request script
         using var session = new ScriptSession(_activeEnv);
@@ -514,7 +530,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
 
         var result = await _sender.SendAsync(
-            new HttpRequest(SelectedMethod, urlResult.Text, body, resolvedHeaders, resolvedAuth));
+            new HttpRequest(SelectedMethod, urlResult.Text, resolvedBody, resolvedHeaders, resolvedAuth));
 
         switch (result)
         {

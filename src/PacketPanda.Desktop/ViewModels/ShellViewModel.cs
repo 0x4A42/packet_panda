@@ -245,7 +245,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         editor.CollectionFilePath = node.CollectionFilePath;
         editor.SelectedMethod = node.Method;
         editor.Url = node.Url;
-        editor.RequestBody = node.Body;
+        editor.LoadBody(node.Body);
         editor.LoadHeaders(node.Headers);
         editor.LoadAuth(node.Auth);
         editor.LoadQueryParams(node.QueryParams);

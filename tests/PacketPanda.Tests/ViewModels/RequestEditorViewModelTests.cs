@@ -104,7 +104,7 @@ public sealed class RequestEditorViewModelTests
         await vm.SendCommand.Execute();
 
         captured.Should().NotBeNull();
-        captured!.Body.Should().Be("{\"x\":1}");
+        captured!.Body.Should().BeOfType<JsonBody>().Which.Text.Should().Be("{\"x\":1}");
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class RequestEditorViewModelTests
 
         await vm.SendCommand.Execute();
 
-        captured!.Body.Should().BeNull();
+        captured!.Body.Should().BeOfType<NoBody>();
     }
 
     [Fact]
