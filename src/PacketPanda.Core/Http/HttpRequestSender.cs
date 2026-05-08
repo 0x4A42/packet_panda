@@ -70,7 +70,7 @@ public sealed class HttpRequestSender : IHttpRequestSender
             HttpMethod.Delete  => SystemHttpMethod.Delete,
             HttpMethod.Patch   => SystemHttpMethod.Patch,
             HttpMethod.Head    => SystemHttpMethod.Head,
-            HttpMethod.Options => new SystemHttpMethod("OPTIONS"),
+            HttpMethod.Options => SystemHttpMethod.Options,
             _ => throw new ArgumentOutOfRangeException(nameof(request), request.Method, "Unsupported method")
         };
 
