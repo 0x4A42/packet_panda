@@ -235,6 +235,9 @@
                                                           Command="{Binding CopyFolderCommand}" />
                                                 <MenuItem Header="Delete"
                                                           Command="{Binding DeleteFolderCommand}" />
+                                                <Separator />
+                                                <MenuItem Header="Run folder"
+                                                          Command="{Binding RunFolderCommand}" />
                                             </MenuFlyout>
                                         </Button.Flyout>
                                     </Button>

@@ -13,6 +13,7 @@ public class CollectionNodeViewModel : ReactiveObject
     private string _editingName = string.Empty;
     private readonly ObservableAsPropertyHelper<bool> _showFolderActions;
     private readonly ObservableAsPropertyHelper<bool> _showRequestActions;
+    private Action<FolderNode>? _runFolderCallback;
 
     public CollectionNodeViewModel(
         string id,
@@ -36,6 +37,12 @@ public class CollectionNodeViewModel : ReactiveObject
         _showRequestActions = this.WhenAnyValue(x => x.IsEditing)
             .Select(editing => !isFolder && !editing)
             .ToProperty(this, x => x.ShowRequestActions);
+
+        RunFolderCommand = ReactiveCommand.Create(() =>
+        {
+            if (SourceNode is FolderNode folder)
+                _runFolderCallback?.Invoke(folder);
+        }, System.Reactive.Linq.Observable.Return(isFolder));
     }
 
     private string _name;
@@ -62,6 +69,13 @@ public class CollectionNodeViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit>? DeleteRequestCommand { get; init; }
     public ReactiveCommand<Unit, Unit>? CommitRenameCommand { get; set; }
     public ReactiveCommand<Unit, Unit>? CancelRenameCommand { get; set; }
+    public ReactiveCommand<Unit, Unit> RunFolderCommand { get; }
+
+    public Action<FolderNode>? RunFolderCallback
+    {
+        get => _runFolderCallback;
+        set => this.RaiseAndSetIfChanged(ref _runFolderCallback, value);
+    }
     public ObservableCollection<CollectionNodeViewModel> Children { get; }
 
     public bool IsEditing

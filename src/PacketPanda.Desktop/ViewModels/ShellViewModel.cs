@@ -29,6 +29,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _envDeletedSub;
     private readonly IDisposable _envAddedSub;
     private readonly IDisposable _requestOpenedSub;
+    private readonly IDisposable? _folderRunSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -45,7 +46,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
         IDialogService dialog,
         IEnvironmentFileStore environmentStore,
         IFilePickerService filePicker,
-        ISettingsStore settings)
+        ISettingsStore settings,
+        Func<FolderNode, CollectionRunnerViewModel>? runnerFactory = null)
     {
         Sidebar = sidebar;
         _editorFactory = editorFactory;
@@ -75,6 +77,25 @@ public class ShellViewModel : ViewModelBase, IDisposable
             () => null);
 
         _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
+
+        if (runnerFactory != null)
+        {
+            _folderRunSub = sidebar.FolderRunRequested.Subscribe(folder =>
+            {
+                var existing = Tabs.FirstOrDefault(t => t.Content is CollectionRunnerViewModel runner
+                    && runner.CurrentFilePath == folder.Id);
+                if (existing != null)
+                {
+                    ActiveTab = existing;
+                    return;
+                }
+                var vm = runnerFactory(folder);
+                var tab = new TabViewModel(vm, _dialog);
+                _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+                Tabs.Add(tab);
+                ActiveTab = tab;
+            });
+        }
 
         _envOpenSub = EnvironmentSidebar.EnvironmentOpenRequested
             .Subscribe(path => _ = OpenEnvironmentInTabAsync(path));
@@ -573,6 +594,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _envDeletedSub.Dispose();
         _envAddedSub.Dispose();
         _requestOpenedSub.Dispose();
+        _folderRunSub?.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

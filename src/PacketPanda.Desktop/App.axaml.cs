@@ -47,7 +47,13 @@ public partial class App : Application
                 updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
                 openEnvironmentEditor: () => shell!.SetEnvironmentsTabCommand.Execute().Subscribe());
 
-            shell = new ShellViewModel(sidebar, EditorFactory, dialog, environmentStore, filePicker, settingsStore);
+            var variableResolver = new VariableResolver();
+            shell = new ShellViewModel(sidebar, EditorFactory, dialog, environmentStore, filePicker, settingsStore,
+                runnerFactory: folder => new CollectionRunnerViewModel(
+                    folder,
+                    sender,
+                    variableResolver,
+                    shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<EnvironmentContext?>(null)));
             mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;
