@@ -79,6 +79,16 @@
                         </StackPanel>
                     </Button>
 
+                    <Button Classes="activity-btn"
+                            Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}"
+                            Command="{Binding SetDocsTabCommand}"
+                            ToolTip.Tip="Docs">
+                        <StackPanel Orientation="Vertical" Spacing="3" HorizontalAlignment="Center">
+                            <TextBlock Text="📖" FontSize="18" HorizontalAlignment="Center" Foreground="White" />
+                            <TextBlock Text="Docs" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
+                        </StackPanel>
+                    </Button>
+
                 </StackPanel>
             </Border>
 
@@ -314,6 +324,11 @@
                     DataContext="{Binding EnvironmentSidebar}"
                     IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}" />
 
+                <!-- Docs panel -->
+                <views:DocsSidebarView
+                    DataContext="{Binding DocsSidebar}"
+                    IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}" />
+
             </Grid>
         </Grid>
 
@@ -389,6 +404,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="vm:CollectionRunnerViewModel">
                         <views:CollectionRunnerView />
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:DocsViewerViewModel">
+                        <views:DocsViewerView />
                     </DataTemplate>
                 </ContentControl.DataTemplates>
             </ContentControl>
