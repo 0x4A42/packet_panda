@@ -47,7 +47,7 @@
                         <Setter.Value>
                             <MenuFlyout>
                                 <MenuItem Header="Go to request"
-                                          Command="{Binding $parent[DataGrid].DataContext.GoToRequestCommand}"
+                                          Command="{Binding $parent[DataGrid].((vm:CollectionRunnerViewModel)DataContext).GoToRequestCommand}"
                                           CommandParameter="{Binding}" />
                             </MenuFlyout>
                         </Setter.Value>
