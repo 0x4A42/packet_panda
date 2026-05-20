@@ -37,4 +37,9 @@
     <None Include="..\..\docs\*.md" CopyToOutputDirectory="PreserveNewest" Link="docs\%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AvaloniaResource Include="font\**" />
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
 </Project>
