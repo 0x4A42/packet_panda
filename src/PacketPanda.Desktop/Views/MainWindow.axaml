@@ -24,22 +24,34 @@
     </Window.Resources>
 
     <Window.Styles>
-        <Style Selector="Button.activity-btn">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Width" Value="64" />
-            <Setter Property="Height" Value="62" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
-        <Style Selector="Button.activity-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#444444" />
-        </Style>
-        <Style Selector="Button.activity-btn.active /template/ ContentPresenter">
-            <Setter Property="Background" Value="#4A4A50" />
-        </Style>
+      <!-- Activity bar button base -->
+      <Style Selector="Button.activity-btn">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="60" />
+        <Setter Property="Height" Value="56" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="CornerRadius" Value="0" />
+      </Style>
+      <Style Selector="Button.activity-btn /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+      </Style>
+      <Style Selector="Button.activity-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ActivityBarItemHover}" />
+      </Style>
+      <Style Selector="Button.activity-btn.active /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ActivityBarItemActive}" />
+      </Style>
+      <!-- Sidebar tree row hover -->
+      <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource TreeRowHover}" />
+      </Style>
+      <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+      </Style>
     </Window.Styles>
 
     <Grid>
@@ -49,47 +61,146 @@
             <ColumnDefinition Width="*" MinWidth="300" />
         </Grid.ColumnDefinitions>
 
-        <!-- Left panel: activity bar (64px) + sidebar content -->
-        <Grid Grid.Column="0" ColumnDefinitions="64,*">
+        <!-- Left panel: activity bar (60px) + sidebar content -->
+        <Grid Grid.Column="0" ColumnDefinitions="60,*">
 
             <!-- Activity bar -->
             <Border Grid.Column="0"
-                    Background="#2D2D2D"
-                    BorderBrush="#1E1E1E"
+                    Background="{DynamicResource ActivityBarBackground}"
+                    BorderBrush="{DynamicResource BorderSubtle}"
                     BorderThickness="0,0,1,0">
-                <StackPanel Orientation="Vertical" Margin="0,8,0,0">
+              <Grid RowDefinitions="*,Auto">
 
-                    <Button Classes="activity-btn"
-                            Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}"
-                            Command="{Binding SetRequestsTabCommand}"
-                            ToolTip.Tip="Requests">
-                        <StackPanel Orientation="Vertical" Spacing="3" HorizontalAlignment="Center">
-                            <TextBlock Text="📁" FontSize="18" HorizontalAlignment="Center" Foreground="White" />
-                            <TextBlock Text="Collections" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
-                        </StackPanel>
-                    </Button>
+                <!-- Top nav buttons -->
+                <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,8,0,0">
 
-                    <Button Classes="activity-btn"
-                            Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}"
-                            Command="{Binding SetEnvironmentsTabCommand}"
-                            ToolTip.Tip="Environments">
-                        <StackPanel Orientation="Vertical" Spacing="3" HorizontalAlignment="Center">
-                            <TextBlock Text="🌐" FontSize="18" HorizontalAlignment="Center" Foreground="White" />
-                            <TextBlock Text="Envs" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
-                        </StackPanel>
-                    </Button>
+                  <Button Classes="activity-btn"
+                          Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}"
+                          Command="{Binding SetRequestsTabCommand}"
+                          ToolTip.Tip="Collections">
+                    <Grid RowDefinitions="Auto,Auto" HorizontalAlignment="Center">
+                      <Border Grid.Row="0"
+                              Width="3" Height="24"
+                              HorizontalAlignment="Left"
+                              Margin="-30,0,0,0"
+                              Background="{DynamicResource AccentPrimary}"
+                              IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}" />
+                      <Path Grid.Row="0"
+                            Data="{StaticResource IconCollections}"
+                            Stretch="Uniform"
+                            Width="20" Height="20"
+                            HorizontalAlignment="Center"
+                            Stroke="{DynamicResource TextMuted}"
+                            StrokeThickness="1.5"
+                            StrokeLineCap="Round"
+                            Fill="Transparent" />
+                      <TextBlock Grid.Row="1"
+                                 Text="COLLECTIONS"
+                                 FontSize="6.5"
+                                 FontFamily="{StaticResource ArcasFont}"
+                                 HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource TextMuted}"
+                                 Margin="0,2,0,0"
+                                 MaxWidth="54"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </Button>
 
-                    <Button Classes="activity-btn"
-                            Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}"
-                            Command="{Binding SetDocsTabCommand}"
-                            ToolTip.Tip="Docs">
-                        <StackPanel Orientation="Vertical" Spacing="3" HorizontalAlignment="Center">
-                            <TextBlock Text="📖" FontSize="18" HorizontalAlignment="Center" Foreground="White" />
-                            <TextBlock Text="Docs" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
-                        </StackPanel>
-                    </Button>
+                  <Button Classes="activity-btn"
+                          Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}"
+                          Command="{Binding SetEnvironmentsTabCommand}"
+                          ToolTip.Tip="Environments">
+                    <Grid RowDefinitions="Auto,Auto" HorizontalAlignment="Center">
+                      <Border Grid.Row="0"
+                              Width="3" Height="24"
+                              HorizontalAlignment="Left"
+                              Margin="-30,0,0,0"
+                              Background="{DynamicResource AccentPrimary}"
+                              IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}" />
+                      <Path Grid.Row="0"
+                            Data="{StaticResource IconEnvironments}"
+                            Stretch="Uniform"
+                            Width="20" Height="20"
+                            HorizontalAlignment="Center"
+                            Stroke="{DynamicResource TextMuted}"
+                            StrokeThickness="1.5"
+                            StrokeLineCap="Round"
+                            Fill="Transparent" />
+                      <TextBlock Grid.Row="1"
+                                 Text="ENVS"
+                                 FontSize="6.5"
+                                 FontFamily="{StaticResource ArcasFont}"
+                                 HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource TextMuted}"
+                                 Margin="0,2,0,0"
+                                 MaxWidth="54"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </Button>
+
+                  <Button Classes="activity-btn"
+                          Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}"
+                          Command="{Binding SetDocsTabCommand}"
+                          ToolTip.Tip="Docs">
+                    <Grid RowDefinitions="Auto,Auto" HorizontalAlignment="Center">
+                      <Border Grid.Row="0"
+                              Width="3" Height="24"
+                              HorizontalAlignment="Left"
+                              Margin="-30,0,0,0"
+                              Background="{DynamicResource AccentPrimary}"
+                              IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}" />
+                      <Path Grid.Row="0"
+                            Data="{StaticResource IconDocs}"
+                            Stretch="Uniform"
+                            Width="20" Height="20"
+                            HorizontalAlignment="Center"
+                            Stroke="{DynamicResource TextMuted}"
+                            StrokeThickness="1.5"
+                            StrokeLineCap="Round"
+                            Fill="Transparent" />
+                      <TextBlock Grid.Row="1"
+                                 Text="DOCS"
+                                 FontSize="6.5"
+                                 FontFamily="{StaticResource ArcasFont}"
+                                 HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource TextMuted}"
+                                 Margin="0,2,0,0"
+                                 MaxWidth="54"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </Button>
 
                 </StackPanel>
+
+                <!-- Theme toggle pinned to bottom -->
+                <Button Grid.Row="1"
+                        Classes="activity-btn"
+                        Command="{Binding ToggleThemeCommand}"
+                        ToolTip.Tip="Toggle theme"
+                        Margin="0,0,0,8">
+                  <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                    <Path Data="{StaticResource IconMoon}"
+                          Stretch="Uniform"
+                          Width="18" Height="18"
+                          HorizontalAlignment="Center"
+                          Stroke="{DynamicResource TextMuted}"
+                          StrokeThickness="1.5"
+                          StrokeLineCap="Round"
+                          Fill="Transparent"
+                          IsVisible="{Binding IsDarkTheme}" />
+                    <Path Data="{StaticResource IconSun}"
+                          Stretch="Uniform"
+                          Width="18" Height="18"
+                          HorizontalAlignment="Center"
+                          Stroke="{DynamicResource TextMuted}"
+                          StrokeThickness="1.5"
+                          StrokeLineCap="Round"
+                          Fill="Transparent"
+                          IsVisible="{Binding !IsDarkTheme}" />
+                  </StackPanel>
+                </Button>
+
+              </Grid>
             </Border>
 
             <!-- Sidebar content -->
