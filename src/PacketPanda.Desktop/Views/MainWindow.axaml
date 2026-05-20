@@ -52,11 +52,11 @@
       <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
       </Style>
-      <Style Selector="TabStripItem:selected Border#TabPill">
+      <Style Selector="TabStripItem:selected Border.tab-pill">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimary}" />
         <Setter Property="BorderThickness" Value="0,0,0,2" />
       </Style>
-      <Style Selector="TabStripItem:selected Border#TabPill TextBlock">
+      <Style Selector="TabStripItem:selected Border.tab-pill TextBlock.tab-title">
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
       </Style>
     </Window.Styles>
@@ -506,7 +506,7 @@
                     </TabStrip.ItemContainerTheme>
                     <TabStrip.ItemTemplate>
                       <DataTemplate DataType="vm:TabViewModel">
-                        <Border x:Name="TabPill"
+                        <Border Classes="tab-pill"
                                 Background="Transparent"
                                 CornerRadius="6,6,0,0"
                                 Padding="8,5,8,6"
@@ -525,6 +525,7 @@
                                          Foreground="White" />
                             </Border>
                             <TextBlock Text="{Binding DisplayTitle}"
+                                       Classes="tab-title"
                                        VerticalAlignment="Center"
                                        FontSize="12"
                                        Foreground="{DynamicResource TextMuted}" />
