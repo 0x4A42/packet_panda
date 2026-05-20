@@ -221,10 +221,7 @@
                         <Path Data="{StaticResource IconPlus}"
                               Stretch="Uniform"
                               Width="14" Height="14"
-                              Stroke="{DynamicResource TextMuted}"
-                              StrokeThickness="2"
-                              StrokeLineCap="Round"
-                              Fill="Transparent" />
+                              Fill="{DynamicResource TextMuted}" />
                       </Button>
                       <DropDownButton Grid.Column="1"
                                       Margin="2,0,0,0"
@@ -256,10 +253,7 @@
                                 Stretch="Uniform"
                                 Width="12" Height="12"
                                 Margin="0,0,4,0"
-                                Stroke="{DynamicResource TextMuted}"
-                                StrokeThickness="1.5"
-                                StrokeLineCap="Round"
-                                Fill="Transparent" />
+                                Fill="{DynamicResource TextMuted}" />
                           <TextBox Grid.Column="1"
                                    Watermark="Search…"
                                    Text="{Binding Sidebar.FilterText}"
