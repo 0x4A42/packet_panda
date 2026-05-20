@@ -52,6 +52,13 @@
       <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
       </Style>
+      <Style Selector="TabStripItem:selected Border#TabPill">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimary}" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+      </Style>
+      <Style Selector="TabStripItem:selected Border#TabPill TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+      </Style>
     </Window.Styles>
 
     <Grid>
@@ -471,48 +478,73 @@
 
         <GridSplitter Grid.Column="1" Background="{DynamicResource BorderSubtle}" ResizeDirection="Columns" />
 
-        <Grid Grid.Column="2" RowDefinitions="Auto,*">
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="4">
+        <Grid Grid.Column="2" RowDefinitions="Auto,*" Background="{DynamicResource AppBackground}">
+            <Border Grid.Row="0"
+                    Background="{DynamicResource SidebarBackground}"
+                    BorderBrush="{DynamicResource BorderSubtle}"
+                    BorderThickness="0,0,0,1"
+                    Padding="8,6,8,0">
+              <Grid ColumnDefinitions="*,Auto">
                 <ScrollViewer Grid.Column="0"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled">
-                    <TabStrip ItemsSource="{Binding Tabs}"
-                              SelectedItem="{Binding ActiveTab}">
-                        <TabStrip.ItemContainerTheme>
-                            <ControlTheme TargetType="TabStripItem">
-                                <Setter Property="MinWidth" Value="80" />
-                                <Setter Property="MaxWidth" Value="200" />
-                            </ControlTheme>
-                        </TabStrip.ItemContainerTheme>
-                        <TabStrip.ItemTemplate>
-                            <DataTemplate DataType="vm:TabViewModel">
-                                <StackPanel Orientation="Horizontal" Spacing="4"
-                                            PointerPressed="TabItem_PointerPressed">
-                                    <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
-                                            CornerRadius="2"
-                                            Padding="4,1"
-                                            VerticalAlignment="Center"
-                                            IsVisible="{Binding MethodLabel, Converter={StaticResource IsNotNullConverter}}">
-                                        <TextBlock Text="{Binding MethodLabel}"
-                                                   FontSize="9"
-                                                   FontWeight="Bold"
-                                                   Foreground="White" />
-                                    </Border>
-                                    <TextBlock Text="{Binding DisplayTitle}" VerticalAlignment="Center" />
-                                    <TextBlock Text="●"
-                                               FontSize="7"
-                                               Foreground="#999"
-                                               VerticalAlignment="Center"
-                                               IsVisible="{Binding ShowDirtyIndicator}" />
-                                    <Button Content="×"
-                                            Command="{Binding CloseCommand}"
-                                            Padding="4,0"
-                                            Background="Transparent"
-                                            BorderThickness="0" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </TabStrip.ItemTemplate>
-                    </TabStrip>
+                  <TabStrip ItemsSource="{Binding Tabs}"
+                            SelectedItem="{Binding ActiveTab}"
+                            Background="Transparent">
+                    <TabStrip.ItemContainerTheme>
+                      <ControlTheme TargetType="TabStripItem">
+                        <Setter Property="MinWidth" Value="60" />
+                        <Setter Property="MaxWidth" Value="180" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="Template">
+                          <ControlTemplate>
+                            <ContentPresenter Content="{TemplateBinding Content}" />
+                          </ControlTemplate>
+                        </Setter>
+                      </ControlTheme>
+                    </TabStrip.ItemContainerTheme>
+                    <TabStrip.ItemTemplate>
+                      <DataTemplate DataType="vm:TabViewModel">
+                        <Border x:Name="TabPill"
+                                Background="Transparent"
+                                CornerRadius="6,6,0,0"
+                                Padding="8,5,8,6"
+                                Margin="0,0,2,0"
+                                PointerPressed="TabItem_PointerPressed">
+                          <StackPanel Orientation="Horizontal" Spacing="5">
+                            <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
+                                    CornerRadius="3"
+                                    Padding="4,1"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding MethodLabel, Converter={StaticResource IsNotNullConverter}}">
+                              <TextBlock Text="{Binding MethodLabel}"
+                                         FontSize="9"
+                                         FontWeight="Bold"
+                                         FontFamily="{StaticResource ArcasFont}"
+                                         Foreground="White" />
+                            </Border>
+                            <TextBlock Text="{Binding DisplayTitle}"
+                                       VerticalAlignment="Center"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextMuted}" />
+                            <TextBlock Text="●"
+                                       FontSize="6"
+                                       Foreground="{DynamicResource AccentPrimary}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding ShowDirtyIndicator}" />
+                            <Button Content="×"
+                                    Command="{Binding CloseCommand}"
+                                    Padding="2,0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Foreground="{DynamicResource TextMuted}"
+                                    FontSize="13" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </TabStrip.ItemTemplate>
+                  </TabStrip>
                 </ScrollViewer>
 
                 <ComboBox Grid.Column="1"
@@ -520,15 +552,19 @@
                           SelectedItem="{Binding SelectedEnvironment}"
                           PlaceholderText="No environment"
                           Width="160"
-                          Margin="4,0,4,0"
-                          VerticalAlignment="Center">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate DataType="envs:EnvironmentRef">
-                            <TextBlock Text="{Binding Name}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
+                          Margin="8,0,0,4"
+                          VerticalAlignment="Center"
+                          Background="{DynamicResource InputBackground}"
+                          BorderBrush="{DynamicResource BorderSubtle}"
+                          Foreground="{DynamicResource TextPrimary}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate DataType="envs:EnvironmentRef">
+                      <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
                 </ComboBox>
-            </Grid>
+              </Grid>
+            </Border>
 
             <ContentControl Grid.Row="1"
                             Content="{Binding ActiveTab.Content}">
