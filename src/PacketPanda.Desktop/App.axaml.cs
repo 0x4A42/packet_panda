@@ -30,7 +30,8 @@ public partial class App : Application
         if (_activeThemeDictionary != null)
             merged.Remove(_activeThemeDictionary);
 
-        _activeThemeDictionary = (IResourceDictionary)AvaloniaXamlLoader.Load(uri);
+        _activeThemeDictionary = AvaloniaXamlLoader.Load(uri) as IResourceDictionary
+            ?? throw new InvalidOperationException($"Theme file did not produce a ResourceDictionary: {uri}");
         merged.Insert(0, _activeThemeDictionary);
     }
 
