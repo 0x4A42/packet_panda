@@ -115,13 +115,45 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                     }
                 }
 
-                string? body = null;
+                BodyConfig body = new NoBody();
                 if (requestEl.TryGetProperty("body", out var bodyEl) &&
-                    bodyEl.ValueKind != JsonValueKind.Null &&
-                    bodyEl.TryGetProperty("mode", out var modeEl) &&
-                    modeEl.GetString() == "raw" &&
-                    bodyEl.TryGetProperty("raw", out var rawBody))
-                    body = rawBody.GetString();
+                    bodyEl.ValueKind != JsonValueKind.Null)
+                {
+                    var mode = bodyEl.TryGetProperty("mode", out var modeEl) ? modeEl.GetString() : null;
+                    var raw = bodyEl.TryGetProperty("raw", out var rawEl) ? rawEl.GetString() : null;
+
+                    if (mode == "urlencoded")
+                    {
+                        var fields = new List<FormField>();
+                        if (bodyEl.TryGetProperty("urlencoded", out var ueArr))
+                        {
+                            foreach (var f in ueArr.EnumerateArray())
+                            {
+                                var fKey = f.TryGetProperty("key", out var fkEl) ? fkEl.GetString() ?? string.Empty : string.Empty;
+                                var fVal = f.TryGetProperty("value", out var fvEl) ? fvEl.GetString() ?? string.Empty : string.Empty;
+                                var fDis = f.TryGetProperty("disabled", out var fdEl) && fdEl.GetBoolean();
+                                fields.Add(new FormField(fKey, fVal, !fDis));
+                            }
+                        }
+                        body = new FormBody(fields);
+                    }
+                    else if (mode == "raw" && !string.IsNullOrEmpty(raw))
+                    {
+                        var language = string.Empty;
+                        if (bodyEl.TryGetProperty("options", out var optEl) &&
+                            optEl.TryGetProperty("raw", out var rawOptEl) &&
+                            rawOptEl.TryGetProperty("language", out var langEl))
+                            language = langEl.GetString() ?? string.Empty;
+
+                        body = language switch
+                        {
+                            "json" => new JsonBody(raw),
+                            "xml"  => new XmlBody(raw),
+                            _      => new PlainTextBody(raw)
+                        };
+                    }
+                    // else: mode == "raw" with empty/null raw → NoBody (default)
+                }
 
                 // Parse headers
                 var headers = new List<HttpHeader>();
@@ -226,16 +258,59 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                 writer.WriteEndObject();
 
                 // Body
-                if (req.Body is not null)
+                switch (req.Body)
                 {
-                    writer.WriteStartObject("body");
-                    writer.WriteString("mode", "raw");
-                    writer.WriteString("raw", req.Body);
-                    writer.WriteEndObject();
-                }
-                else
-                {
-                    writer.WriteNull("body");
+                    case JsonBody json:
+                        writer.WriteStartObject("body");
+                        writer.WriteString("mode", "raw");
+                        writer.WriteString("raw", json.Text);
+                        writer.WriteStartObject("options");
+                        writer.WriteStartObject("raw");
+                        writer.WriteString("language", "json");
+                        writer.WriteEndObject();
+                        writer.WriteEndObject();
+                        writer.WriteEndObject();
+                        break;
+                    case PlainTextBody text:
+                        writer.WriteStartObject("body");
+                        writer.WriteString("mode", "raw");
+                        writer.WriteString("raw", text.Text);
+                        writer.WriteStartObject("options");
+                        writer.WriteStartObject("raw");
+                        writer.WriteString("language", "text");
+                        writer.WriteEndObject();
+                        writer.WriteEndObject();
+                        writer.WriteEndObject();
+                        break;
+                    case XmlBody xml:
+                        writer.WriteStartObject("body");
+                        writer.WriteString("mode", "raw");
+                        writer.WriteString("raw", xml.Text);
+                        writer.WriteStartObject("options");
+                        writer.WriteStartObject("raw");
+                        writer.WriteString("language", "xml");
+                        writer.WriteEndObject();
+                        writer.WriteEndObject();
+                        writer.WriteEndObject();
+                        break;
+                    case FormBody form:
+                        writer.WriteStartObject("body");
+                        writer.WriteString("mode", "urlencoded");
+                        writer.WriteStartArray("urlencoded");
+                        foreach (var f in form.Fields)
+                        {
+                            writer.WriteStartObject();
+                            writer.WriteString("key", f.Name);
+                            writer.WriteString("value", f.Value);
+                            if (!f.Enabled) writer.WriteBoolean("disabled", true);
+                            writer.WriteEndObject();
+                        }
+                        writer.WriteEndArray();
+                        writer.WriteEndObject();
+                        break;
+                    default: // NoBody
+                        writer.WriteNull("body");
+                        break;
                 }
 
                 // Auth
@@ -382,7 +457,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                 {
                     Method = updated.Method,
                     Url = updated.Url,
-                    Body = updated.Body,
+                    Body = updated.Body ?? req.Body,
                     Headers = updated.Headers ?? req.Headers,
                     Auth = updated.Auth ?? req.Auth,
                     QueryParams = updated.QueryParams ?? req.QueryParams,

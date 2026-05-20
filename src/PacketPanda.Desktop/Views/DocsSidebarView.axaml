@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             x:Class="PacketPanda.Desktop.Views.DocsSidebarView"
+             x:DataType="vm:DocsSidebarViewModel">
+
+    <ListBox ItemsSource="{Binding DocItems}"
+             Background="Transparent"
+             SelectionChanged="OnDocItemSelected">
+        <ListBox.ItemTemplate>
+            <DataTemplate DataType="vm:DocItemViewModel">
+                <TextBlock Text="{Binding DisplayName}"
+                           Padding="8,6"
+                           Cursor="Hand" />
+            </DataTemplate>
+        </ListBox.ItemTemplate>
+    </ListBox>
+
+</UserControl>

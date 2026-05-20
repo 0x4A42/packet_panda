@@ -1,0 +1,202 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             xmlns:conv="using:PacketPanda.Desktop.Converters"
+             x:Class="PacketPanda.Desktop.Views.CollectionRunnerView"
+             x:DataType="vm:CollectionRunnerViewModel">
+
+    <UserControl.Resources>
+        <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
+        <conv:BoolToPassFailBrushConverter x:Key="PassFailBrushConverter" />
+        <conv:StatusCodeBrushConverter x:Key="StatusCodeBrushConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+        <!-- Header bar -->
+        <DockPanel Grid.Row="0" Margin="12,8,12,4" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left"
+                       Text="{Binding DisplayTitle}"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button DockPanel.Dock="Right"
+                    Content="Run"
+                    Command="{Binding RunCommand}"
+                    Width="72"
+                    HorizontalContentAlignment="Center" />
+        </DockPanel>
+
+        <!-- Results grid -->
+        <DataGrid Grid.Row="1"
+                  Margin="0"
+                  ItemsSource="{Binding RunResults}"
+                  SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
+                  AutoGenerateColumns="False"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="0"
+                  RowHeight="34"
+                  HeadersVisibility="Column"
+                  CanUserReorderColumns="False"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="False"
+                  IsReadOnly="True">
+            <DataGrid.Styles>
+                <Style Selector="DataGridRow">
+                    <Setter Property="ContextFlyout">
+                        <Setter.Value>
+                            <MenuFlyout>
+                                <MenuItem Header="Go to request"
+                                          Command="{Binding $parent[DataGrid].((vm:CollectionRunnerViewModel)DataContext).GoToRequestCommand}"
+                                          CommandParameter="{Binding}" />
+                            </MenuFlyout>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </DataGrid.Styles>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name"
+                                    Binding="{Binding RequestName}"
+                                    Width="200" />
+                <DataGridTemplateColumn Header="Method" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RunResultViewModel">
+                            <Border Background="{Binding MethodLabel, Converter={StaticResource MethodBrushConverter}}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding MethodLabel}"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           Foreground="White" />
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Status" Width="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RunResultViewModel">
+                            <TextBlock Text="{Binding StatusLabel}"
+                                       Foreground="{Binding IsPass, Converter={StaticResource PassFailBrushConverter}}"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       Padding="6,0" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Code" Width="76">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RunResultViewModel">
+                            <TextBlock Text="{Binding StatusCode}"
+                                       Foreground="{Binding StatusCode, Converter={StaticResource StatusCodeBrushConverter}}"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       Padding="6,0" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Time"
+                                    Binding="{Binding DurationLabel}"
+                                    Width="88" />
+                <DataGridTextColumn Header="Tests"
+                                    Binding="{Binding TestsLabel}"
+                                    Width="80" />
+                <DataGridTemplateColumn Width="60" CanUserResize="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:RunResultViewModel">
+                            <Button Content="↺"
+                                    FontSize="14"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="4,0"
+                                    Command="{Binding $parent[DataGrid].((vm:CollectionRunnerViewModel)DataContext).ReRunCommand}"
+                                    CommandParameter="{Binding}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Detail panel (visible when a row is selected) -->
+        <Border Grid.Row="2"
+                IsVisible="{Binding HasSelectedResult}"
+                Height="220"
+                BorderBrush="#DDDDDD"
+                BorderThickness="0,1,0,0">
+            <TabControl>
+                <TabItem Header="Body">
+                    <ScrollViewer>
+                        <TextBox Text="{Binding SelectedResult.ResponseBody}"
+                                 IsReadOnly="True"
+                                 AcceptsReturn="True"
+                                 FontFamily="Consolas,Courier New,monospace"
+                                 FontSize="12"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 Padding="8" />
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Headers">
+                    <DataGrid ItemsSource="{Binding SelectedResult.ResponseHeaders}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="0"
+                              RowHeight="28"
+                              HeadersVisibility="Column"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name"
+                                                Binding="{Binding Name}"
+                                                Width="200" />
+                            <DataGridTextColumn Header="Value"
+                                                Binding="{Binding Value}"
+                                                Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+                <TabItem Header="Cookies">
+                    <DataGrid ItemsSource="{Binding SelectedResult.Cookies}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderThickness="0"
+                              RowHeight="28"
+                              HeadersVisibility="Column"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name"
+                                                Binding="{Binding Name}"
+                                                Width="200" />
+                            <DataGridTextColumn Header="Value"
+                                                Binding="{Binding Value}"
+                                                Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+            </TabControl>
+        </Border>
+
+        <!-- Summary bar -->
+        <Border Grid.Row="3"
+                Padding="12,6"
+                Background="#F5F5F5"
+                BorderBrush="#DDDDDD"
+                BorderThickness="0,1,0,0">
+            <TextBlock Text="{Binding SummaryText}"
+                       FontSize="12"
+                       Opacity="0.7" />
+        </Border>
+    </Grid>
+</UserControl>

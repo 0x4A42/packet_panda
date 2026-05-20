@@ -51,7 +51,7 @@ public class ShellViewModelTests
     {
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
-        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null,
+        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", new NoBody(),
             Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
 
         // Load a fake collection so the sidebar wires up the callback -> RequestOpened
@@ -74,7 +74,7 @@ public class ShellViewModelTests
     {
         var sidebar = NewSidebar();
         var shell = CreateShell(sidebar);
-        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", null,
+        var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", new NoBody(),
             Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
 
         var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
@@ -498,6 +498,21 @@ public class ShellViewModelTests
         shell.SelectedEnvironment.Should().NotBeNull();
         lastCtx.Should().NotBeNull();
         lastCtx!.ActiveEnvVars.Should().ContainKey("x");
+    }
+
+    [Fact]
+    public void OpenDocInTab_SamePathTwice_DoesNotCreateDuplicateTab()
+    {
+        var shell = CreateShell();
+        const string docPath = "/fake/docs/scripting.md";
+
+        shell.OpenDocInTab(docPath);
+        var firstTab = shell.ActiveTab;
+
+        shell.OpenDocInTab(docPath);
+
+        shell.Tabs.Should().ContainSingle();
+        shell.ActiveTab.Should().BeSameAs(firstTab);
     }
 
     [Fact]

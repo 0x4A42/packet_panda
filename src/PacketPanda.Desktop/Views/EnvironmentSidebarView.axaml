@@ -68,6 +68,20 @@
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="vm:EnvironmentItemViewModel">
                     <Grid ColumnDefinitions="*,Auto,Auto">
+                        <Grid.ContextFlyout>
+                            <MenuFlyout>
+                                <MenuItem Header="Rename"
+                                          Command="{Binding $parent[ListBox].DataContext.RenameEnvironmentCommand}"
+                                          CommandParameter="{Binding}" />
+                                <MenuItem Header="Duplicate"
+                                          Command="{Binding $parent[ListBox].DataContext.DuplicateEnvironmentCommand}"
+                                          CommandParameter="{Binding Ref}" />
+                                <Separator />
+                                <MenuItem Header="Delete"
+                                          Command="{Binding $parent[ListBox].DataContext.DeleteEnvironmentCommand}"
+                                          CommandParameter="{Binding Ref}" />
+                            </MenuFlyout>
+                        </Grid.ContextFlyout>
 
                         <!-- Name label (normal mode) -->
                         <TextBlock Grid.Column="0"

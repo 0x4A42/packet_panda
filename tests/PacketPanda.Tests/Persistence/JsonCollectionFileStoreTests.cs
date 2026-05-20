@@ -49,7 +49,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         req.Name.Should().Be("Get Users");
         req.Method.Should().Be(HttpMethod.Get);
         req.Url.Should().Be("{{baseUrl}}/users");
-        req.Body.Should().BeNull();
+        req.Body.Should().BeOfType<NoBody>();
         req.CollectionFilePath.Should().Be(_tempPath);
     }
 
@@ -75,7 +75,8 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var collection = await _store.LoadAsync(_tempPath);
 
         var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
-        req.Body.Should().Be("{\"user\":\"x\"}");
+        req.Body.Should().BeOfType<PlainTextBody>()
+            .Which.Text.Should().Be("{\"user\":\"x\"}");
     }
 
     [Fact]
@@ -172,7 +173,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         req.Id.Should().Be("req-1");
         req.Method.Should().Be(HttpMethod.Post);
         req.Url.Should().Be("{{base}}/users");
-        req.Body.Should().Be("{}");
+        req.Body.Should().BeOfType<PlainTextBody>().Which.Text.Should().Be("{}");
     }
 
     [Fact]
@@ -185,13 +186,13 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
             ]
             """));
 
-        await _store.UpdateRequestAsync(_tempPath, "r1", new HttpRequest(HttpMethod.Post, "http://updated", "{\"x\":1}"));
+        await _store.UpdateRequestAsync(_tempPath, "r1", new HttpRequest(HttpMethod.Post, "http://updated", new JsonBody("{\"x\":1}")));
         var reloaded = await _store.LoadAsync(_tempPath);
 
         var r1 = reloaded.Root.Children.OfType<RequestNode>().First(r => r.Id == "r1");
         r1.Method.Should().Be(HttpMethod.Post);
         r1.Url.Should().Be("http://updated");
-        r1.Body.Should().Be("{\"x\":1}");
+        r1.Body.Should().BeOfType<JsonBody>().Which.Text.Should().Be("{\"x\":1}");
 
         var r2 = reloaded.Root.Children.OfType<RequestNode>().First(r => r.Id == "r2");
         r2.Url.Should().Be("http://b");
@@ -393,7 +394,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
     {
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
-                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", new NoBody(),
                     [new HttpHeader("X-Foo", "bar"), new HttpHeader("X-Off", "skip", Enabled: false)],
                     new NoAuth(), Array.Empty<QueryParam>())
             ]));
@@ -411,7 +412,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
     {
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
-                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", new NoBody(),
                     Array.Empty<HttpHeader>(), new BearerAuth("tok"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
@@ -426,7 +427,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
     {
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
-                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", new NoBody(),
                     Array.Empty<HttpHeader>(), new BasicAuth("u", "p"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
@@ -441,7 +442,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
     {
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
-                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", new NoBody(),
                     Array.Empty<HttpHeader>(), new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
@@ -456,7 +457,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
     {
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
-                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", new NoBody(),
                     Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
@@ -474,7 +475,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
     {
         var col = new Collection("C", _tempPath,
             new FolderNode("root", "C", [
-                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", null,
+                new RequestNode("r1", "R", _tempPath, HttpMethod.Get, "https://example.com", new NoBody(),
                     [new HttpHeader("X-Keep", "v")], new BearerAuth("tok"), Array.Empty<QueryParam>())
             ]));
         await _store.SaveAsync(_tempPath, col);
@@ -562,7 +563,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var root = new FolderNode(Guid.NewGuid().ToString(), "Col", new List<CollectionNode>
         {
             new RequestNode("r1", "Search", _tempPath, HttpMethod.Get,
-                "https://api.example.com/search?q=hello", null,
+                "https://api.example.com/search?q=hello", new NoBody(),
                 Array.Empty<HttpHeader>(), new NoAuth(), queryParams)
         });
         var collection = new Collection("Col", _tempPath, root);
@@ -713,5 +714,133 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var col = await _store.LoadAsync(_tempPath);
         var req = col.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
         req.PostResponseScript.Should().Be("pp.test('x', function(){});");
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_WithRawJsonBody_ParsesAsJsonBody()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1",
+                "name": "Post",
+                "request": {
+                  "method": "POST",
+                  "header": [],
+                  "url": { "raw": "https://api.example.com/items" },
+                  "body": {
+                    "mode": "raw",
+                    "raw": "{\"name\":\"test\"}",
+                    "options": { "raw": { "language": "json" } }
+                  }
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Body.Should().BeOfType<JsonBody>()
+            .Which.Text.Should().Be("{\"name\":\"test\"}");
+    }
+
+    [Fact]
+    public async Task Load_RequestNode_WithFormBody_ParsesAsFormBody()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1",
+                "name": "Login",
+                "request": {
+                  "method": "POST",
+                  "header": [],
+                  "url": { "raw": "https://api.example.com/login" },
+                  "body": {
+                    "mode": "urlencoded",
+                    "urlencoded": [
+                      { "key": "username", "value": "alice", "disabled": false },
+                      { "key": "password", "value": "secret", "disabled": false }
+                    ]
+                  }
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        var form = req.Body.Should().BeOfType<FormBody>().Subject;
+        form.Fields.Should().HaveCount(2);
+        form.Fields[0].Name.Should().Be("username");
+        form.Fields[1].Name.Should().Be("password");
+    }
+
+    [Fact]
+    public async Task SaveThenLoad_JsonBody_RoundTrips()
+    {
+        var node = new RequestNode(
+            "r1", "Test", _tempPath, HttpMethod.Post, "https://api.example.com",
+            new JsonBody("{\"x\":1}"),
+            Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
+        var collection = new Collection("C", _tempPath,
+            new FolderNode(Guid.NewGuid().ToString(), "C", new[] { (CollectionNode)node }));
+
+        await _store.SaveAsync(_tempPath, collection);
+        var loaded = await _store.LoadAsync(_tempPath);
+
+        var req = loaded.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Body.Should().BeOfType<JsonBody>().Which.Text.Should().Be("{\"x\":1}");
+    }
+
+    [Fact]
+    public async Task SaveThenLoad_FormBody_RoundTrips()
+    {
+        var fields = new List<FormField>
+        {
+            new("username", "alice", true),
+            new("password", "secret", true)
+        };
+        var node = new RequestNode(
+            "r1", "Login", _tempPath, HttpMethod.Post, "https://api.example.com",
+            new FormBody(fields),
+            Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
+        var collection = new Collection("C", _tempPath,
+            new FolderNode(Guid.NewGuid().ToString(), "C", new[] { (CollectionNode)node }));
+
+        await _store.SaveAsync(_tempPath, collection);
+        var loaded = await _store.LoadAsync(_tempPath);
+
+        var req = loaded.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        var form = req.Body.Should().BeOfType<FormBody>().Subject;
+        form.Fields.Should().HaveCount(2);
+        form.Fields[0].Should().BeEquivalentTo(new FormField("username", "alice", true));
+    }
+
+    [Fact]
+    public async Task Load_RawBodyEmptyString_ParsesAsNoBody()
+    {
+        await File.WriteAllTextAsync(_tempPath, MinimalCollection("Test", """
+            [
+              {
+                "id": "r1",
+                "name": "Empty",
+                "request": {
+                  "method": "GET",
+                  "header": [],
+                  "url": { "raw": "https://api.example.com" },
+                  "body": { "mode": "raw", "raw": "" }
+                },
+                "response": []
+              }
+            ]
+            """));
+
+        var collection = await _store.LoadAsync(_tempPath);
+        var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
+        req.Body.Should().BeOfType<NoBody>();
     }
 }

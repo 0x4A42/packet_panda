@@ -6,10 +6,10 @@ namespace PacketPanda.Tests.Http;
 public class HttpMethodTests
 {
     [Fact]
-    public void Enum_HasExactlyTheFourV1Methods()
+    public void Enum_HasAllSevenSupportedMethods()
     {
         Enum.GetNames<HttpMethod>()
             .Should()
-            .BeEquivalentTo("Get", "Post", "Put", "Delete");
+            .BeEquivalentTo("Get", "Post", "Put", "Delete", "Patch", "Head", "Options");
     }
 }

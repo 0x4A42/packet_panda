@@ -29,6 +29,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _envDeletedSub;
     private readonly IDisposable _envAddedSub;
     private readonly IDisposable _requestOpenedSub;
+    private readonly IDisposable? _folderRunSub;
+    private readonly IDisposable _docOpenSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -45,7 +47,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
         IDialogService dialog,
         IEnvironmentFileStore environmentStore,
         IFilePickerService filePicker,
-        ISettingsStore settings)
+        ISettingsStore settings,
+        Func<FolderNode, CollectionRunnerViewModel>? runnerFactory = null)
     {
         Sidebar = sidebar;
         _editorFactory = editorFactory;
@@ -66,6 +69,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             });
         SetRequestsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Requests; });
         SetEnvironmentsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Environments; });
+        SetDocsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Docs; });
         SaveActiveTabCommand = ReactiveCommand.CreateFromTask(SaveActiveTabAsync);
 
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
@@ -74,7 +78,31 @@ public class ShellViewModel : ViewModelBase, IDisposable
             filePicker,
             () => null);
 
+        DocsSidebar = new DocsSidebarViewModel(
+            Path.Combine(AppContext.BaseDirectory, "docs"));
+
+        _docOpenSub = DocsSidebar.DocOpenRequested.Subscribe(OpenDocInTab);
+
         _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
+
+        if (runnerFactory != null)
+        {
+            _folderRunSub = sidebar.FolderRunRequested.Subscribe(folder =>
+            {
+                var existing = Tabs.FirstOrDefault(t => t.Content is CollectionRunnerViewModel runner
+                    && runner.CurrentFilePath == folder.Id);
+                if (existing != null)
+                {
+                    ActiveTab = existing;
+                    return;
+                }
+                var vm = runnerFactory(folder);
+                var tab = new TabViewModel(vm, _dialog);
+                _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+                Tabs.Add(tab);
+                ActiveTab = tab;
+            });
+        }
 
         _envOpenSub = EnvironmentSidebar.EnvironmentOpenRequested
             .Subscribe(path => _ = OpenEnvironmentInTabAsync(path));
@@ -114,6 +142,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     public CollectionSidebarViewModel Sidebar { get; }
     public EnvironmentSidebarViewModel EnvironmentSidebar { get; }
+    public DocsSidebarViewModel DocsSidebar { get; }
     public ObservableCollection<TabViewModel> Tabs { get; }
     public ObservableCollection<EnvironmentRef> EnvironmentsForPicker { get; }
 
@@ -147,6 +176,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> CloseActiveTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetRequestsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetEnvironmentsTabCommand { get; }
+    public ReactiveCommand<Unit, Unit> SetDocsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveActiveTabCommand { get; }
 
     public async Task InitializeAsync(AppSettings settings)
@@ -234,7 +264,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         ActiveTab = tab;
     }
 
-    private Task OpenRequestNodeInTabAsync(RequestNode node)
+    internal Task OpenRequestNodeInTabAsync(RequestNode node)
     {
         var existing = Tabs.FirstOrDefault(t => t.Content is RequestEditorViewModel r && r.RequestId == node.Id);
         if (existing is not null) { ActiveTab = existing; return Task.CompletedTask; }
@@ -245,7 +275,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         editor.CollectionFilePath = node.CollectionFilePath;
         editor.SelectedMethod = node.Method;
         editor.Url = node.Url;
-        editor.RequestBody = node.Body;
+        editor.LoadBody(node.Body);
         editor.LoadHeaders(node.Headers);
         editor.LoadAuth(node.Auth);
         editor.LoadQueryParams(node.QueryParams);
@@ -343,6 +373,23 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _closeSubscriptions[tab] = new CompositeDisposable(
             tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
             savedSub);
+        Tabs.Add(tab);
+        ActiveTab = tab;
+    }
+
+    public void OpenDocInTab(string filePath)
+    {
+        var existing = Tabs.FirstOrDefault(t => t.Content is DocsViewerViewModel
+            && t.FilePath == filePath);
+        if (existing is not null)
+        {
+            ActiveTab = existing;
+            return;
+        }
+
+        var vm = new DocsViewerViewModel(filePath);
+        var tab = new TabViewModel(vm, _dialog);
+        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
         Tabs.Add(tab);
         ActiveTab = tab;
     }
@@ -573,6 +620,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _envDeletedSub.Dispose();
         _envAddedSub.Dispose();
         _requestOpenedSub.Dispose();
+        _folderRunSub?.Dispose();
+        _docOpenSub.Dispose();
+        DocsSidebar.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();
         _closeSubscriptions.Clear();

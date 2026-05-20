@@ -64,10 +64,13 @@ public sealed class HttpRequestSender : IHttpRequestSender
     {
         var method = request.Method switch
         {
-            HttpMethod.Get => SystemHttpMethod.Get,
-            HttpMethod.Post => SystemHttpMethod.Post,
-            HttpMethod.Put => SystemHttpMethod.Put,
-            HttpMethod.Delete => SystemHttpMethod.Delete,
+            HttpMethod.Get     => SystemHttpMethod.Get,
+            HttpMethod.Post    => SystemHttpMethod.Post,
+            HttpMethod.Put     => SystemHttpMethod.Put,
+            HttpMethod.Delete  => SystemHttpMethod.Delete,
+            HttpMethod.Patch   => SystemHttpMethod.Patch,
+            HttpMethod.Head    => SystemHttpMethod.Head,
+            HttpMethod.Options => SystemHttpMethod.Options,
             _ => throw new ArgumentOutOfRangeException(nameof(request), request.Method, "Unsupported method")
         };
 
@@ -111,8 +114,28 @@ public sealed class HttpRequestSender : IHttpRequestSender
                 break;
         }
 
-        if (!string.IsNullOrEmpty(request.Body))
-            message.Content = new StringContent(request.Body, Encoding.UTF8, "application/json");
+        if (request.Method != HttpMethod.Head)
+        {
+            switch (request.Body)
+            {
+                case JsonBody json when !string.IsNullOrEmpty(json.Text):
+                    message.Content = new StringContent(json.Text, Encoding.UTF8, "application/json");
+                    break;
+                case PlainTextBody text when !string.IsNullOrEmpty(text.Text):
+                    message.Content = new StringContent(text.Text, Encoding.UTF8, "text/plain");
+                    break;
+                case XmlBody xml when !string.IsNullOrEmpty(xml.Text):
+                    message.Content = new StringContent(xml.Text, Encoding.UTF8, "application/xml");
+                    break;
+                case FormBody form:
+                    var encoded = form.Fields
+                        .Where(f => f.Enabled)
+                        .Select(f => new KeyValuePair<string, string>(f.Name, f.Value))
+                        .ToList();
+                    message.Content = new FormUrlEncodedContent(encoded);
+                    break;
+            }
+        }
 
         return message;
     }

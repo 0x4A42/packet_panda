@@ -1,0 +1,10 @@
+namespace PacketPanda.Core.Http;
+
+public abstract record BodyConfig;
+public sealed record NoBody() : BodyConfig;
+public sealed record JsonBody(string Text) : BodyConfig;
+public sealed record PlainTextBody(string Text) : BodyConfig;
+public sealed record XmlBody(string Text) : BodyConfig;
+public sealed record FormBody(IReadOnlyList<FormField> Fields) : BodyConfig;
+
+public sealed record FormField(string Name, string Value, bool Enabled);

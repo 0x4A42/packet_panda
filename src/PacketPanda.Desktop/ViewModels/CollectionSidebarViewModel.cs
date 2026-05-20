@@ -18,6 +18,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private readonly IDialogService _dialog;
     private readonly Subject<RequestNode> _requestOpened = new();
     private readonly Subject<object> _editingNodeStarted = new();
+    private readonly Subject<FolderNode> _folderRunRequested = new();
 
     private string? _filterText;
     private string? _errorMessage;
@@ -62,6 +63,7 @@ public class CollectionSidebarViewModel : ReactiveObject
 
     public IObservable<RequestNode> RequestOpened => _requestOpened;
     public IObservable<object> EditingNodeStarted => _editingNodeStarted;
+    public IObservable<FolderNode> FolderRunRequested => _folderRunRequested;
 
     public async Task LoadCollectionsAsync(IReadOnlyList<string> paths)
     {
@@ -168,7 +170,8 @@ public class CollectionSidebarViewModel : ReactiveObject
             {
                 Collections.Remove(v);
                 _ = PersistOpenPathsAsync();
-            });
+            },
+            onFolderRunRequested: folder => _folderRunRequested.OnNext(folder));
         Collections.Add(vm);
     }
 
@@ -192,6 +195,7 @@ public class CollectionViewModel : ReactiveObject
     private readonly Action<Collection>? _onDuplicated;
     private readonly Action<CollectionViewModel>? _onDeleted;
     private readonly Action<object>? _onEditingStarted;
+    private readonly Action<FolderNode>? _onFolderRunRequested;
     private Collection _collection;
     private bool _isEditing;
     private string _editingName = string.Empty;
@@ -203,7 +207,8 @@ public class CollectionViewModel : ReactiveObject
         Action<RequestNode> onRequestOpened,
         Action<Collection>? onDuplicated = null,
         Action<CollectionViewModel>? onDeleted = null,
-        Action<object>? onEditingStarted = null)
+        Action<object>? onEditingStarted = null,
+        Action<FolderNode>? onFolderRunRequested = null)
     {
         _collection = collection;
         _store = store;
@@ -212,6 +217,7 @@ public class CollectionViewModel : ReactiveObject
         _onDuplicated = onDuplicated;
         _onDeleted = onDeleted;
         _onEditingStarted = onEditingStarted;
+        _onFolderRunRequested = onFolderRunRequested;
 
         Items = new ObservableCollection<CollectionNodeViewModel>(
             collection.Root.Children
@@ -225,6 +231,7 @@ public class CollectionViewModel : ReactiveObject
         CancelRenameCommand = ReactiveCommand.Create(CancelRenameCollection);
         DuplicateCommand = ReactiveCommand.CreateFromTask(DuplicateCollectionAsync);
         DeleteCommand = ReactiveCommand.CreateFromTask(DeleteCollectionAsync);
+        RunCollectionCommand = ReactiveCommand.Create(() => _onFolderRunRequested?.Invoke(_collection.Root));
     }
 
     public string Name => _collection.Name;
@@ -285,6 +292,7 @@ public class CollectionViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> CancelRenameCommand { get; }
     public ReactiveCommand<Unit, Unit> DuplicateCommand { get; }
     public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
+    public ReactiveCommand<Unit, Unit> RunCollectionCommand { get; }
 
     private CollectionNodeViewModel BuildNodeVm(CollectionNode node)
     {
@@ -299,6 +307,7 @@ public class CollectionViewModel : ReactiveObject
                     NewFolderCommand = ReactiveCommand.CreateFromTask(() => AddNewFolderToFolderAsync(f.Id)),
                     CopyFolderCommand = ReactiveCommand.CreateFromTask(() => CopyFolderAsync(f.Id)),
                     DeleteFolderCommand = ReactiveCommand.CreateFromTask(() => DeleteFolderAsync(f.Id)),
+                    RunFolderCallback = _onFolderRunRequested,
                 };
                 folderVm.RenameFolderCommand = ReactiveCommand.Create(() => StartEditNode(folderVm));
                 folderVm.CommitRenameCommand = ReactiveCommand.CreateFromTask(() => CommitRenameFolderAsync(folderVm, f.Id));
@@ -401,7 +410,8 @@ public class CollectionViewModel : ReactiveObject
     private async Task AddNewRequestAsync()
     {
         var id = Guid.NewGuid().ToString();
-        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null,
+        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty,
+            new NoBody(),
             Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
         var newChildren = _collection.Root.Children.Append(newNode).ToList();
         var candidate = _collection with { Root = _collection.Root with { Children = newChildren } };
@@ -425,7 +435,8 @@ public class CollectionViewModel : ReactiveObject
     private async Task AddNewRequestToFolderAsync(string folderId)
     {
         var id = Guid.NewGuid().ToString();
-        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty, null,
+        var newNode = new RequestNode(id, "New Request", _collection.FilePath, HttpMethod.Get, string.Empty,
+            new NoBody(),
             Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
         var (newRoot, found) = InsertIntoFolder(_collection.Root, folderId, newNode);
         if (!found) return;

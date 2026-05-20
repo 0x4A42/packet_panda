@@ -79,6 +79,16 @@
                         </StackPanel>
                     </Button>
 
+                    <Button Classes="activity-btn"
+                            Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}"
+                            Command="{Binding SetDocsTabCommand}"
+                            ToolTip.Tip="Docs">
+                        <StackPanel Orientation="Vertical" Spacing="3" HorizontalAlignment="Center">
+                            <TextBlock Text="📖" FontSize="18" HorizontalAlignment="Center" Foreground="White" />
+                            <TextBlock Text="Docs" FontSize="9" HorizontalAlignment="Center" Foreground="#AAAAAA" />
+                        </StackPanel>
+                    </Button>
+
                 </StackPanel>
             </Border>
 
@@ -138,6 +148,24 @@
                             <TreeDataTemplate DataType="vm:CollectionViewModel"
                                               ItemsSource="{Binding Items}">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <StackPanel.ContextFlyout>
+                                        <MenuFlyout>
+                                            <MenuItem Header="New folder"
+                                                      Command="{Binding NewFolderCommand}" />
+                                            <MenuItem Header="Rename"
+                                                      Command="{Binding RenameCommand}" />
+                                            <MenuItem Header="Duplicate"
+                                                      Command="{Binding DuplicateCommand}" />
+                                            <MenuItem Header="Run collection"
+                                                      Command="{Binding RunCollectionCommand}" />
+                                            <Separator />
+                                            <MenuItem Header="Remove from sidebar"
+                                                      Command="{Binding $parent[TreeView].DataContext.Sidebar.RemoveCollectionCommand}"
+                                                      CommandParameter="{Binding}" />
+                                            <MenuItem Header="Delete"
+                                                      Command="{Binding DeleteCommand}" />
+                                        </MenuFlyout>
+                                    </StackPanel.ContextFlyout>
                                     <TextBlock Text="📁" FontSize="11" VerticalAlignment="Center" />
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"
                                                IsVisible="{Binding !IsEditing}" />
@@ -173,6 +201,8 @@
                                                           Command="{Binding RenameCommand}" />
                                                 <MenuItem Header="Duplicate"
                                                           Command="{Binding DuplicateCommand}" />
+                                                <MenuItem Header="Run collection"
+                                                          Command="{Binding RunCollectionCommand}" />
                                                 <Separator />
                                                 <MenuItem Header="Remove from sidebar"
                                                           Command="{Binding $parent[TreeView].DataContext.Sidebar.RemoveCollectionCommand}"
@@ -189,6 +219,30 @@
                             <TreeDataTemplate DataType="vm:CollectionNodeViewModel"
                                               ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                    <StackPanel.ContextFlyout>
+                                        <MenuFlyout>
+                                            <MenuItem Header="New request"
+                                                      Command="{Binding NewRequestCommand}"
+                                                      IsVisible="{Binding IsFolder}" />
+                                            <MenuItem Header="New folder"
+                                                      Command="{Binding NewFolderCommand}"
+                                                      IsVisible="{Binding IsFolder}" />
+                                            <MenuItem Header="Run folder"
+                                                      Command="{Binding RunFolderCommand}"
+                                                      IsVisible="{Binding IsFolder}" />
+                                            <Separator IsVisible="{Binding IsFolder}" />
+                                            <MenuItem Header="Rename"
+                                                      Command="{Binding NodeRenameCommand}" />
+                                            <MenuItem Header="Copy"
+                                                      Command="{Binding CopyFolderCommand}"
+                                                      IsVisible="{Binding IsFolder}" />
+                                            <MenuItem Header="Duplicate"
+                                                      Command="{Binding DuplicateRequestCommand}"
+                                                      IsVisible="{Binding !IsFolder}" />
+                                            <MenuItem Header="Delete"
+                                                      Command="{Binding NodeDeleteCommand}" />
+                                        </MenuFlyout>
+                                    </StackPanel.ContextFlyout>
                                     <Border IsVisible="{Binding Method, Converter={StaticResource IsNotNullConverter}}"
                                             Background="{Binding Method, Converter={StaticResource MethodBrushConverter}}"
                                             CornerRadius="2"
@@ -235,6 +289,9 @@
                                                           Command="{Binding CopyFolderCommand}" />
                                                 <MenuItem Header="Delete"
                                                           Command="{Binding DeleteFolderCommand}" />
+                                                <Separator />
+                                                <MenuItem Header="Run folder"
+                                                          Command="{Binding RunFolderCommand}" />
                                             </MenuFlyout>
                                         </Button.Flyout>
                                     </Button>
@@ -266,6 +323,11 @@
                 <views:EnvironmentSidebarView
                     DataContext="{Binding EnvironmentSidebar}"
                     IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}" />
+
+                <!-- Docs panel -->
+                <views:DocsSidebarView
+                    DataContext="{Binding DocsSidebar}"
+                    IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}" />
 
             </Grid>
         </Grid>
@@ -339,6 +401,12 @@
                     </DataTemplate>
                     <DataTemplate DataType="vm:EnvironmentEditorViewModel">
                         <views:EnvironmentEditorView />
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:CollectionRunnerViewModel">
+                        <views:CollectionRunnerView />
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:DocsViewerViewModel">
+                        <views:DocsViewerView />
                     </DataTemplate>
                 </ContentControl.DataTemplates>
             </ContentControl>
