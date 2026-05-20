@@ -20,12 +20,6 @@ public partial class App : Application
     {
         AvaloniaXamlLoader.Load(this);
 
-        // MarkdownStyleFluentTheme constructor is inaccessible from XAML IL in this Avalonia version,
-        // so register the style via reflection instead of a StyleInclude.
-        var mdAssembly = typeof(Markdown.Avalonia.MarkdownScrollViewer).Assembly;
-        var styleType = mdAssembly.GetType("Markdown.Avalonia.StyleCollections.MarkdownStyleFluentTheme");
-        if (styleType is not null && Activator.CreateInstance(styleType) is Avalonia.Styling.IStyle style)
-            Styles.Add(style);
     }
 
     public override void OnFrameworkInitializationCompleted()
