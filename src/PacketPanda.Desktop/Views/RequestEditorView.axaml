@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
              xmlns:conv="using:PacketPanda.Desktop.Converters"
+             xmlns:ctrl="using:PacketPanda.Desktop.Controls"
              xmlns:aedit="using:AvaloniaEdit"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
              x:Class="PacketPanda.Desktop.Views.RequestEditorView"
@@ -50,19 +51,35 @@
         <Style Selector="TabControl.request-tabs > TabItem:selected /template/ ContentPresenter#PART_ContentPresenter">
           <Setter Property="Background" Value="Transparent" />
         </Style>
-        <Style Selector="DataGrid">
+        <Style Selector="TabControl.request-tabs > TabItem /template/ Border#PART_SelectedPipe">
+          <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <!-- Response tab bar buttons -->
+        <Style Selector="Button.resp-tab">
           <Setter Property="Background" Value="Transparent" />
-          <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
-          <Setter Property="GridLinesVisibility" Value="Horizontal" />
-        </Style>
-        <Style Selector="DataGridColumnHeader">
-          <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+          <Setter Property="BorderThickness" Value="0,0,0,2" />
+          <Setter Property="BorderBrush" Value="Transparent" />
+          <Setter Property="CornerRadius" Value="0" />
+          <Setter Property="Padding" Value="12,7" />
+          <Setter Property="FontSize" Value="12" />
           <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
-          <Setter Property="FontSize" Value="10" />
-          <Setter Property="Padding" Value="8,6" />
         </Style>
-        <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
-          <Setter Property="Fill" Value="{DynamicResource TreeRowHover}" />
+        <Style Selector="Button.resp-tab.selected">
+          <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimary}" />
+          <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        </Style>
+        <Style Selector="Button.resp-tab /template/ ContentPresenter#PART_ContentPresenter">
+          <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.resp-tab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+          <Setter Property="Background" Value="{DynamicResource TreeRowHover}" />
+        </Style>
+        <!-- Prevent FluentTheme from going white when the editor is focused -->
+        <Style Selector="TextBox#UrlEditor /template/ Border#PART_BorderElement">
+          <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox#BodyEditor /template/ Border#PART_BorderElement">
+          <Setter Property="Background" Value="Transparent" />
         </Style>
     </UserControl.Styles>
 
@@ -184,7 +201,7 @@
                           CanUserResizeColumns="True"
                           CanUserSortColumns="False">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                        <DataGridTemplateColumn Header="" Width="44" IsReadOnly="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:QueryParamRowViewModel">
                                     <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
@@ -193,7 +210,7 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTemplateColumn Header="Key" Width="2*" IsReadOnly="False">
+                        <DataGridTemplateColumn Header="KEY" Width="2*" IsReadOnly="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:QueryParamRowViewModel">
                                     <TextBox Text="{Binding Key}"
@@ -207,17 +224,13 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTemplateColumn Header="Value" Width="2*" IsReadOnly="False">
+                        <DataGridTemplateColumn Header="VALUE" Width="2*" IsReadOnly="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:QueryParamRowViewModel">
-                                    <TextBox Text="{Binding Value}"
-                                             Watermark="Value or {variable}"
-                                             FontFamily="Consolas,Menlo,monospace"
-                                             FontSize="12"
-                                             Background="Transparent"
-                                             BorderThickness="0"
-                                             Padding="6,0"
-                                             VerticalContentAlignment="Center" />
+                                    <ctrl:VariableTextBox Text="{Binding Value, Mode=TwoWay}"
+                                                          Watermark="Value or {{variable}}"
+                                                          GlobalsVariables="{Binding $parent[DataGrid].((vm:RequestEditorViewModel)DataContext).GlobalsVariables}"
+                                                          ActiveEnvVariables="{Binding $parent[DataGrid].((vm:RequestEditorViewModel)DataContext).ActiveEnvVariables}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -233,11 +246,8 @@
                                             Cursor="Hand">
                                       <Path Data="{StaticResource IconClose}"
                                             Stretch="Uniform"
-                                            Width="10" Height="10"
-                                            Stroke="{DynamicResource TextMuted}"
-                                            StrokeThickness="2"
-                                            StrokeLineCap="Round"
-                                            Fill="Transparent" />
+                                            Width="9" Height="9"
+                                            Fill="{DynamicResource TextMuted}" />
                                     </Button>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -252,7 +262,7 @@
 
                     <!-- Left: type selector + description -->
                     <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,0,0">
-                        <TextBlock Text="Auth Type" FontSize="11" Opacity="0.6" />
+                        <TextBlock Text="Auth Type" FontSize="11" Foreground="{DynamicResource TextMuted}" />
                         <ComboBox ItemsSource="{Binding AvailableAuthTypes}"
                                   SelectedItem="{Binding SelectedAuthType}">
                             <ComboBox.ItemTemplate>
@@ -263,16 +273,16 @@
                         </ComboBox>
                         <TextBlock IsVisible="{Binding IsBearerAuth}"
                                    Text="The Authorisation header will be automatically generated when you send the request."
-                                   TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
+                                   TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource TextMuted}" Margin="0,6,0,0" />
                         <TextBlock IsVisible="{Binding IsApiKeyAuth}"
                                    Text="The API key will be added to the request as a header or query parameter."
-                                   TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
+                                   TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource TextMuted}" Margin="0,6,0,0" />
                         <TextBlock IsVisible="{Binding IsBasicAuth}"
                                    Text="The credentials will be Base64-encoded and sent in the Authorisation header."
-                                   TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
+                                   TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource TextMuted}" Margin="0,6,0,0" />
                         <TextBlock IsVisible="{Binding IsNoAuth}"
                                    Text="This request does not use any authorisation."
-                                   TextWrapping="Wrap" FontSize="11" Opacity="0.55" Margin="0,6,0,0" />
+                                   TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource TextMuted}" Margin="0,6,0,0" />
                     </StackPanel>
 
                     <!-- Divider -->
@@ -286,12 +296,18 @@
                               IsVisible="{Binding IsBearerAuth}">
                             <TextBlock Grid.Column="0" Text="Token"
                                        VerticalAlignment="Center"
-                                       FontSize="12" Opacity="0.7" />
-                            <TextBox Grid.Column="1"
-                                     Text="{Binding BearerToken}"
-                                     Watermark="Token or {{variable}}"
-                                     FontFamily="Consolas,Menlo,monospace"
-                                     FontSize="12" />
+                                       FontSize="12" Foreground="{DynamicResource TextPrimary}" />
+                            <Border Grid.Column="1"
+                                    Background="{DynamicResource InputBackground}"
+                                    BorderBrush="{DynamicResource BorderSubtle}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Height="32">
+                              <ctrl:VariableTextBox Text="{Binding BearerToken, Mode=TwoWay}"
+                                                    Watermark="Token or {{variable}}"
+                                                    GlobalsVariables="{Binding GlobalsVariables}"
+                                                    ActiveEnvVariables="{Binding ActiveEnvVariables}" />
+                            </Border>
                         </Grid>
 
                         <!-- API Key -->
@@ -299,7 +315,7 @@
                             <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
                                 <TextBlock Grid.Column="0" Text="Key"
                                            VerticalAlignment="Center"
-                                           FontSize="12" Opacity="0.7" />
+                                           FontSize="12" Foreground="{DynamicResource TextPrimary}" />
                                 <TextBox Grid.Column="1"
                                          Text="{Binding ApiKeyName}"
                                          Watermark="e.g. X-API-Key"
@@ -309,17 +325,23 @@
                             <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
                                 <TextBlock Grid.Column="0" Text="Value"
                                            VerticalAlignment="Center"
-                                           FontSize="12" Opacity="0.7" />
-                                <TextBox Grid.Column="1"
-                                         Text="{Binding ApiKeyValue}"
-                                         Watermark="Value or {{variable}}"
-                                         FontFamily="Consolas,Menlo,monospace"
-                                         FontSize="12" />
+                                           FontSize="12" Foreground="{DynamicResource TextPrimary}" />
+                                <Border Grid.Column="1"
+                                        Background="{DynamicResource InputBackground}"
+                                        BorderBrush="{DynamicResource BorderSubtle}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Height="32">
+                                  <ctrl:VariableTextBox Text="{Binding ApiKeyValue, Mode=TwoWay}"
+                                                        Watermark="Value or {{variable}}"
+                                                        GlobalsVariables="{Binding GlobalsVariables}"
+                                                        ActiveEnvVariables="{Binding ActiveEnvVariables}" />
+                                </Border>
                             </Grid>
                             <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
                                 <TextBlock Grid.Column="0" Text="Add to"
                                            VerticalAlignment="Center"
-                                           FontSize="12" Opacity="0.7" />
+                                           FontSize="12" Foreground="{DynamicResource TextPrimary}" />
                                 <ComboBox Grid.Column="1"
                                           ItemsSource="{Binding AvailableApiKeyTargets}"
                                           SelectedItem="{Binding ApiKeyTarget}">
@@ -337,17 +359,23 @@
                             <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
                                 <TextBlock Grid.Column="0" Text="Username"
                                            VerticalAlignment="Center"
-                                           FontSize="12" Opacity="0.7" />
-                                <TextBox Grid.Column="1"
-                                         Text="{Binding BasicUsername}"
-                                         Watermark="Username or {{variable}}"
-                                         FontFamily="Consolas,Menlo,monospace"
-                                         FontSize="12" />
+                                           FontSize="12" Foreground="{DynamicResource TextPrimary}" />
+                                <Border Grid.Column="1"
+                                        Background="{DynamicResource InputBackground}"
+                                        BorderBrush="{DynamicResource BorderSubtle}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Height="32">
+                                  <ctrl:VariableTextBox Text="{Binding BasicUsername, Mode=TwoWay}"
+                                                        Watermark="Username or {{variable}}"
+                                                        GlobalsVariables="{Binding GlobalsVariables}"
+                                                        ActiveEnvVariables="{Binding ActiveEnvVariables}" />
+                                </Border>
                             </Grid>
                             <Grid ColumnDefinitions="90,*" ColumnSpacing="12">
                                 <TextBlock Grid.Column="0" Text="Password"
                                            VerticalAlignment="Center"
-                                           FontSize="12" Opacity="0.7" />
+                                           FontSize="12" Foreground="{DynamicResource TextPrimary}" />
                                 <TextBox Grid.Column="1"
                                          Text="{Binding BasicPassword}"
                                          Watermark="Password or {{variable}}"
@@ -373,7 +401,7 @@
                           CanUserResizeColumns="True"
                           CanUserSortColumns="False">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                        <DataGridTemplateColumn Header="" Width="44" IsReadOnly="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:HeaderRowViewModel">
                                     <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
@@ -382,7 +410,7 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTemplateColumn Header="Name" Width="2*" IsReadOnly="False">
+                        <DataGridTemplateColumn Header="NAME" Width="2*" IsReadOnly="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:HeaderRowViewModel">
                                     <TextBox Text="{Binding Name}"
@@ -396,17 +424,13 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTemplateColumn Header="Value" Width="2*" IsReadOnly="False">
+                        <DataGridTemplateColumn Header="VALUE" Width="2*" IsReadOnly="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate x:DataType="vm:HeaderRowViewModel">
-                                    <TextBox Text="{Binding Value}"
-                                             Watermark="Value or {variable}"
-                                             FontFamily="Consolas,Menlo,monospace"
-                                             FontSize="12"
-                                             Background="Transparent"
-                                             BorderThickness="0"
-                                             Padding="6,0"
-                                             VerticalContentAlignment="Center" />
+                                    <ctrl:VariableTextBox Text="{Binding Value, Mode=TwoWay}"
+                                                          Watermark="Value or {{variable}}"
+                                                          GlobalsVariables="{Binding $parent[DataGrid].((vm:RequestEditorViewModel)DataContext).GlobalsVariables}"
+                                                          ActiveEnvVariables="{Binding $parent[DataGrid].((vm:RequestEditorViewModel)DataContext).ActiveEnvVariables}" />
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
@@ -422,11 +446,8 @@
                                             Cursor="Hand">
                                       <Path Data="{StaticResource IconClose}"
                                             Stretch="Uniform"
-                                            Width="10" Height="10"
-                                            Stroke="{DynamicResource TextMuted}"
-                                            StrokeThickness="2"
-                                            StrokeLineCap="Round"
-                                            Fill="Transparent" />
+                                            Width="9" Height="9"
+                                            Fill="{DynamicResource TextMuted}" />
                                     </Button>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -453,15 +474,20 @@
                     </StackPanel>
 
                     <!-- Raw body editor (JSON / Text / XML) -->
-                    <Panel Grid.Row="1" Background="White"
-                           IsVisible="{Binding IsRawBodyMode}">
+                    <Border Grid.Row="1"
+                            Background="{DynamicResource InputBackground}"
+                            BorderBrush="{DynamicResource BorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            IsVisible="{Binding IsRawBodyMode}">
+                      <Panel>
                         <TextBox x:Name="BodyEditor"
                                  Text="{Binding RawBodyText}"
                                  AcceptsReturn="True"
                                  AcceptsTab="True"
                                  Foreground="Transparent"
                                  Background="Transparent"
-                                 CaretBrush="#1E1E1E"
+                                 CaretBrush="{DynamicResource TextPrimary}"
                                  FontFamily="Consolas,Menlo,monospace"
                                  FontSize="13"
                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
@@ -469,13 +495,14 @@
                                  TextWrapping="NoWrap"
                                  Padding="9,5,9,5" />
                         <TextBlock x:Name="BodyOverlay"
-                                   Foreground="#1E1E1E"
+                                   Foreground="{DynamicResource TextPrimary}"
                                    FontFamily="Consolas,Menlo,monospace"
                                    FontSize="13"
                                    Padding="9,5,9,5"
                                    TextWrapping="NoWrap"
                                    IsHitTestVisible="False" />
-                    </Panel>
+                      </Panel>
+                    </Border>
 
                     <!-- Form-urlencoded editor -->
                     <DataGrid Grid.Row="1"
@@ -490,7 +517,7 @@
                               CanUserResizeColumns="True"
                               CanUserSortColumns="False">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                            <DataGridTemplateColumn Header="" Width="44" IsReadOnly="False">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate x:DataType="vm:FormRowViewModel">
                                         <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
@@ -499,7 +526,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Name" Width="2*" IsReadOnly="False">
+                            <DataGridTemplateColumn Header="NAME" Width="2*" IsReadOnly="False">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate x:DataType="vm:FormRowViewModel">
                                         <TextBox Text="{Binding Name}"
@@ -513,7 +540,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Value" Width="2*" IsReadOnly="False">
+                            <DataGridTemplateColumn Header="VALUE" Width="2*" IsReadOnly="False">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate x:DataType="vm:FormRowViewModel">
                                         <TextBox Text="{Binding Value}"
@@ -577,6 +604,7 @@
                                 BorderThickness="0"
                                 Padding="10,8"
                                 FontSize="12"
+                                Foreground="{DynamicResource TextPrimary}"
                                 Command="{Binding SelectPreRequestCommand}" />
                         <Button x:Name="PostResponseSectionBtn"
                                 Content="Post-response"
@@ -586,6 +614,7 @@
                                 BorderThickness="0"
                                 Padding="10,8"
                                 FontSize="12"
+                                Foreground="{DynamicResource TextPrimary}"
                                 Command="{Binding SelectPostResponseCommand}" />
                     </StackPanel>
 
@@ -640,7 +669,7 @@
               <Border Background="{Binding StatusCode, Converter={StaticResource StatusCodeBrushConverter}}"
                       CornerRadius="4"
                       Padding="8,2">
-                <TextBlock Text="{Binding StatusCode}"
+                <TextBlock Text="{Binding StatusCode, Converter={x:Static conv:StatusCodeTextConverter.Instance}}"
                            FontWeight="Bold"
                            FontSize="11"
                            Foreground="White" />
@@ -650,27 +679,52 @@
                 <Run Text="{Binding ElapsedMilliseconds, StringFormat='{}{0} ms'}"
                      Foreground="{DynamicResource TextPrimary}" />
               </TextBlock>
+              <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11"
+                         IsVisible="{Binding ResponseSizeText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Run Text="Size:" />
+                <Run Text="{Binding ResponseSizeText}"
+                     Foreground="{DynamicResource TextPrimary}" />
+              </TextBlock>
             </StackPanel>
 
-            <TabControl Grid.Row="2" Classes="request-tabs">
+            <Grid Grid.Row="2" RowDefinitions="Auto,*">
 
-                <!-- Body tab -->
-                <TabItem Header="Body">
-                    <TextBox Text="{Binding ResponseBody}"
-                             IsReadOnly="True"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             Background="{DynamicResource AppBackground}"
-                             Foreground="{DynamicResource TextPrimary}"
-                             BorderThickness="0"
-                             FontFamily="Consolas,Menlo,monospace"
-                             FontSize="12"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto" />
-                </TabItem>
+                <!-- Response tab bar -->
+                <Border Grid.Row="0"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="RespTabBody" Classes="resp-tab selected"
+                                Content="Body" Click="OnResponseTabClick" />
+                        <Button x:Name="RespTabCookies" Classes="resp-tab"
+                                Content="Cookies" Click="OnResponseTabClick" />
+                        <Button x:Name="RespTabHeaders" Classes="resp-tab"
+                                Content="Headers" Click="OnResponseTabClick" />
+                        <Button x:Name="RespTabTests" Classes="resp-tab"
+                                Content="Tests" Click="OnResponseTabClick" />
+                    </StackPanel>
+                </Border>
 
-                <!-- Cookies tab -->
-                <TabItem Header="Cookies">
-                    <DataGrid ItemsSource="{Binding ResponseCookies}"
+                <!-- Response content -->
+                <Panel Grid.Row="1" Margin="0,4,0,0">
+
+                    <!-- Body -->
+                    <ScrollViewer x:Name="RespBodyContent"
+                                  Background="{DynamicResource AppBackground}"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <SelectableTextBlock x:Name="ResponseBodyText"
+                                             Foreground="{DynamicResource TextPrimary}"
+                                             FontFamily="Consolas,Menlo,monospace"
+                                             FontSize="12"
+                                             Padding="10,8"
+                                             TextWrapping="NoWrap" />
+                    </ScrollViewer>
+
+                    <!-- Cookies -->
+                    <DataGrid x:Name="RespCookiesContent"
+                              IsVisible="False"
+                              ItemsSource="{Binding ResponseCookies}"
                               AutoGenerateColumns="False"
                               GridLinesVisibility="Horizontal"
                               RowHeight="34"
@@ -680,23 +734,23 @@
                               CanUserSortColumns="False"
                               IsReadOnly="True">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name"
+                            <DataGridTextColumn Header="NAME"
                                                Binding="{Binding Name}"
                                                Width="2*"
                                                FontFamily="Consolas,Menlo,monospace"
                                                FontSize="12" />
-                            <DataGridTextColumn Header="Value"
+                            <DataGridTextColumn Header="VALUE"
                                                Binding="{Binding Value}"
                                                Width="3*"
                                                FontFamily="Consolas,Menlo,monospace"
                                                FontSize="12" />
                         </DataGrid.Columns>
                     </DataGrid>
-                </TabItem>
 
-                <!-- Headers tab -->
-                <TabItem Header="{Binding ResponseHeadersTabLabel}">
-                    <DataGrid ItemsSource="{Binding ResponseHeaders}"
+                    <!-- Headers -->
+                    <DataGrid x:Name="RespHeadersContent"
+                              IsVisible="False"
+                              ItemsSource="{Binding ResponseHeaders}"
                               AutoGenerateColumns="False"
                               GridLinesVisibility="Horizontal"
                               RowHeight="34"
@@ -706,50 +760,51 @@
                               CanUserSortColumns="False"
                               IsReadOnly="True">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name"
+                            <DataGridTextColumn Header="NAME"
                                                Binding="{Binding Name}"
                                                Width="2*"
                                                FontFamily="Consolas,Menlo,monospace"
                                                FontSize="12" />
-                            <DataGridTextColumn Header="Value"
+                            <DataGridTextColumn Header="VALUE"
                                                Binding="{Binding Value}"
                                                Width="3*"
                                                FontFamily="Consolas,Menlo,monospace"
                                                FontSize="12" />
                         </DataGrid.Columns>
                     </DataGrid>
-                </TabItem>
 
-                <!-- Tests tab -->
-                <TabItem Header="{Binding TestsTabLabel}">
-                    <ItemsControl ItemsSource="{Binding TestResults}" Margin="0,4">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:TestResultViewModel">
-                                <Grid ColumnDefinitions="20,*" Margin="0,2">
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding Passed, Converter={x:Static conv:BoolToPassFailConverter.Instance}}"
-                                               FontFamily="Consolas,Menlo,monospace"
-                                               FontSize="12"
-                                               Foreground="{Binding Passed, Converter={x:Static conv:BoolToPassFailBrushConverter.Instance}}"
-                                               VerticalAlignment="Top" />
-                                    <StackPanel Grid.Column="1" Spacing="2">
-                                        <TextBlock Text="{Binding Name}"
+                    <!-- Tests -->
+                    <ScrollViewer x:Name="RespTestsContent" IsVisible="False">
+                        <ItemsControl ItemsSource="{Binding TestResults}" Margin="0,4">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TestResultViewModel">
+                                    <Grid ColumnDefinitions="20,*" Margin="0,2">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Passed, Converter={x:Static conv:BoolToPassFailConverter.Instance}}"
+                                                   FontFamily="Consolas,Menlo,monospace"
                                                    FontSize="12"
-                                                   TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding ErrorMessage}"
-                                                   FontSize="11"
-                                                   Foreground="IndianRed"
-                                                   FontStyle="Italic"
-                                                   TextWrapping="Wrap"
-                                                   IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </TabItem>
+                                                   Foreground="{Binding Passed, Converter={x:Static conv:BoolToPassFailBrushConverter.Instance}}"
+                                                   VerticalAlignment="Top" />
+                                        <StackPanel Grid.Column="1" Spacing="2">
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextPrimary}"
+                                                       TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding ErrorMessage}"
+                                                       FontSize="11"
+                                                       Foreground="IndianRed"
+                                                       FontStyle="Italic"
+                                                       TextWrapping="Wrap"
+                                                       IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
 
-            </TabControl>
+                </Panel>
+            </Grid>
         </Grid>
 
         <Popup x:Name="VarPopup"

@@ -23,4 +23,12 @@
   <SolidColorBrush x:Key="InputBorder"             Color="#2E2E38" />
   <SolidColorBrush x:Key="TreeRowHover"            Color="#1E1E28" />
 
+  <!-- Keep FluentTheme text inputs dark (and text legible) when hovered/focused -->
+  <SolidColorBrush x:Key="TextControlBackground"            Color="#26262F" />
+  <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#26262F" />
+  <SolidColorBrush x:Key="TextControlBackgroundFocused"     Color="#26262F" />
+  <SolidColorBrush x:Key="TextControlForeground"            Color="#E8E8F0" />
+  <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#E8E8F0" />
+  <SolidColorBrush x:Key="TextControlForegroundFocused"     Color="#E8E8F0" />
+
 </ResourceDictionary>

@@ -31,12 +31,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _requestOpenedSub;
     private readonly IDisposable? _folderRunSub;
     private readonly IDisposable _docOpenSub;
+    private readonly IDisposable _collectionEnvFoundSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
     private SidebarTab _activeSidebarTab = SidebarTab.Requests;
     private string? _pendingActiveEnvName;
-    private bool _isDarkTheme = true;
+    private bool _isDarkTheme = false;
 
     private EnvironmentRef? _globalsRef;
     private Environment? _globals;
@@ -91,6 +92,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _docOpenSub = DocsSidebar.DocOpenRequested.Subscribe(OpenDocInTab);
 
         _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
+
+        _collectionEnvFoundSub = sidebar.EnvironmentFileFound
+            .Subscribe(path => _ = EnvironmentSidebar.RegisterEnvironmentFromPathAsync(path));
 
         if (runnerFactory != null)
         {
@@ -649,6 +653,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _requestOpenedSub.Dispose();
         _folderRunSub?.Dispose();
         _docOpenSub.Dispose();
+        _collectionEnvFoundSub.Dispose();
         DocsSidebar.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();

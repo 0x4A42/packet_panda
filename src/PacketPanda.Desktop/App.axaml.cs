@@ -45,7 +45,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            ApplyTheme(isDark: true);
+            ApplyTheme(isDark: false);
 
             _httpClient = new HttpClient();
             var sender = new HttpRequestSender(_httpClient);

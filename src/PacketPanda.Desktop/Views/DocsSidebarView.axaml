@@ -11,6 +11,8 @@
             <DataTemplate DataType="vm:DocItemViewModel">
                 <TextBlock Text="{Binding DisplayName}"
                            Padding="8,6"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextPrimary}"
                            Cursor="Hand" />
             </DataTemplate>
         </ListBox.ItemTemplate>

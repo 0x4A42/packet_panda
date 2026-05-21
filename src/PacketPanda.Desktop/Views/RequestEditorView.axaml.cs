@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using Avalonia.Threading;
 using PacketPanda.Desktop.Highlighting;
@@ -68,6 +69,21 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         vm.WhenAnyValue(x => x.RawBodyText)
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(_ => VariableTextHighlighter.Apply(BodyOverlay, vm.RawBodyText, vm.GlobalsVariables, vm.ActiveEnvVariables))
+            .DisposeWith(_subs);
+
+        vm.WhenAnyValue(x => x.ResponseBody)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ => JsonHighlighter.Apply(ResponseBodyText, vm.ResponseBody))
+            .DisposeWith(_subs);
+
+        vm.WhenAnyValue(x => x.TestsTabLabel)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(label => RespTabTests.Content = label)
+            .DisposeWith(_subs);
+
+        vm.WhenAnyValue(x => x.ResponseHeadersTabLabel)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(label => RespTabHeaders.Content = label)
             .DisposeWith(_subs);
 
         vm.WhenAnyValue(x => x.ActiveEnvironmentVariables)
@@ -247,5 +263,39 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
     {
         VarPopup.IsOpen = false;
         _hoveredVarName = null;
+    }
+
+    private void OnResponseTabClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender == RespTabBody) SelectResponseTab(0);
+        else if (sender == RespTabCookies) SelectResponseTab(1);
+        else if (sender == RespTabHeaders) SelectResponseTab(2);
+        else if (sender == RespTabTests) SelectResponseTab(3);
+    }
+
+    private void SelectResponseTab(int index)
+    {
+        RespBodyContent.IsVisible = index == 0;
+        RespCookiesContent.IsVisible = index == 1;
+        RespHeadersContent.IsVisible = index == 2;
+        RespTestsContent.IsVisible = index == 3;
+
+        SetRespTabSelected(RespTabBody, index == 0);
+        SetRespTabSelected(RespTabCookies, index == 1);
+        SetRespTabSelected(RespTabHeaders, index == 2);
+        SetRespTabSelected(RespTabTests, index == 3);
+    }
+
+    private static void SetRespTabSelected(Button button, bool selected)
+    {
+        if (selected)
+        {
+            if (!button.Classes.Contains("selected"))
+                button.Classes.Add("selected");
+        }
+        else
+        {
+            button.Classes.Remove("selected");
+        }
     }
 }

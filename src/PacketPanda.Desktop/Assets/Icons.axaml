@@ -46,4 +46,15 @@
   <!-- ChevronDown (ComboBox caret) -->
   <StreamGeometry x:Key="IconChevronDown">M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z</StreamGeometry>
 
+  <!-- Tree expander carets — small filled triangles, centered in their own box -->
+  <StreamGeometry x:Key="IconCaretDown">M0,0 L8,0 L4,5 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconCaretRight">M0,0 L5,4 L0,8 Z</StreamGeometry>
+
+  <!-- Activity-bar nav icons — open outline geometries meant to be STROKED (fill none) -->
+  <StreamGeometry x:Key="IconNavCollections">M216 208H40a8 8 0 0 1-8-8V80a8 8 0 0 1 8-8h61.37a8 8 0 0 1 5.65 2.34L128 96h88a8 8 0 0 1 8 8v96a8 8 0 0 1-8 8Z M32 80V56a8 8 0 0 1 8-8h52.69a8 8 0 0 1 5.65 2.34L120 72h88a8 8 0 0 1 8 8v16</StreamGeometry>
+
+  <StreamGeometry x:Key="IconNavEnvironments">M32 128a96 96 0 1 0 192 0a96 96 0 1 0-192 0Z M88 128c0 37.46 14.25 72.4 40 96 M168 128c0 37.46-14.25 72.4-40 96 M88 128c0-37.46 14.25-72.4 40-96 M168 128c0-37.46-14.25-72.4-40-96 M37.47 96h181.06 M37.47 160h181.06</StreamGeometry>
+
+  <StreamGeometry x:Key="IconNavDocs">M128 168s-32-24-80-24V64c48 0 80 24 80 24s32-24 80-24v80c-48 0-80 24-80 24Z M128 168V72 M48 200c48 0 80 24 80 24s32-24 80-24</StreamGeometry>
+
 </ResourceDictionary>

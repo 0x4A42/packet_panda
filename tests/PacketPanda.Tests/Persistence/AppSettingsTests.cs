@@ -7,10 +7,10 @@ namespace PacketPanda.Tests.Persistence;
 public class AppSettingsTests
 {
     [Fact]
-    public void AppSettings_DefaultsTo_DarkTheme()
+    public void AppSettings_DefaultsTo_LightTheme()
     {
         var settings = new AppSettings();
-        settings.IsDarkTheme.Should().BeTrue();
+        settings.IsDarkTheme.Should().BeFalse();
     }
 
     [Fact]

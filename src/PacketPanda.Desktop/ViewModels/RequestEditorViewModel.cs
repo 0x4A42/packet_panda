@@ -171,12 +171,6 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         };
         EnsureTrailingEmptyFormRow();
 
-        ResponseHeaders.CollectionChanged += (_, _) =>
-            this.RaisePropertyChanged(nameof(ResponseHeadersTabLabel));
-
-        TestResults.CollectionChanged += (_, _) =>
-            this.RaisePropertyChanged(nameof(TestsTabLabel));
-
         CaptureSnapshot();
     }
 
@@ -254,8 +248,22 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public string? ResponseBody
     {
         get => _responseBody;
-        set => this.RaiseAndSetIfChanged(ref _responseBody, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _responseBody, value);
+            this.RaisePropertyChanged(nameof(ResponseSizeText));
+        }
     }
+
+    public string? ResponseSizeText =>
+        _responseBody is null
+            ? null
+            : FormatBytes(System.Text.Encoding.UTF8.GetByteCount(_responseBody));
+
+    private static string FormatBytes(long bytes) =>
+        bytes < 1024
+            ? $"{bytes} B"
+            : $"{bytes / 1024.0:0.#} KB";
 
     public string? ErrorMessage
     {
@@ -290,8 +298,12 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ObservableCollection<HttpHeader> ResponseHeaders { get; } = new();
     public ObservableCollection<CookieViewModel> ResponseCookies { get; } = new();
 
-    public string ResponseHeadersTabLabel =>
-        ResponseHeaders.Count == 0 ? "Headers" : $"Headers ({ResponseHeaders.Count})";
+    private string _responseHeadersTabLabel = "Headers";
+    public string ResponseHeadersTabLabel
+    {
+        get => _responseHeadersTabLabel;
+        private set => this.RaiseAndSetIfChanged(ref _responseHeadersTabLabel, value);
+    }
 
     public string PreRequestScript
     {
@@ -329,10 +341,22 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public ObservableCollection<TestResultViewModel> TestResults { get; } = new();
 
-    public string TestsTabLabel =>
-        TestResults.Count == 0
+    private string _testsTabLabel = "Tests";
+    public string TestsTabLabel
+    {
+        get => _testsTabLabel;
+        private set => this.RaiseAndSetIfChanged(ref _testsTabLabel, value);
+    }
+
+    private void RefreshResponseTabLabels()
+    {
+        TestsTabLabel = TestResults.Count == 0
             ? "Tests"
             : $"Tests ({TestResults.Count(r => r.Passed)}/{TestResults.Count})";
+        ResponseHeadersTabLabel = ResponseHeaders.Count == 0
+            ? "Headers"
+            : $"Headers ({ResponseHeaders.Count})";
+    }
 
     public AuthType SelectedAuthType
     {
@@ -680,6 +704,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                         string.Equals(h.Name, "Set-Cookie", StringComparison.OrdinalIgnoreCase)))
                         ResponseCookies.Add(CookieViewModel.FromHeader(h.Value));
                 }
+                RefreshResponseTabLabels();
                 break;
 
             case SendResult.Error err:
@@ -688,6 +713,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                 TestResults.Clear();
                 ResponseHeaders.Clear();
                 ResponseCookies.Clear();
+                RefreshResponseTabLabels();
                 break;
         }
     }

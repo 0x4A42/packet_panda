@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Subjects;
+using System.Text.Json;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
@@ -19,6 +20,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private readonly Subject<RequestNode> _requestOpened = new();
     private readonly Subject<object> _editingNodeStarted = new();
     private readonly Subject<FolderNode> _folderRunRequested = new();
+    private readonly Subject<string> _environmentFileFound = new();
 
     private string? _filterText;
     private string? _errorMessage;
@@ -64,6 +66,9 @@ public class CollectionSidebarViewModel : ReactiveObject
     public IObservable<RequestNode> RequestOpened => _requestOpened;
     public IObservable<object> EditingNodeStarted => _editingNodeStarted;
     public IObservable<FolderNode> FolderRunRequested => _folderRunRequested;
+
+    /// <summary>Environment files discovered while opening a folder, for the environment sidebar to load.</summary>
+    public IObservable<string> EnvironmentFileFound => _environmentFileFound;
 
     public async Task LoadCollectionsAsync(IReadOnlyList<string> paths)
     {
@@ -131,12 +136,46 @@ public class CollectionSidebarViewModel : ReactiveObject
         var folder = await _filePicker.PickOpenFolderAsync();
         if (folder is null) return;
 
-        var files = Directory.GetFiles(folder, "*.json", SearchOption.TopDirectoryOnly);
-        foreach (var file in files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
-            await AddCollectionFromPathAsync(file);
+        var files = Directory.GetFiles(folder, "*.json", SearchOption.TopDirectoryOnly)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
 
-        if (files.Length > 0)
+        var openedCollection = false;
+        foreach (var file in files)
+        {
+            if (IsEnvironmentFile(file))
+            {
+                _environmentFileFound.OnNext(file);
+            }
+            else
+            {
+                await AddCollectionFromPathAsync(file);
+                openedCollection = true;
+            }
+        }
+
+        if (openedCollection)
             await PersistOpenPathsAsync();
+    }
+
+    /// <summary>
+    /// A JSON file is treated as an environment when its root has a <c>values</c> array
+    /// and no <c>info</c> object (which is what marks a collection).
+    /// </summary>
+    private static bool IsEnvironmentFile(string path)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            var root = doc.RootElement;
+            return root.ValueKind == JsonValueKind.Object
+                && !root.TryGetProperty("info", out _)
+                && root.TryGetProperty("values", out var values)
+                && values.ValueKind == JsonValueKind.Array;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task AddCollectionFromPathAsync(string path)
