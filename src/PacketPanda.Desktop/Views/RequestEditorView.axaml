@@ -14,6 +14,7 @@
         <conv:AuthTypeDisplayConverter x:Key="AuthTypeDisplayConverter" />
         <conv:ApiKeyTargetDisplayConverter x:Key="ApiKeyTargetDisplayConverter" />
         <conv:BodyModeDisplayConverter x:Key="BodyModeDisplayConverter" />
+        <conv:StatusCodeBrushConverter x:Key="StatusCodeBrushConverter" />
     </UserControl.Resources>
 
     <!-- Force the inner text-presenter foreground to transparent so the FluentTheme
@@ -639,15 +640,25 @@
 
             <StackPanel Grid.Row="1"
                         Orientation="Horizontal"
-                        Spacing="12"
+                        Spacing="10"
                         IsVisible="{Binding StatusCode, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <TextBlock Text="Status:" Opacity="0.7" />
-                <TextBlock Text="{Binding StatusCode}" FontWeight="SemiBold" />
-                <TextBlock Text="Elapsed:" Opacity="0.7" />
-                <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat='{}{0} ms'}" />
+              <Border Background="{Binding StatusCode, Converter={StaticResource StatusCodeBrushConverter}}"
+                      CornerRadius="4"
+                      Padding="8,2">
+                <TextBlock Text="{Binding StatusCode}"
+                           FontWeight="Bold"
+                           FontFamily="{StaticResource ArcasFont}"
+                           FontSize="11"
+                           Foreground="White" />
+              </Border>
+              <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="11">
+                <Run Text="Time:" />
+                <Run Text="{Binding ElapsedMilliseconds, StringFormat='{}{0} ms'}"
+                     Foreground="{DynamicResource TextPrimary}" />
+              </TextBlock>
             </StackPanel>
 
-            <TabControl Grid.Row="2">
+            <TabControl Grid.Row="2" Classes="request-tabs">
 
                 <!-- Body tab -->
                 <TabItem Header="Body">
@@ -655,7 +666,11 @@
                              IsReadOnly="True"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
+                             Background="{DynamicResource AppBackground}"
+                             Foreground="{DynamicResource TextPrimary}"
+                             BorderThickness="0"
                              FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12"
                              ScrollViewer.VerticalScrollBarVisibility="Auto" />
                 </TabItem>
 
