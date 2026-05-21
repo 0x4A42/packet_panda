@@ -42,7 +42,7 @@
         <!-- Globals pinned row -->
         <Border Grid.Row="1"
                 IsVisible="{Binding GlobalsRef, Converter={StaticResource IsNotNullConverter}}"
-                BorderBrush="#DDDDDD"
+                BorderBrush="{DynamicResource BorderSubtle}"
                 BorderThickness="0,0,0,1"
                 Margin="8,0,8,4">
             <Button HorizontalAlignment="Stretch"

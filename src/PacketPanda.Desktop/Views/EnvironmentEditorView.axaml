@@ -20,10 +20,10 @@
                  CornerRadius="0">
             <TextBox.Styles>
                 <Style Selector="TextBox:focus">
-                    <Setter Property="BorderBrush" Value="#AAAAAA" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource TextMuted}" />
                 </Style>
                 <Style Selector="TextBox:pointerover">
-                    <Setter Property="BorderBrush" Value="#CCCCCC" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
                 </Style>
             </TextBox.Styles>
         </TextBox>
@@ -34,7 +34,7 @@
                   AutoGenerateColumns="False"
                   GridLinesVisibility="Horizontal"
                   BorderThickness="1"
-                  BorderBrush="#DDDDDD"
+                  BorderBrush="{DynamicResource BorderSubtle}"
                   RowHeight="34"
                   HeadersVisibility="Column"
                   CanUserReorderColumns="False"
@@ -68,7 +68,7 @@
                                     BorderThickness="0"
                                     Padding="4,0"
                                     FontSize="11"
-                                    Foreground="#AAAAAA"
+                                    Foreground="{DynamicResource TextMuted}"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     Cursor="Hand" />

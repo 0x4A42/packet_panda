@@ -124,7 +124,7 @@
         <Border Grid.Row="2"
                 IsVisible="{Binding HasSelectedResult}"
                 Height="220"
-                BorderBrush="#DDDDDD"
+                BorderBrush="{DynamicResource BorderSubtle}"
                 BorderThickness="0,1,0,0">
             <TabControl>
                 <TabItem Header="Body">
@@ -191,12 +191,12 @@
         <!-- Summary bar -->
         <Border Grid.Row="3"
                 Padding="12,6"
-                Background="#F5F5F5"
-                BorderBrush="#DDDDDD"
+                Background="{DynamicResource SidebarBackground}"
+                BorderBrush="{DynamicResource BorderSubtle}"
                 BorderThickness="0,1,0,0">
             <TextBlock Text="{Binding SummaryText}"
                        FontSize="12"
-                       Opacity="0.7" />
+                       Foreground="{DynamicResource TextMuted}" />
         </Border>
     </Grid>
 </UserControl>
