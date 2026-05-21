@@ -8,25 +8,43 @@ A free, lightweight, cross-platform desktop API client for exploring, testing, a
 
 ## What is PacketPanda?
 
-PacketPanda is a developer tool for hitting HTTP endpoints — think Postman or Bruno, but built to be fast, minimal, and file-first. Requests are stored as plain TOML files on disk, making them version-controllable and shareable without any import/export ceremony.
+PacketPanda is a developer tool for hitting HTTP endpoints — built to be fast, minimal, and file-first. Collections and environments are stored as plain JSON files on disk, so they are version-controllable and shareable with no import/export step.
 
 ## Features
 
 - **Cross-platform** — Windows, macOS, and Linux via Avalonia UI
-- **File-based storage** — requests and environments live as TOML files; your filesystem is the source of truth
-- **Environment support** — switch between dev, staging, and prod with named environment files
-- **Authentication** — API Key, Bearer Token, Basic Auth, and OAuth 2.0
-- **Response viewer** — syntax-highlighted body, headers, status code, timing, and per-request history
+- **File-based storage** — collections and environments live as JSON files; your filesystem is the source of truth
+- **Environment variables** — switch between dev, staging, and prod with named environment files; `{{variable}}` references are resolved at send time and highlighted in the editor
+- **Authentication** — None, API Key, Bearer Token, and Basic Auth, injected into the request at send time
+- **Scripting & tests** — pre-request and post-response scripts run in a sandboxed JavaScript engine; write in-client tests that produce a pass/fail list
+- **Response viewer** — syntax-highlighted body, headers, cookies, status code, timing, and size
+- **Light & dark themes** — switchable at runtime and remembered between sessions
 - **3-panel layout** — collections sidebar, request editor, response viewer
+
+## Getting started
+
+```bash
+dotnet run --project src/PacketPanda.Desktop
+```
+
+Sample collections and environments live in the [`examples/`](examples/) directory — open them from the sidebar to try the app against a public echo server.
 
 ## Tech Stack
 
 - C# / .NET 10
 - Avalonia UI
 - ReactiveUI (MVVM)
-- Tomlyn (TOML parsing)
-- AvaloniaEdit (syntax highlighting)
+- System.Text.Json (JSON persistence)
+- Jint (sandboxed JavaScript for scripts and tests)
+- AvaloniaEdit (script editor and syntax highlighting)
+
+## Building and testing
+
+```bash
+dotnet build          # build the solution
+dotnet test           # run all tests
+```
 
 ## Future improvements
 
-Currently in development, will update later.
+Currently in active development.

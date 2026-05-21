@@ -14,8 +14,6 @@ namespace PacketPanda.Desktop.Highlighting;
 /// </summary>
 public static partial class VariableTextHighlighter
 {
-    private static readonly ImmutableSolidColorBrush DefaultBrush =
-        new(Color.FromRgb(0x1E, 0x1E, 0x1E));
     private static readonly ImmutableSolidColorBrush ActiveEnvBrush =
         new(Color.FromRgb(0x27, 0xAE, 0x60)); // green — resolved from active environment
     private static readonly ImmutableSolidColorBrush GlobalsBrush =
@@ -45,7 +43,7 @@ public static partial class VariableTextHighlighter
         foreach (Match match in VarPattern().Matches(text))
         {
             if (match.Index > lastEnd)
-                target.Inlines.Add(new Run(text[lastEnd..match.Index]) { Foreground = DefaultBrush });
+                target.Inlines.Add(new Run(text[lastEnd..match.Index]));
 
             var varName = match.Groups[1].Value.Trim();
             IBrush brush;
@@ -59,6 +57,6 @@ public static partial class VariableTextHighlighter
         }
 
         if (lastEnd < text.Length)
-            target.Inlines.Add(new Run(text[lastEnd..]) { Foreground = DefaultBrush });
+            target.Inlines.Add(new Run(text[lastEnd..]));
     }
 }

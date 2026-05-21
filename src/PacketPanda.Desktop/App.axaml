@@ -3,9 +3,103 @@
              x:Class="PacketPanda.Desktop.App"
              RequestedThemeVariant="Default">
 
-    <Application.Styles>
-        <FluentTheme />
-        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
-        <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
-    </Application.Styles>
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://PacketPanda/Assets/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <FontFamily x:Key="ArcasFont">avares://PacketPanda/font#Arcas Light</FontFamily>
+      <FontFamily x:Key="ArcasBoldFont">avares://PacketPanda/font#Arcas Bold</FontFamily>
+      <!-- Unify the FluentTheme accent (checkboxes, focus, selection) with the purple brand colour -->
+      <Color x:Key="SystemAccentColor">#7C5CFC</Color>
+      <!-- Search/input placeholder text colour -->
+      <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6B6B7E" />
+      <Color x:Key="SystemAccentColorDark1">#6E4DF0</Color>
+      <Color x:Key="SystemAccentColorDark2">#5E3FE0</Color>
+      <Color x:Key="SystemAccentColorDark3">#4E33C0</Color>
+      <Color x:Key="SystemAccentColorLight1">#9174FD</Color>
+      <Color x:Key="SystemAccentColorLight2">#A78DFE</Color>
+      <Color x:Key="SystemAccentColorLight3">#BCA7FF</Color>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+
+    <!-- Arcas Bold for display text (labels, buttons, tabs); inputs keep the
+         system font so typed text stays legible -->
+    <Style Selector="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
+    </Style>
+
+    <!-- Clean, borderless DataGrid to match the mockup -->
+    <Style Selector="DataGrid">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="GridLinesVisibility" Value="Horizontal" />
+      <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource TreeRowHover}" />
+      <Setter Property="RowBackground" Value="Transparent" />
+    </Style>
+    <Style Selector="DataGridColumnHeader">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="SeparatorBrush" Value="Transparent" />
+      <Setter Property="AreSeparatorsVisible" Value="False" />
+    </Style>
+    <Style Selector="DataGridColumnHeadersPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+      <Setter Property="Fill" Value="{DynamicResource TreeRowHover}" />
+    </Style>
+    <Style Selector="DataGridCell">
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+    <Style Selector="DataGrid TextBox">
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+
+    <!-- Sidebar toolbar icon buttons (shared by both sidebars) -->
+    <Style Selector="Button.toolbar-icon">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <!-- Consistent dark comboboxes -->
+    <Style Selector="ComboBox">
+      <Setter Property="Background" Value="{DynamicResource InputBackground}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
+    </Style>
+
+    <!-- Purple accent button -->
+    <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentPrimary}" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentHover}" />
+    </Style>
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentPrimary}" />
+    </Style>
+  </Application.Styles>
+
 </Application>

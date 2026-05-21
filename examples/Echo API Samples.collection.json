@@ -1,0 +1,395 @@
+{
+  "info": {
+    "name": "Echo API Samples"
+  },
+  "item": [
+    {
+      "id": "folder-basics",
+      "name": "Basics",
+      "item": [
+        {
+          "id": "req-get-query",
+          "name": "GET with query params",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/get?foo={{foo}}&page=1",
+              "query": [
+                {
+                  "key": "foo",
+                  "value": "{{foo}}"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pp.test('status is 200', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('echoes the foo query param', function () {",
+                  "  var body = pp.response.json();",
+                  "  pp.expect(body.parsedQueryParams.foo).to.equal(pp.environment.get('foo'));",
+                  "});",
+                  "",
+                  "pp.test('echoes the page query param', function () {",
+                  "  pp.expect(pp.response.json().parsedQueryParams.page).to.equal('1');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "id": "req-post-json",
+          "name": "POST JSON body",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/post"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{userName}}\",\n  \"active\": true,\n  \"score\": 42\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Pre-request scripts run before the request is sent.",
+                  "// Values written here are visible to the post-response script.",
+                  "pp.environment.set('lastRun', new Date().toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pp.test('status is 200', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('server echoes the posted user', function () {",
+                  "  var body = pp.response.json();",
+                  "  pp.expect(body.parsedBody.user).to.equal(pp.environment.get('userName'));",
+                  "});",
+                  "",
+                  "pp.test('pre-request variable was set', function () {",
+                  "  pp.expect(pp.environment.get('lastRun')).to.include('T');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "folder-auth",
+      "name": "Auth",
+      "item": [
+        {
+          "id": "req-auth-bearer",
+          "name": "Bearer token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/bearer"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pp.test('status is 200', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('a Bearer Authorization header was sent', function () {",
+                  "  pp.expect(pp.response.body).to.include('Bearer');",
+                  "});",
+                  "",
+                  "pp.test('the request carried the token', function () {",
+                  "  pp.expect(pp.response.body).to.include(pp.environment.get('authToken'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "id": "req-auth-basic",
+          "name": "Basic auth",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/basic-auth"
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{userName}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pp.test('status is 200', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('a Basic Authorization header was sent', function () {",
+                  "  pp.expect(pp.response.body).to.include('Basic ');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "id": "req-auth-apikey",
+          "name": "API key (query param)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get"
+            },
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "apiKey",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{apiKey}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "query_param",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pp.test('status is 200', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('API key arrived as a query param', function () {",
+                  "  pp.expect(pp.response.json().parsedQueryParams.apiKey).to.equal(pp.environment.get('apiKey'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "folder-scripting",
+      "name": "Scripting & Tests",
+      "item": [
+        {
+          "id": "req-login-capture",
+          "name": "Login - capture token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{userName}}\",\n  \"token\": \"demo-session-token-12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A typical login flow: read a value out of the response",
+                  "// and store it back into the active environment so later",
+                  "// requests can reference it as {{authToken}}.",
+                  "var body = pp.response.json();",
+                  "pp.environment.set('authToken', body.parsedBody.token);",
+                  "",
+                  "pp.test('status is 200', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('token was captured into the environment', function () {",
+                  "  pp.expect(pp.environment.get('authToken')).to.include('demo-session-token');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "id": "req-use-token",
+          "name": "Use captured token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pp.test('status is 200', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('request carried the captured token', function () {",
+                  "  pp.expect(pp.response.body).to.include('demo-session-token-12345');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "id": "req-status-assert",
+          "name": "Method & status checks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/get"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Pre-request scripts can compute values for later use.",
+                  "pp.environment.set('expectedStatus', '200');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pp.test('status is 200 OK', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('status is in the 2xx range', function () {",
+                  "  pp.expect(pp.response.status).to.be.above(199);",
+                  "});",
+                  "",
+                  "pp.test('the request method was echoed back', function () {",
+                  "  pp.expect(pp.response.json().method).to.equal('GET');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

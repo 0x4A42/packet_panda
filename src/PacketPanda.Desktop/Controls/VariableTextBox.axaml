@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PacketPanda.Desktop.Controls.VariableTextBox">
+
+  <UserControl.Styles>
+    <!-- Editor glyphs are transparent so the colored overlay shows through;
+         the inner border stays transparent even when focused. -->
+    <Style Selector="TextBox#Editor /template/ TextPresenter#PART_TextPresenter">
+      <Setter Property="TextElement.Foreground" Value="Transparent" />
+    </Style>
+    <Style Selector="TextBox#Editor /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <TextBox x:Name="Editor"
+             Background="Transparent"
+             BorderThickness="0"
+             CaretBrush="{DynamicResource TextPrimary}"
+             FontFamily="Consolas,Menlo,monospace"
+             FontSize="12"
+             Padding="6,0"
+             VerticalContentAlignment="Center" />
+    <TextBlock x:Name="Overlay"
+               Foreground="{DynamicResource TextPrimary}"
+               FontFamily="Consolas,Menlo,monospace"
+               FontSize="12"
+               Padding="6,0"
+               VerticalAlignment="Center"
+               IsHitTestVisible="False" />
+  </Panel>
+</UserControl>

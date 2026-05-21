@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working in this repository.
 
 # PacketPanda
 
-A free, lightweight, cross-platform desktop API client for exploring, testing, and debugging HTTP APIs. Requests are stored as Postman v2.1 JSON collections on disk — no database, no export step.
+A free, lightweight, cross-platform desktop API client for exploring, testing, and debugging HTTP APIs. Collections and environments are stored as plain JSON files on disk — no database, no export step.
 
 ## Stack
 
@@ -34,6 +34,10 @@ dotnet test --watch   # run tests in watch mode
 **Environment variables** are resolved at send time: variable references in URLs, headers, and body are substituted from the active environment's key/value map before the HTTP request is built.
 
 **Scripting pipeline** runs per request execution in a sandboxed Jint JS engine: pre-request script → HTTP send → post-request script → tests. Scripts and tests share the same engine instance and context object, which exposes the request, response, and environment read/write API. Post-request scripts can write values back to the active environment (e.g., extract a token from a login response). In-client tests produce a pass/fail list displayed in the response panel, with sample snippets available in the UI.
+
+**Theming** — light and dark themes are swappable at runtime via the activity-bar toggle. The choice persists across sessions in app settings and defaults to light on first launch.
+
+**Examples** — the `examples/` directory holds sample JSON collections and environments that target a public echo server; they are loadable from the sidebar's open actions.
 
 ## Testing Conventions
 

@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <SolidColorBrush x:Key="AppBackground"           Color="#FFFFFF" />
+  <SolidColorBrush x:Key="SidebarBackground"       Color="#F4F4F8" />
+  <SolidColorBrush x:Key="ActivityBarBackground"   Color="#EEEEF3" />
+  <SolidColorBrush x:Key="SurfaceBackground"       Color="#F9F9FB" />
+  <SolidColorBrush x:Key="BorderSubtle"            Color="#DCDCE6" />
+  <SolidColorBrush x:Key="TextPrimary"             Color="#111118" />
+  <SolidColorBrush x:Key="TextMuted"               Color="#8080A0" />
+  <SolidColorBrush x:Key="AccentPrimary"           Color="#7C5CFC" />
+  <SolidColorBrush x:Key="AccentHover"             Color="#6344E8" />
+  <SolidColorBrush x:Key="ActivityBarItemHover"    Color="#E0E0EA" />
+  <SolidColorBrush x:Key="ActivityBarItemActive"   Color="#E4E4EE" />
+  <SolidColorBrush x:Key="MethodGet"               Color="#3FB950" />
+  <SolidColorBrush x:Key="MethodPost"              Color="#F78166" />
+  <SolidColorBrush x:Key="MethodPut"               Color="#E3A329" />
+  <SolidColorBrush x:Key="MethodDelete"            Color="#F85149" />
+  <SolidColorBrush x:Key="MethodPatch"             Color="#A371F7" />
+  <SolidColorBrush x:Key="StatusSuccess"           Color="#3FB950" />
+  <SolidColorBrush x:Key="StatusError"             Color="#F85149" />
+  <SolidColorBrush x:Key="InputBackground"         Color="#F4F4F8" />
+  <SolidColorBrush x:Key="InputBorder"             Color="#DCDCE6" />
+  <SolidColorBrush x:Key="TreeRowHover"            Color="#EAEAF0" />
+
+</ResourceDictionary>

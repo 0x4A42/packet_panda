@@ -10,8 +10,9 @@
                  HorizontalAlignment="Left"
                  MinWidth="80"
                  Text="{Binding EnvironmentName}"
-                 FontWeight="SemiBold"
+                 FontFamily="{StaticResource ArcasBoldFont}"
                  FontSize="15"
+                 Foreground="{DynamicResource TextPrimary}"
                  Margin="0,0,0,8"
                  Padding="2,2"
                  Background="Transparent"
@@ -20,10 +21,10 @@
                  CornerRadius="0">
             <TextBox.Styles>
                 <Style Selector="TextBox:focus">
-                    <Setter Property="BorderBrush" Value="#AAAAAA" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource TextMuted}" />
                 </Style>
                 <Style Selector="TextBox:pointerover">
-                    <Setter Property="BorderBrush" Value="#CCCCCC" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}" />
                 </Style>
             </TextBox.Styles>
         </TextBox>
@@ -32,16 +33,13 @@
                   x:Name="VarsGrid"
                   ItemsSource="{Binding Rows}"
                   AutoGenerateColumns="False"
-                  GridLinesVisibility="Horizontal"
-                  BorderThickness="1"
-                  BorderBrush="#DDDDDD"
                   RowHeight="34"
                   HeadersVisibility="Column"
                   CanUserReorderColumns="False"
                   CanUserResizeColumns="True"
                   CanUserSortColumns="False">
             <DataGrid.Columns>
-                <DataGridTemplateColumn Header="On" Width="44" IsReadOnly="False">
+                <DataGridTemplateColumn Header="" Width="44" IsReadOnly="False">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
@@ -50,13 +48,13 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Variable"
+                <DataGridTextColumn Header="VARIABLE"
                                     Binding="{Binding Name}"
                                     Width="2*" />
-                <DataGridTextColumn Header="Value"
+                <DataGridTextColumn Header="VALUE"
                                     Binding="{Binding Value}"
                                     Width="2*" />
-                <DataGridTextColumn Header="Description"
+                <DataGridTextColumn Header="DESCRIPTION"
                                     Binding="{Binding Description}"
                                     Width="3*" />
                 <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
@@ -68,7 +66,7 @@
                                     BorderThickness="0"
                                     Padding="4,0"
                                     FontSize="11"
-                                    Foreground="#AAAAAA"
+                                    Foreground="{DynamicResource TextMuted}"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     Cursor="Hand" />
@@ -86,9 +84,15 @@
                        TextWrapping="Wrap"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <Button Grid.Column="1"
+                    Classes="accent"
                     Content="Save"
                     Command="{Binding SaveCommand}"
-                    Padding="16,6" />
+                    Padding="18,7"
+                    CornerRadius="6"
+                    FontWeight="SemiBold"
+                    Background="{DynamicResource AccentPrimary}"
+                    Foreground="White"
+                    BorderThickness="0" />
         </Grid>
     </Grid>
 </UserControl>

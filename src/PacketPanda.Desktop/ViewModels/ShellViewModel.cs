@@ -31,11 +31,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _requestOpenedSub;
     private readonly IDisposable? _folderRunSub;
     private readonly IDisposable _docOpenSub;
+    private readonly IDisposable _collectionEnvFoundSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
     private SidebarTab _activeSidebarTab = SidebarTab.Requests;
     private string? _pendingActiveEnvName;
+    private bool _isDarkTheme = false;
 
     private EnvironmentRef? _globalsRef;
     private Environment? _globals;
@@ -71,6 +73,12 @@ public class ShellViewModel : ViewModelBase, IDisposable
         SetEnvironmentsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Environments; });
         SetDocsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Docs; });
         SaveActiveTabCommand = ReactiveCommand.CreateFromTask(SaveActiveTabAsync);
+        ToggleThemeCommand = ReactiveCommand.Create(() =>
+        {
+            IsDarkTheme = !IsDarkTheme;
+            if (Avalonia.Application.Current is App appInstance) appInstance.ApplyTheme(IsDarkTheme);
+            _ = PersistThemeAsync(IsDarkTheme);
+        });
 
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
@@ -84,6 +92,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _docOpenSub = DocsSidebar.DocOpenRequested.Subscribe(OpenDocInTab);
 
         _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
+
+        _collectionEnvFoundSub = sidebar.EnvironmentFileFound
+            .Subscribe(path => _ = EnvironmentSidebar.RegisterEnvironmentFromPathAsync(path));
 
         if (runnerFactory != null)
         {
@@ -140,6 +151,12 @@ public class ShellViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _activeSidebarTab, value);
     }
 
+    public bool IsDarkTheme
+    {
+        get => _isDarkTheme;
+        set => this.RaiseAndSetIfChanged(ref _isDarkTheme, value);
+    }
+
     public CollectionSidebarViewModel Sidebar { get; }
     public EnvironmentSidebarViewModel EnvironmentSidebar { get; }
     public DocsSidebarViewModel DocsSidebar { get; }
@@ -178,9 +195,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> SetEnvironmentsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetDocsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveActiveTabCommand { get; }
+    public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
 
     public async Task InitializeAsync(AppSettings settings)
     {
+        IsDarkTheme = settings.IsDarkTheme;
+        if (Avalonia.Application.Current is App app) app.ApplyTheme(settings.IsDarkTheme);
+
         SetPendingActiveEnvironmentName(settings.ActiveEnvironmentName);
 
         var paths = settings.OpenCollectionPaths ?? [];
@@ -611,6 +632,16 @@ public class ShellViewModel : ViewModelBase, IDisposable
         catch (SettingsException) { }
     }
 
+    private async Task PersistThemeAsync(bool isDark)
+    {
+        try
+        {
+            var current = await _settings.LoadAsync();
+            await _settings.SaveAsync(current with { IsDarkTheme = isDark });
+        }
+        catch (SettingsException) { }
+    }
+
     public void Dispose()
     {
         _envOpenSub.Dispose();
@@ -622,6 +653,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _requestOpenedSub.Dispose();
         _folderRunSub?.Dispose();
         _docOpenSub.Dispose();
+        _collectionEnvFoundSub.Dispose();
         DocsSidebar.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();

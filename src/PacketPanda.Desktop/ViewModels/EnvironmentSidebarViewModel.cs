@@ -190,6 +190,23 @@ public class EnvironmentSidebarViewModel : ReactiveObject
         _environmentOpenRequested.OnNext(path);
     }
 
+    /// <summary>
+    /// Adds an environment file to the sidebar without opening an editor tab.
+    /// Used when opening a folder; already-loaded environments are skipped.
+    /// </summary>
+    public async Task RegisterEnvironmentFromPathAsync(string path)
+    {
+        if (_allItems.Any(i => i.FilePath.Equals(path, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        string name;
+        try { name = (await _store.LoadAsync(path)).Name; }
+        catch { return; }
+
+        CommitEnvironment(path, name);
+        _environmentAdded.OnNext(new EnvironmentRef(name, path));
+    }
+
     private Task NewEnvironmentAsync()
     {
         var envDir = _envBaseDir;

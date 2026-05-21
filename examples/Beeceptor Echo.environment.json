@@ -1,0 +1,48 @@
+{
+  "id": "39047fc0-e467-4938-9170-bac4f1946f34",
+  "name": "Beeceptor Echo",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "https://echo.free.beeceptor.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "userName",
+      "value": "demo",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "password",
+      "value": "secret123",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "apiKey",
+      "value": "demo-key-abc123",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "foo",
+      "value": "bar",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "authToken",
+      "value": "demo-session-token-12345",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "expectedStatus",
+      "value": "200",
+      "type": "default",
+      "enabled": true
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System.Reactive.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using PacketPanda.Core.Environments;
@@ -15,6 +16,24 @@ namespace PacketPanda.Desktop;
 public partial class App : Application
 {
     private HttpClient? _httpClient;
+    private IResourceDictionary? _activeThemeDictionary;
+
+    public static App Instance => (App)Current!;
+
+    public void ApplyTheme(bool isDark)
+    {
+        var uri = isDark
+            ? new Uri("avares://PacketPanda/Assets/Themes/Dark.axaml")
+            : new Uri("avares://PacketPanda/Assets/Themes/Light.axaml");
+
+        var merged = Resources.MergedDictionaries;
+        if (_activeThemeDictionary != null)
+            merged.Remove(_activeThemeDictionary);
+
+        _activeThemeDictionary = AvaloniaXamlLoader.Load(uri) as IResourceDictionary
+            ?? throw new InvalidOperationException($"Theme file did not produce a ResourceDictionary: {uri}");
+        merged.Insert(0, _activeThemeDictionary);
+    }
 
     public override void Initialize()
     {
@@ -26,6 +45,8 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            ApplyTheme(isDark: false);
+
             _httpClient = new HttpClient();
             var sender = new HttpRequestSender(_httpClient);
             var collectionStore = new JsonCollectionFileStore();
