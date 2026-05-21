@@ -2,14 +2,14 @@ using System.Text.Json;
 using FluentAssertions;
 using PacketPanda.Core.Http;
 
-namespace PacketPanda.Tests.History;
+namespace PacketPanda.Tests.Http;
 
 public sealed class PolymorphicSerializationTests
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = false };
 
     [Fact]
-    public void BodyConfig_RoundTrips_PreservingConcreteType()
+    public void BodyConfig_RoundTripSerialized_RestoresConcreteType()
     {
         BodyConfig original = new JsonBody("{\"a\":1}");
 
@@ -21,7 +21,7 @@ public sealed class PolymorphicSerializationTests
     }
 
     [Fact]
-    public void AuthConfig_RoundTrips_PreservingConcreteType()
+    public void AuthConfig_RoundTripSerialized_RestoresConcreteType()
     {
         AuthConfig original = new BearerAuth("secret-token");
 
@@ -33,7 +33,7 @@ public sealed class PolymorphicSerializationTests
     }
 
     [Fact]
-    public void FormBody_RoundTrips_PreservingFields()
+    public void FormBody_RoundTripSerialized_RestoresAllFields()
     {
         BodyConfig original = new FormBody(new[] { new FormField("k", "v", true) });
 
