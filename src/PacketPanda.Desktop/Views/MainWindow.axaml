@@ -104,7 +104,6 @@
                       <TextBlock Grid.Row="1"
                                  Text="COLLECTIONS"
                                  FontSize="6.5"
-                                 FontFamily="{StaticResource ArcasFont}"
                                  HorizontalAlignment="Center"
                                  Foreground="{DynamicResource TextMuted}"
                                  Margin="0,2,0,0"
@@ -136,7 +135,6 @@
                       <TextBlock Grid.Row="1"
                                  Text="ENVS"
                                  FontSize="6.5"
-                                 FontFamily="{StaticResource ArcasFont}"
                                  HorizontalAlignment="Center"
                                  Foreground="{DynamicResource TextMuted}"
                                  Margin="0,2,0,0"
@@ -168,7 +166,6 @@
                       <TextBlock Grid.Row="1"
                                  Text="DOCS"
                                  FontSize="6.5"
-                                 FontFamily="{StaticResource ArcasFont}"
                                  HorizontalAlignment="Center"
                                  Foreground="{DynamicResource TextMuted}"
                                  Margin="0,2,0,0"
@@ -522,7 +519,6 @@
                               <TextBlock Text="{Binding MethodLabel}"
                                          FontSize="9"
                                          FontWeight="Bold"
-                                         FontFamily="{StaticResource ArcasFont}"
                                          Foreground="White" />
                             </Border>
                             <TextBlock Text="{Binding DisplayTitle}"

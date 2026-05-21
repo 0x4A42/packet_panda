@@ -4,7 +4,7 @@
   <SolidColorBrush x:Key="AppBackground"           Color="#1A1A1F" />
   <SolidColorBrush x:Key="SidebarBackground"       Color="#141418" />
   <SolidColorBrush x:Key="ActivityBarBackground"   Color="#0F0F12" />
-  <SolidColorBrush x:Key="SurfaceBackground"       Color="#222228" />
+  <SolidColorBrush x:Key="SurfaceBackground"       Color="#2C2C38" />
   <SolidColorBrush x:Key="BorderSubtle"            Color="#2E2E38" />
   <SolidColorBrush x:Key="TextPrimary"             Color="#E8E8F0" />
   <SolidColorBrush x:Key="TextMuted"               Color="#6B6B7E" />
@@ -19,7 +19,7 @@
   <SolidColorBrush x:Key="MethodPatch"             Color="#A371F7" />
   <SolidColorBrush x:Key="StatusSuccess"           Color="#3FB950" />
   <SolidColorBrush x:Key="StatusError"             Color="#F85149" />
-  <SolidColorBrush x:Key="InputBackground"         Color="#222228" />
+  <SolidColorBrush x:Key="InputBackground"         Color="#26262F" />
   <SolidColorBrush x:Key="InputBorder"             Color="#2E2E38" />
   <SolidColorBrush x:Key="TreeRowHover"            Color="#1E1E28" />
 

@@ -40,7 +40,6 @@
           <Setter Property="BorderThickness" Value="0,0,0,2" />
           <Setter Property="BorderBrush" Value="Transparent" />
           <Setter Property="Padding" Value="12,8" />
-          <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
           <Setter Property="FontSize" Value="12" />
           <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
         </Style>
@@ -59,7 +58,6 @@
         <Style Selector="DataGridColumnHeader">
           <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
           <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
-          <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
           <Setter Property="FontSize" Value="10" />
           <Setter Property="Padding" Value="8,6" />
         </Style>
@@ -94,7 +92,6 @@
                     <TextBlock Text="{Binding Converter={x:Static conv:UpperCaseConverter.Instance}}"
                                Foreground="{Binding Converter={StaticResource MethodBrushConverter}}"
                                FontWeight="Bold"
-                               FontFamily="{StaticResource ArcasFont}"
                                FontSize="12" />
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
@@ -135,7 +132,6 @@
                     Command="{Binding SendCommand}"
                     Background="{DynamicResource AccentPrimary}"
                     Foreground="White"
-                    FontFamily="{StaticResource ArcasFont}"
                     FontWeight="Bold"
                     FontSize="12"
                     Padding="18,8"
@@ -148,7 +144,7 @@
                       StrokeThickness="1.5"
                       StrokeLineCap="Round"
                       Fill="Transparent" />
-                <TextBlock Text="Send" Foreground="White" FontWeight="Bold" FontFamily="{StaticResource ArcasFont}" />
+                <TextBlock Text="Send" Foreground="White" FontWeight="Bold" />
               </StackPanel>
             </Button>
 
@@ -167,7 +163,6 @@
                 <TextBlock Text="Save"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource TextMuted}"
-                           FontFamily="{StaticResource ArcasFont}"
                            FontSize="12" />
               </StackPanel>
             </Button>
@@ -647,7 +642,6 @@
                       Padding="8,2">
                 <TextBlock Text="{Binding StatusCode}"
                            FontWeight="Bold"
-                           FontFamily="{StaticResource ArcasFont}"
                            FontSize="11"
                            Foreground="White" />
               </Border>

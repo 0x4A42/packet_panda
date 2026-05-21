@@ -6,10 +6,8 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <ResourceInclude Source="avares://PacketPanda/Assets/Themes/Dark.axaml" />
         <ResourceInclude Source="avares://PacketPanda/Assets/Icons.axaml" />
       </ResourceDictionary.MergedDictionaries>
-      <FontFamily x:Key="ArcasFont">avares://PacketPanda/font#Arcas</FontFamily>
     </ResourceDictionary>
   </Application.Resources>
 
@@ -17,21 +15,6 @@
     <FluentTheme />
     <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
     <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
-    <Style Selector="TextBlock">
-      <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
-    </Style>
-    <Style Selector="Button">
-      <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
-    </Style>
-    <Style Selector="TextBox">
-      <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
-    </Style>
-    <Style Selector="ComboBox">
-      <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
-    </Style>
-    <Style Selector="TabItem">
-      <Setter Property="FontFamily" Value="{StaticResource ArcasFont}" />
-    </Style>
   </Application.Styles>
 
 </Application>
