@@ -46,6 +46,10 @@
         <Setter Property="Background" Value="{DynamicResource ActivityBarItemActive}" />
       </Style>
       <!-- Sidebar tree row hover -->
+      <Style Selector="TreeViewItem">
+        <Setter Property="Padding" Value="4,2,4,2" />
+        <Setter Property="MinHeight" Value="26" />
+      </Style>
       <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
         <Setter Property="Background" Value="{DynamicResource TreeRowHover}" />
       </Style>
@@ -157,12 +161,9 @@
                       <Path Grid.Row="0"
                             Data="{StaticResource IconDocs}"
                             Stretch="Uniform"
-                            Width="20" Height="20"
+                            Width="18" Height="18"
                             HorizontalAlignment="Center"
-                            Stroke="{DynamicResource TextMuted}"
-                            StrokeThickness="1.5"
-                            StrokeLineCap="Round"
-                            Fill="Transparent" />
+                            Fill="{DynamicResource TextMuted}" />
                       <TextBlock Grid.Row="1"
                                  Text="DOCS"
                                  FontSize="6.5"
@@ -239,7 +240,7 @@
                             <MenuItem Header="Open folder…" Command="{Binding Sidebar.OpenFolderCommand}" />
                           </MenuFlyout>
                         </DropDownButton.Flyout>
-                        <Path Data="{StaticResource IconFolderOpen}"
+                        <Path Data="{StaticResource IconFolder}"
                               Stretch="Uniform"
                               Width="14" Height="14"
                               Fill="{DynamicResource TextMuted}" />
@@ -398,7 +399,7 @@
                                                    FontWeight="Bold"
                                                    Foreground="White" />
                                     </Border>
-                                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"
+                                    <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"
                                                IsVisible="{Binding !IsEditing}" />
                                     <TextBox Text="{Binding EditingName, Mode=TwoWay}"
                                              IsVisible="{Binding IsEditing}"
@@ -549,9 +550,13 @@
                           ItemsSource="{Binding AvailableEnvironments}"
                           SelectedItem="{Binding SelectedEnvironment}"
                           PlaceholderText="No environment"
-                          Width="160"
-                          Margin="8,0,0,4"
+                          MaxWidth="140"
+                          MinWidth="80"
+                          Height="28"
+                          Padding="8,0"
+                          Margin="8,0,4,4"
                           VerticalAlignment="Center"
+                          FontSize="12"
                           Background="{DynamicResource InputBackground}"
                           BorderBrush="{DynamicResource BorderSubtle}"
                           Foreground="{DynamicResource TextPrimary}">
