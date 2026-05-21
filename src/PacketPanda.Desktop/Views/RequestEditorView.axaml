@@ -21,68 +21,126 @@
     <UserControl.Styles>
         <Style Selector="TextBox#UrlEditor /template/ TextPresenter#PART_TextPresenter">
             <Setter Property="TextElement.Foreground" Value="Transparent" />
-            <Setter Property="CaretBrush" Value="#1E1E1E" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextPrimary}" />
         </Style>
         <Style Selector="TextBox#BodyEditor /template/ TextPresenter#PART_TextPresenter">
             <Setter Property="TextElement.Foreground" Value="Transparent" />
-            <Setter Property="CaretBrush" Value="#1E1E1E" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextPrimary}" />
+        </Style>
+        <Style Selector="Button.send-btn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentPrimary}" />
+        </Style>
+        <Style Selector="Button.send-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentHover}" />
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,8,220" RowSpacing="8" Margin="12">
+    <Grid RowDefinitions="Auto,*,8,220" RowSpacing="8" Margin="12" Background="{DynamicResource AppBackground}">
 
-        <!-- URL bar: method selector | URL | Send | 💾 ▾ -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="4">
-            <ComboBox Grid.Column="0"
-                      ItemsSource="{Binding AvailableMethods}"
-                      SelectedItem="{Binding SelectedMethod}"
-                      MinWidth="100">
+        <!-- URL bar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource AppBackground}"
+                Padding="0,0,0,8">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
+
+            <!-- Method selector -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource InputBackground}"
+                    BorderBrush="{DynamicResource BorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="8,0,4,0">
+              <ComboBox ItemsSource="{Binding AvailableMethods}"
+                        SelectedItem="{Binding SelectedMethod}"
+                        MinWidth="90"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0,6">
                 <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Converter={x:Static conv:UpperCaseConverter.Instance}}"
-                                   Foreground="{Binding Converter={StaticResource MethodBrushConverter}}"
-                                   FontWeight="Bold" />
-                    </DataTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={x:Static conv:UpperCaseConverter.Instance}}"
+                               Foreground="{Binding Converter={StaticResource MethodBrushConverter}}"
+                               FontWeight="Bold"
+                               FontFamily="{StaticResource ArcasFont}"
+                               FontSize="12" />
+                  </DataTemplate>
                 </ComboBox.ItemTemplate>
-            </ComboBox>
+              </ComboBox>
+            </Border>
 
-            <Panel Grid.Column="1">
+            <!-- URL input with variable overlay -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource InputBackground}"
+                    BorderBrush="{DynamicResource BorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+              <Panel>
                 <TextBox x:Name="UrlEditor"
                          Text="{Binding Url, Mode=TwoWay}"
                          AcceptsReturn="False"
                          Foreground="Transparent"
-                         Background="White"
-                         CaretBrush="#1E1E1E"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         CaretBrush="{DynamicResource TextPrimary}"
                          FontFamily="Consolas,Menlo,monospace"
                          FontSize="13"
+                         Padding="10,8"
                          VerticalContentAlignment="Center" />
                 <TextBlock x:Name="UrlOverlay"
-                           Foreground="#1E1E1E"
+                           Foreground="{DynamicResource TextPrimary}"
                            FontFamily="Consolas,Menlo,monospace"
                            FontSize="13"
                            VerticalAlignment="Center"
-                           Padding="9,0,9,0"
+                           Padding="10,8"
                            IsHitTestVisible="False" />
-            </Panel>
+              </Panel>
+            </Border>
 
+            <!-- Send button -->
             <Button Grid.Column="2"
-                    Content="Send"
-                    Command="{Binding SendCommand}" />
+                    Classes="send-btn"
+                    Command="{Binding SendCommand}"
+                    Background="{DynamicResource AccentPrimary}"
+                    Foreground="White"
+                    FontFamily="{StaticResource ArcasFont}"
+                    FontWeight="Bold"
+                    FontSize="12"
+                    Padding="18,8"
+                    CornerRadius="6">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Data="{StaticResource IconSend}"
+                      Stretch="Uniform"
+                      Width="13" Height="13"
+                      Stroke="White"
+                      StrokeThickness="1.5"
+                      StrokeLineCap="Round"
+                      Fill="Transparent" />
+                <TextBlock Text="Send" Foreground="White" FontWeight="Bold" FontFamily="{StaticResource ArcasFont}" />
+              </StackPanel>
+            </Button>
 
-            <!-- Save icon + Save As caret -->
-            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="0">
-                <Button Command="{Binding SaveCommand}"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Padding="8,6"
-                        ToolTip.Tip="Save">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="💾" FontSize="15" VerticalAlignment="Center" />
-                        <TextBlock Text="Save" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-        </Grid>
+            <!-- Save button (ghost) -->
+            <Button Grid.Column="3"
+                    Command="{Binding SaveCommand}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="10,8"
+                    ToolTip.Tip="Save (Ctrl+S)">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <Path Data="{StaticResource IconSave}"
+                      Stretch="Uniform"
+                      Width="14" Height="14"
+                      Fill="{DynamicResource TextMuted}" />
+                <TextBlock Text="Save"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextMuted}"
+                           FontFamily="{StaticResource ArcasFont}"
+                           FontSize="12" />
+              </StackPanel>
+            </Button>
+
+          </Grid>
+        </Border>
 
         <TabControl Grid.Row="1" MinHeight="160">
 
