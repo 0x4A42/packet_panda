@@ -7,7 +7,12 @@
              x:DataType="vm:EnvironmentSidebarViewModel">
 
     <UserControl.Resources>
-        <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://PacketPanda/Assets/Fonts.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,Auto,*">
