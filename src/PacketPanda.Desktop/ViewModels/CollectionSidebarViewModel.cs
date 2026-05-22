@@ -210,6 +210,11 @@ public class CollectionSidebarViewModel : ReactiveObject
                 Collections.Remove(v);
                 _ = PersistOpenPathsAsync();
             },
+            onRemoved: v =>
+            {
+                Collections.Remove(v);
+                _ = PersistOpenPathsAsync();
+            },
             onFolderRunRequested: folder => _folderRunRequested.OnNext(folder));
         Collections.Add(vm);
     }
@@ -233,6 +238,7 @@ public class CollectionViewModel : ReactiveObject
     private readonly Action<RequestNode> _onRequestOpened;
     private readonly Action<Collection>? _onDuplicated;
     private readonly Action<CollectionViewModel>? _onDeleted;
+    private readonly Action<CollectionViewModel>? _onRemoved;
     private readonly Action<object>? _onEditingStarted;
     private readonly Action<FolderNode>? _onFolderRunRequested;
     private Collection _collection;
@@ -246,6 +252,7 @@ public class CollectionViewModel : ReactiveObject
         Action<RequestNode> onRequestOpened,
         Action<Collection>? onDuplicated = null,
         Action<CollectionViewModel>? onDeleted = null,
+        Action<CollectionViewModel>? onRemoved = null,
         Action<object>? onEditingStarted = null,
         Action<FolderNode>? onFolderRunRequested = null)
     {
@@ -255,6 +262,7 @@ public class CollectionViewModel : ReactiveObject
         _onRequestOpened = onRequestOpened;
         _onDuplicated = onDuplicated;
         _onDeleted = onDeleted;
+        _onRemoved = onRemoved;
         _onEditingStarted = onEditingStarted;
         _onFolderRunRequested = onFolderRunRequested;
 
@@ -271,6 +279,7 @@ public class CollectionViewModel : ReactiveObject
         DuplicateCommand = ReactiveCommand.CreateFromTask(DuplicateCollectionAsync);
         DeleteCommand = ReactiveCommand.CreateFromTask(DeleteCollectionAsync);
         RunCollectionCommand = ReactiveCommand.Create(() => _onFolderRunRequested?.Invoke(_collection.Root));
+        RemoveCommand = ReactiveCommand.Create(() => _onRemoved?.Invoke(this));
     }
 
     public string Name => _collection.Name;
@@ -332,6 +341,7 @@ public class CollectionViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> DuplicateCommand { get; }
     public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
     public ReactiveCommand<Unit, Unit> RunCollectionCommand { get; }
+    public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
 
     private CollectionNodeViewModel BuildNodeVm(CollectionNode node)
     {

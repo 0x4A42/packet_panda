@@ -392,8 +392,7 @@
                                                       Command="{Binding RunCollectionCommand}" />
                                             <Separator />
                                             <MenuItem Header="Remove from sidebar"
-                                                      Command="{Binding $parent[TreeView].DataContext.Sidebar.RemoveCollectionCommand}"
-                                                      CommandParameter="{Binding}" />
+                                                      Command="{Binding RemoveCommand}" />
                                             <MenuItem Header="Delete"
                                                       Command="{Binding DeleteCommand}" />
                                         </MenuFlyout>
@@ -533,19 +532,19 @@
                 </Grid>
 
                 <!-- Environments panel -->
-                <views:EnvironmentSidebarView
-                    DataContext="{Binding EnvironmentSidebar}"
-                    IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}" />
+                <Panel IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}">
+                    <views:EnvironmentSidebarView DataContext="{Binding EnvironmentSidebar}" />
+                </Panel>
 
                 <!-- History panel -->
-                <views:HistorySidebarView
-                    DataContext="{Binding HistorySidebar}"
-                    IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.History}}" />
+                <Panel IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.History}}">
+                    <views:HistorySidebarView DataContext="{Binding HistorySidebar}" />
+                </Panel>
 
                 <!-- Docs panel -->
-                <views:DocsSidebarView
-                    DataContext="{Binding DocsSidebar}"
-                    IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}" />
+                <Panel IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}">
+                    <views:DocsSidebarView DataContext="{Binding DocsSidebar}" />
+                </Panel>
 
             </Grid>
         </Grid>
