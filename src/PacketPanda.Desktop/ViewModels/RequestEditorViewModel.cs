@@ -589,6 +589,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
 
         TestResults.Clear();
+        if (entry.TestResults is not null)
+            foreach (var r in entry.TestResults)
+                TestResults.Add(new TestResultViewModel(r.Name, r.Passed, r.ErrorMessage));
+
         RefreshResponseTabLabels();
     }
 
@@ -759,12 +763,16 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     {
         if (_historyStore is null) return;
 
+        var capturedTests = TestResults
+            .Select(r => new PacketPanda.Core.Scripting.TestResult(r.Name, r.Passed, r.ErrorMessage))
+            .ToList();
+
         var entry = result switch
         {
             SendResult.Ok ok => new HistoryEntry(
                 Guid.NewGuid(), DateTimeOffset.Now, method, url, headers, body, auth,
                 ok.Response.StatusCode, ok.Response.Body, ok.Response.Headers,
-                ok.Response.ElapsedMilliseconds, null),
+                ok.Response.ElapsedMilliseconds, null, capturedTests),
             SendResult.Error err => new HistoryEntry(
                 Guid.NewGuid(), DateTimeOffset.Now, method, url, headers, body, auth,
                 null, null, null, null, err.Message),

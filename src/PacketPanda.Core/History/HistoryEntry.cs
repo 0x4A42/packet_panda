@@ -1,4 +1,5 @@
 using PacketPanda.Core.Http;
+using PacketPanda.Core.Scripting;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Core.History;
@@ -19,4 +20,5 @@ public sealed record HistoryEntry(
     string? ResponseBody,
     IReadOnlyList<HttpHeader>? ResponseHeaders,
     long? ElapsedMilliseconds,
-    string? ErrorMessage);
+    string? ErrorMessage,
+    IReadOnlyList<TestResult>? TestResults = null);

@@ -48,7 +48,7 @@ public partial class App : Application
         {
             ApplyTheme(isDark: false);
 
-            _httpClient = new HttpClient();
+            _httpClient = new HttpClient(new HttpClientHandler { UseCookies = false });
             var sender = new HttpRequestSender(_httpClient);
             var collectionStore = new JsonCollectionFileStore();
             var settingsStore = new JsonSettingsStore(JsonSettingsStore.DefaultPath);
