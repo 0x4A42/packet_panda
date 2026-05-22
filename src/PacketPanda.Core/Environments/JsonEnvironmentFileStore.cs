@@ -21,7 +21,7 @@ public sealed class JsonEnvironmentFileStore : IEnvironmentFileStore
         {
             var root = doc.RootElement;
 
-            var name = root.TryGetProperty("name", out var nameEl) && nameEl.GetString() is string n && n.Length > 0
+            var name = root.TryGetProperty("name", out var nameEl) && nameEl.GetString() is { } n && n.Length > 0
                 ? n
                 : Path.GetFileNameWithoutExtension(path);
 
