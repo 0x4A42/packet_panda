@@ -75,7 +75,7 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
         }
     }
 
-    public bool HasSelectedResult => _selectedResult != null;
+    public bool HasSelectedResult => _selectedResult is not null;
 
     public bool IsRunning
     {

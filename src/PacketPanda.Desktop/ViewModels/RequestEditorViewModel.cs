@@ -115,10 +115,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
         Headers.CollectionChanged += (_, e) =>
         {
-            if (e.NewItems != null)
+            if (e.NewItems is not null)
                 foreach (HeaderRowViewModel row in e.NewItems)
                     row.PropertyChanged += OnHeaderRowChanged;
-            if (e.OldItems != null)
+            if (e.OldItems is not null)
                 foreach (HeaderRowViewModel row in e.OldItems)
                     row.PropertyChanged -= OnHeaderRowChanged;
             RecomputeDirty();
@@ -145,10 +145,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
         QueryParams.CollectionChanged += (_, e) =>
         {
-            if (e.NewItems != null)
+            if (e.NewItems is not null)
                 foreach (QueryParamRowViewModel row in e.NewItems)
                     row.PropertyChanged += OnParamRowChanged;
-            if (e.OldItems != null)
+            if (e.OldItems is not null)
                 foreach (QueryParamRowViewModel row in e.OldItems)
                     row.PropertyChanged -= OnParamRowChanged;
             RecomputeDirty();
@@ -166,10 +166,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
         FormRows.CollectionChanged += (_, e) =>
         {
-            if (e.NewItems != null)
+            if (e.NewItems is not null)
                 foreach (FormRowViewModel row in e.NewItems)
                     row.PropertyChanged += OnFormRowChanged;
-            if (e.OldItems != null)
+            if (e.OldItems is not null)
                 foreach (FormRowViewModel row in e.OldItems)
                     row.PropertyChanged -= OnFormRowChanged;
             RecomputeDirty();

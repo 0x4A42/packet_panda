@@ -105,13 +105,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _collectionEnvFoundSub = sidebar.EnvironmentFileFound
             .Subscribe(path => _ = EnvironmentSidebar.RegisterEnvironmentFromPathAsync(path));
 
-        if (runnerFactory != null)
+        if (runnerFactory is not null)
         {
             _folderRunSub = sidebar.FolderRunRequested.Subscribe(folder =>
             {
                 var existing = Tabs.FirstOrDefault(t => t.Content is CollectionRunnerViewModel runner
                     && runner.CurrentFilePath == folder.Id);
-                if (existing != null)
+                if (existing is not null)
                 {
                     ActiveTab = existing;
                     return;

@@ -183,7 +183,7 @@ internal static class MarkdownDocRenderer
 
     private static void BuildInlines(ContainerInline? container, InlineCollection? inlines)
     {
-        if (container == null || inlines == null) return;
+        if (container is null || inlines is null) return;
         foreach (var inline in container)
         {
             switch (inline)

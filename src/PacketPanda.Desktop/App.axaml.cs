@@ -28,7 +28,7 @@ public partial class App : Application
             : new Uri("avares://PacketPanda/Assets/Themes/Light.axaml");
 
         var merged = Resources.MergedDictionaries;
-        if (_activeThemeDictionary != null)
+        if (_activeThemeDictionary is not null)
             merged.Remove(_activeThemeDictionary);
 
         _activeThemeDictionary = AvaloniaXamlLoader.Load(uri) as IResourceDictionary
