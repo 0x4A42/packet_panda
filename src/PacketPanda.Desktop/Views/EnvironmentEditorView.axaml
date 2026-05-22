@@ -41,7 +41,7 @@
             <DataGrid.Columns>
                 <DataGridTemplateColumn Header="" Width="44" IsReadOnly="False">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="vm:EnvironmentVariableRowViewModel">
                             <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center" />
@@ -59,7 +59,7 @@
                                     Width="3*" />
                 <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="vm:EnvironmentVariableRowViewModel">
                             <Button Content="✕"
                                     Command="{Binding DeleteCommand}"
                                     Background="Transparent"

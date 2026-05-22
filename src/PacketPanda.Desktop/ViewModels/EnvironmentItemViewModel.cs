@@ -1,3 +1,4 @@
+using System.Reactive;
 using PacketPanda.Core.Environments;
 using ReactiveUI;
 
@@ -24,7 +25,30 @@ public class EnvironmentItemViewModel : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref _editingName, value);
     }
 
-    public EnvironmentItemViewModel(EnvironmentRef envRef) => Ref = envRef;
+    public ReactiveCommand<Unit, Unit> ActivateCommand { get; }
+    public ReactiveCommand<Unit, Unit> RenameCommand { get; }
+    public ReactiveCommand<Unit, Unit> CommitRenameCommand { get; }
+    public ReactiveCommand<Unit, Unit> CancelRenameCommand { get; }
+    public ReactiveCommand<Unit, Unit> DuplicateCommand { get; }
+    public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
+
+    public EnvironmentItemViewModel(
+        EnvironmentRef envRef,
+        Action onActivate,
+        Action onRename,
+        Func<Task> onCommitRename,
+        Action onCancelRename,
+        Action onDuplicate,
+        Action onDelete)
+    {
+        Ref = envRef;
+        ActivateCommand = ReactiveCommand.Create(onActivate);
+        RenameCommand = ReactiveCommand.Create(onRename);
+        CommitRenameCommand = ReactiveCommand.CreateFromTask(onCommitRename);
+        CancelRenameCommand = ReactiveCommand.Create(onCancelRename);
+        DuplicateCommand = ReactiveCommand.Create(onDuplicate);
+        DeleteCommand = ReactiveCommand.Create(onDelete);
+    }
 
     public void UpdateRef(EnvironmentRef newRef)
     {

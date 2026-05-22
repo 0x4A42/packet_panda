@@ -165,7 +165,16 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             {
                 if (!_itemVmCache.TryGetValue(e.FilePath, out var itemVm))
                 {
-                    itemVm = new EnvironmentItemViewModel(e);
+                    EnvironmentItemViewModel capturedVm = null!;
+                    capturedVm = new EnvironmentItemViewModel(
+                        e,
+                        onActivate:      () => _activateRequested.OnNext(capturedVm.Ref.Name),
+                        onRename:        () => { EditingItem?.CancelEdit(); capturedVm.BeginEdit(); EditingItem = capturedVm; },
+                        onCommitRename:  () => CommitRenameAsync(capturedVm),
+                        onCancelRename:  () => { capturedVm.CancelEdit(); if (ReferenceEquals(EditingItem, capturedVm)) EditingItem = null; },
+                        onDuplicate:     () => _ = DuplicateEnvironmentAsync(capturedVm.Ref),
+                        onDelete:        () => _ = DeleteEnvironmentAsync(capturedVm.Ref));
+                    itemVm = capturedVm;
                     _itemVmCache[e.FilePath] = itemVm;
                 }
                 Items.Add(itemVm);
