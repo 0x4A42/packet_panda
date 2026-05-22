@@ -78,10 +78,7 @@ public partial class EnvironmentEditorView : ReactiveUserControl<EnvironmentEdit
             ClearFocus();
     }
 
-    private void ClearFocus()
-    {
-        TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
-    }
+    private void ClearFocus() => TopLevel.GetTopLevel(this)?.Focus();
 
     private void MeasureNameBox()
     {
