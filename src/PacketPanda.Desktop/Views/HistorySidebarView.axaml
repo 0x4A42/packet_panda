@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             xmlns:conv="using:PacketPanda.Desktop.Converters"
+             x:Class="PacketPanda.Desktop.Views.HistorySidebarView"
+             x:DataType="vm:HistorySidebarViewModel">
+
+    <UserControl.Resources>
+        <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
+        <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Toolbar -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="14,8,8,6">
+            <TextBlock Grid.Column="0"
+                       Text="HISTORY"
+                       FontSize="10"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextMuted}" />
+            <Button Grid.Column="1"
+                    Classes="toolbar-icon"
+                    ToolTip.Tip="Clear history"
+                    Command="{Binding ClearCommand}">
+                <Path Data="{StaticResource IconClose}"
+                      Stretch="Uniform"
+                      Width="11" Height="11"
+                      Fill="{DynamicResource TextMuted}" />
+            </Button>
+        </Grid>
+
+        <!-- History list -->
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding Items}"
+                 Background="Transparent"
+                 SelectionChanged="OnItemSelected">
+            <ListBox.ItemContainerTheme>
+                <ControlTheme TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Template">
+                        <ControlTemplate>
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="5"
+                                    Margin="4,1">
+                                <ContentPresenter Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter>
+                    <Style Selector="^:pointerover /template/ Border">
+                        <Setter Property="Background" Value="{DynamicResource TreeRowHover}" />
+                    </Style>
+                    <Style Selector="^:selected /template/ Border">
+                        <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+                    </Style>
+                </ControlTheme>
+            </ListBox.ItemContainerTheme>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="vm:HistoryItemViewModel">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,5">
+                        <Border Grid.Column="0"
+                                Background="{Binding Method, Converter={StaticResource MethodBrushConverter}}"
+                                CornerRadius="2"
+                                Padding="4,1"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Method}"
+                                       FontSize="9"
+                                       FontWeight="Bold"
+                                       Foreground="White" />
+                        </Border>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Url}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   VerticalAlignment="Center"
+                                   Margin="6,0"
+                                   TextTrimming="CharacterEllipsis" />
+                        <StackPanel Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Right" Spacing="1">
+                            <TextBlock Text="{Binding StatusText}"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource TextMuted}" />
+                            <TextBlock Text="{Binding TimeText}"
+                                       FontSize="9"
+                                       HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource TextMuted}" />
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+    </Grid>
+
+</UserControl>
