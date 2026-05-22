@@ -11,6 +11,7 @@ internal sealed class PpResponse
     private bool _available;
     private int _status;
     private string _body = string.Empty;
+    private IReadOnlyList<PacketPanda.Core.Http.HttpHeader> _headers = [];
 
     internal PpResponse(Engine engine) { _engine = engine; }
 
@@ -19,6 +20,7 @@ internal sealed class PpResponse
         _available = true;
         _status = response.StatusCode;
         _body = response.Body;
+        _headers = response.Headers ?? [];
     }
 
     private void EnsureAvailable()
@@ -29,6 +31,24 @@ internal sealed class PpResponse
 
     public int status { get { EnsureAvailable(); return _status; } }
     public string body { get { EnsureAvailable(); return _body; } }
+
+    public JsValue headers
+    {
+        get
+        {
+            EnsureAvailable();
+            // Build a plain JS object: { "Header-Name": "value", ... }
+            // When multiple headers share the same name they are joined with ", ".
+            var obj = _engine.Evaluate("({})");
+            var grouped = _headers
+                .GroupBy(h => h.Name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(h => h.Value)),
+                              StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in grouped)
+                obj.AsObject().Set(kvp.Key, kvp.Value);
+            return obj;
+        }
+    }
 
     public JsValue json()
     {
