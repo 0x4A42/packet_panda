@@ -145,7 +145,7 @@ public sealed class AvaloniaDialogService(Window owner) : IDialogService
             CanResize = false,
         };
 
-        var textBox = new Avalonia.Controls.TextBox
+        var textBox = new TextBox
         {
             Margin = new Avalonia.Thickness(12, 12, 12, 8),
             Watermark = prompt

@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Subjects;
 using System.Text.Json;
-using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -238,7 +237,6 @@ public class CollectionViewModel : ReactiveObject
     private readonly Action<RequestNode> _onRequestOpened;
     private readonly Action<Collection>? _onDuplicated;
     private readonly Action<CollectionViewModel>? _onDeleted;
-    private readonly Action<CollectionViewModel>? _onRemoved;
     private readonly Action<object>? _onEditingStarted;
     private readonly Action<FolderNode>? _onFolderRunRequested;
     private Collection _collection;
@@ -262,7 +260,6 @@ public class CollectionViewModel : ReactiveObject
         _onRequestOpened = onRequestOpened;
         _onDuplicated = onDuplicated;
         _onDeleted = onDeleted;
-        _onRemoved = onRemoved;
         _onEditingStarted = onEditingStarted;
         _onFolderRunRequested = onFolderRunRequested;
 
@@ -279,7 +276,7 @@ public class CollectionViewModel : ReactiveObject
         DuplicateCommand = ReactiveCommand.CreateFromTask(DuplicateCollectionAsync);
         DeleteCommand = ReactiveCommand.CreateFromTask(DeleteCollectionAsync);
         RunCollectionCommand = ReactiveCommand.Create(() => _onFolderRunRequested?.Invoke(_collection.Root));
-        RemoveCommand = ReactiveCommand.Create(() => _onRemoved?.Invoke(this));
+        RemoveCommand = ReactiveCommand.Create(() => onRemoved?.Invoke(this));
     }
 
     public string Name => _collection.Name;

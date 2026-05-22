@@ -1,12 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
-using System.Reactive.Disposables;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Core.Scripting;
 using ReactiveUI;
-using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Desktop.ViewModels;
 
@@ -88,7 +86,7 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
     }
 
     // ITabContent
-    public string? CurrentFilePath => _folder.Id;
+    public string CurrentFilePath => _folder.Id;
     public string? RequestId => null;
     public string DisplayTitle => $"Runner: {_folder.Name}";
     public bool IsDirty => false;

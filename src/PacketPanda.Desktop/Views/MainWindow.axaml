@@ -420,7 +420,6 @@
                                         </TextBox>
                                     </StackPanel>
                                     <ToggleButton Grid.Column="1"
-                                                  Classes="tree-chevron"
                                                   Theme="{StaticResource TreeChevronToggle}"
                                                   IsChecked="{Binding $parent[TreeViewItem].IsExpanded, Mode=TwoWay}"
                                                   Background="Transparent"
@@ -501,7 +500,6 @@
                                         </TextBox>
                                     </StackPanel>
                                     <ToggleButton Grid.Column="1"
-                                                  Classes="tree-chevron"
                                                   Theme="{StaticResource TreeChevronToggle}"
                                                   IsVisible="{Binding IsFolder}"
                                                   IsChecked="{Binding $parent[TreeViewItem].IsExpanded, Mode=TwoWay}"

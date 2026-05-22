@@ -1,4 +1,3 @@
-using System.Net.Http;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -70,7 +69,9 @@ public partial class App : Application
                 new VariableResolver(),
                 // ReSharper disable once NullableWarningSuppressionIsUsed
                 shell!.ActiveEnvironmentObservable,
+                // ReSharper disable once NullableWarningSuppressionIsUsed
                 updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
+                // ReSharper disable once NullableWarningSuppressionIsUsed
                 openEnvironmentEditor: () => shell!.SetEnvironmentsTabCommand.Execute().Subscribe(),
                 historyStore: historyStore);
 
@@ -82,7 +83,9 @@ public partial class App : Application
                     variableResolver,
                     // ReSharper disable once NullableWarningSuppressionIsUsed
                     shell!.ActiveEnvironmentObservable,
+                    // ReSharper disable once NullableWarningSuppressionIsUsed
                     updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
+                    // ReSharper disable once NullableWarningSuppressionIsUsed
                     openRequest: node => shell!.OpenRequestNodeInTabAsync(node)));
             // ReSharper restore AccessToModifiedClosure
             mainWindow.DataContext = shell;

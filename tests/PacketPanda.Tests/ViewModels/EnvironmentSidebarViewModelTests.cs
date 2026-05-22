@@ -18,7 +18,6 @@ public class EnvironmentSidebarViewModelTests
         new(new Mock<IEnvironmentFileStore>().Object,
             new Mock<IDialogService>().Object,
             picker ?? new Mock<IFilePickerService>().Object,
-            () => Path.GetTempPath(),
             NewTempEnvDir());
 
     [Fact]
@@ -29,7 +28,6 @@ public class EnvironmentSidebarViewModelTests
             store.Object,
             new Mock<IDialogService>().Object,
             new Mock<IFilePickerService>().Object,
-            () => Path.GetTempPath(),
             NewTempEnvDir());
 
         await vm.NewEnvironmentCommand.Execute();

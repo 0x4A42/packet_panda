@@ -22,6 +22,6 @@ public sealed partial class StatusCodeTextConverter : IValueConverter
         return $"{code} {phrase}";
     }
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }

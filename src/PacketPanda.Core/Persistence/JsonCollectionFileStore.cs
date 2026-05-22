@@ -24,7 +24,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
             var root = doc.RootElement;
             if (!root.TryGetProperty("info", out var info) ||
                 !info.TryGetProperty("name", out var nameEl) ||
-                nameEl.GetString() is not string name)
+                nameEl.GetString() is not { } name)
                 throw new RequestFileException("Missing required field 'info.name'.");
 
             var children = root.TryGetProperty("item", out var items)

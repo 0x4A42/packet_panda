@@ -1,11 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
-using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
 using PacketPanda.Desktop.Services;
 using ReactiveUI;
-using Environment = PacketPanda.Core.Environments.Environment;
 
 namespace PacketPanda.Desktop.ViewModels;
 
@@ -82,7 +80,6 @@ public class EnvironmentSidebarViewModel : ReactiveObject
         IEnvironmentFileStore store,
         IDialogService dialog,
         IFilePickerService picker,
-        Func<string?> getWorkspaceRoot,
         string? envBaseDir = null)
     {
         _store = store;
@@ -165,16 +162,16 @@ public class EnvironmentSidebarViewModel : ReactiveObject
             {
                 if (!_itemVmCache.TryGetValue(e.FilePath, out var itemVm))
                 {
-                    EnvironmentItemViewModel capturedVm = null!;
-                    capturedVm = new EnvironmentItemViewModel(
+                    var cell = new EnvironmentItemViewModel[1];
+                    cell[0] = new EnvironmentItemViewModel(
                         e,
-                        onActivate:      () => _activateRequested.OnNext(capturedVm.Ref.Name),
-                        onRename:        () => { EditingItem?.CancelEdit(); capturedVm.BeginEdit(); EditingItem = capturedVm; },
-                        onCommitRename:  () => CommitRenameAsync(capturedVm),
-                        onCancelRename:  () => { capturedVm.CancelEdit(); if (ReferenceEquals(EditingItem, capturedVm)) EditingItem = null; },
-                        onDuplicate:     () => _ = DuplicateEnvironmentAsync(capturedVm.Ref),
-                        onDelete:        () => _ = DeleteEnvironmentAsync(capturedVm.Ref));
-                    itemVm = capturedVm;
+                        onActivate:      () => _activateRequested.OnNext(cell[0].Ref.Name),
+                        onRename:        () => { EditingItem?.CancelEdit(); cell[0].BeginEdit(); EditingItem = cell[0]; },
+                        onCommitRename:  () => CommitRenameAsync(cell[0]),
+                        onCancelRename:  () => { cell[0].CancelEdit(); if (ReferenceEquals(EditingItem, cell[0])) EditingItem = null; },
+                        onDuplicate:     () => _ = DuplicateEnvironmentAsync(cell[0].Ref),
+                        onDelete:        () => _ = DeleteEnvironmentAsync(cell[0].Ref));
+                    itemVm = cell[0];
                     _itemVmCache[e.FilePath] = itemVm;
                 }
                 Items.Add(itemVm);

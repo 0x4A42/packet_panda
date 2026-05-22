@@ -1,4 +1,3 @@
-using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
@@ -19,7 +18,7 @@ internal static class MarkdownDocRenderer
 
     public static Control Render(string markdown)
     {
-        var doc = Markdig.Markdown.Parse(markdown, Pipeline);
+        var doc = Markdown.Parse(markdown, Pipeline);
         var panel = new StackPanel { Spacing = 8, Margin = new Thickness(16) };
         foreach (var block in doc)
             AddBlock(block, panel.Children);
