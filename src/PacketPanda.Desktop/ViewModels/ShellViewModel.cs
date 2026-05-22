@@ -4,6 +4,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
+using PacketPanda.Core.History;
 using PacketPanda.Core.Persistence;
 using Environment = PacketPanda.Core.Environments.Environment;
 using PacketPanda.Desktop.Services;
@@ -22,6 +23,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly ISettingsStore _settings;
     private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
     private readonly BehaviorSubject<EnvironmentContext?> _activeEnvSubject = new(null);
+    private readonly IHistoryStore _historyStore;
     private readonly IDisposable _envOpenSub;
     private readonly IDisposable _newEnvCreatedSub;
     private readonly IDisposable _activateEnvSub;
@@ -32,6 +34,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable? _folderRunSub;
     private readonly IDisposable _docOpenSub;
     private readonly IDisposable _collectionEnvFoundSub;
+    private readonly IDisposable _historyOpenSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -50,6 +53,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         IEnvironmentFileStore environmentStore,
         IFilePickerService filePicker,
         ISettingsStore settings,
+        IHistoryStore historyStore,
         Func<FolderNode, CollectionRunnerViewModel>? runnerFactory = null)
     {
         Sidebar = sidebar;
@@ -58,6 +62,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _filePicker = filePicker;
         _environmentStore = environmentStore;
         _settings = settings;
+        _historyStore = historyStore;
 
         Tabs = new ObservableCollection<TabViewModel>();
         EnvironmentsForPicker = new ObservableCollection<EnvironmentRef> { NoEnvironmentSentinel };
@@ -71,6 +76,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             });
         SetRequestsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Requests; });
         SetEnvironmentsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Environments; });
+        SetHistoryTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.History; });
         SetDocsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Docs; });
         SaveActiveTabCommand = ReactiveCommand.CreateFromTask(SaveActiveTabAsync);
         ToggleThemeCommand = ReactiveCommand.Create(() =>
@@ -79,6 +85,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
             if (Avalonia.Application.Current is App appInstance) appInstance.ApplyTheme(IsDarkTheme);
             _ = PersistThemeAsync(IsDarkTheme);
         });
+
+        HistorySidebar = new HistorySidebarViewModel(historyStore);
+        _historyOpenSub = HistorySidebar.HistoryOpenRequested.Subscribe(OpenHistoryEntryInTab);
 
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
@@ -159,6 +168,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
     public CollectionSidebarViewModel Sidebar { get; }
     public EnvironmentSidebarViewModel EnvironmentSidebar { get; }
+    public HistorySidebarViewModel HistorySidebar { get; }
     public DocsSidebarViewModel DocsSidebar { get; }
     public ObservableCollection<TabViewModel> Tabs { get; }
     public ObservableCollection<EnvironmentRef> EnvironmentsForPicker { get; }
@@ -193,6 +203,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> CloseActiveTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetRequestsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetEnvironmentsTabCommand { get; }
+    public ReactiveCommand<Unit, Unit> SetHistoryTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetDocsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveActiveTabCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
@@ -245,6 +256,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
             "PacketPanda", "globals.json");
         await EnsureGlobalsAsync(globalsPath);
+        await HistorySidebar.LoadAsync();
     }
 
     private async Task EnsureGlobalsAsync(string globalsPath)
@@ -280,7 +292,9 @@ public class ShellViewModel : ViewModelBase, IDisposable
     {
         var editor = _editorFactory();
         var tab = new TabViewModel(editor, _dialog);
-        _closeSubscriptions[tab] = tab.CloseRequested.Subscribe(_ => CloseTab(tab));
+        _closeSubscriptions[tab] = new CompositeDisposable(
+            tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
+            WireHistoryCapture(editor));
         Tabs.Add(tab);
         ActiveTab = tab;
     }
@@ -306,9 +320,10 @@ public class ShellViewModel : ViewModelBase, IDisposable
         var tab = new TabViewModel(editor, _dialog);
         var savedSub = editor.SavedSuccessfully
             .Subscribe(path => _ = Sidebar.SyncCollectionFromDiskAsync(path));
-        _closeSubscriptions[tab] = new System.Reactive.Disposables.CompositeDisposable(
+        _closeSubscriptions[tab] = new CompositeDisposable(
             tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
-            savedSub);
+            savedSub,
+            WireHistoryCapture(editor));
         Tabs.Add(tab);
         ActiveTab = tab;
         return Task.CompletedTask;
@@ -642,6 +657,26 @@ public class ShellViewModel : ViewModelBase, IDisposable
         catch (SettingsException) { }
     }
 
+    private void OpenHistoryEntryInTab(PacketPanda.Core.History.HistoryEntry entry)
+    {
+        var editor = _editorFactory();
+        editor.SelectedMethod = entry.Method;
+        editor.Url = entry.Url;
+        editor.LoadBody(entry.Body);
+        editor.LoadHeaders(entry.Headers);
+        editor.LoadAuth(entry.Auth);
+
+        var tab = new TabViewModel(editor, _dialog);
+        _closeSubscriptions[tab] = new CompositeDisposable(
+            tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
+            WireHistoryCapture(editor));
+        Tabs.Add(tab);
+        ActiveTab = tab;
+    }
+
+    private IDisposable WireHistoryCapture(RequestEditorViewModel editor)
+        => editor.HistoryEntryRecorded.Subscribe(HistorySidebar.AddEntry);
+
     public void Dispose()
     {
         _envOpenSub.Dispose();
@@ -654,6 +689,8 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _folderRunSub?.Dispose();
         _docOpenSub.Dispose();
         _collectionEnvFoundSub.Dispose();
+        _historyOpenSub.Dispose();
+        HistorySidebar.Dispose();
         DocsSidebar.Dispose();
         foreach (var sub in _closeSubscriptions.Values)
             sub.Dispose();

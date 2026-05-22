@@ -3,6 +3,7 @@ using System.Reactive.Subjects;
 using FluentAssertions;
 using Moq;
 using PacketPanda.Core.Environments;
+using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -21,6 +22,7 @@ public class ShellViewModelTests
     private readonly Mock<ICollectionFileStore> _collectionStore = new(MockBehavior.Strict);
     private readonly Mock<ISettingsStore> _settings = new(MockBehavior.Strict);
     private readonly Mock<IEnvironmentFileStore> _environmentStore = new(MockBehavior.Strict);
+    private readonly Mock<IHistoryStore> _historyStore = new(MockBehavior.Loose);
 
     private CollectionSidebarViewModel NewSidebar() =>
         new(_collectionStore.Object, _settings.Object, _picker.Object, _dialog.Object);
@@ -30,9 +32,12 @@ public class ShellViewModelTests
             new VariableResolver(),
             new BehaviorSubject<EnvironmentContext?>(null));
 
-    private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null) =>
-        new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _environmentStore.Object, _picker.Object,
-            _settings.Object);
+    private ShellViewModel CreateShell(CollectionSidebarViewModel? sidebar = null)
+    {
+        _historyStore.Setup(s => s.LoadAsync()).ReturnsAsync(Array.Empty<HistoryEntry>());
+        return new(sidebar ?? NewSidebar(), NewEditor, _dialog.Object, _environmentStore.Object, _picker.Object,
+            _settings.Object, _historyStore.Object);
+    }
 
     [Fact]
     public async Task NewTabCommand_AddsUntitledTabAndSetsItActive()
@@ -513,6 +518,16 @@ public class ShellViewModelTests
 
         shell.Tabs.Should().ContainSingle();
         shell.ActiveTab.Should().BeSameAs(firstTab);
+    }
+
+    [Fact]
+    public void SetHistoryTabCommand_SetsActiveSidebarTabToHistory()
+    {
+        var shell = CreateShell();
+
+        shell.SetHistoryTabCommand.Execute().Subscribe();
+
+        shell.ActiveSidebarTab.Should().Be(SidebarTab.History);
     }
 
     [Fact]
