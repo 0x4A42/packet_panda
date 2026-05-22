@@ -16,7 +16,6 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
     private readonly IHttpRequestSender _sender;
     private readonly IVariableResolver _resolver;
     private readonly Func<string, string, VariableTarget, Task>? _updateVariable;
-    private readonly Func<RequestNode, Task>? _openRequest;
     private readonly IDisposable _envSub;
     private readonly List<RequestNode> _flatRequests;
 
@@ -37,7 +36,6 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
         _sender = sender;
         _resolver = resolver;
         _updateVariable = updateVariable;
-        _openRequest = openRequest;
         _envSub = activeEnvironment.Subscribe(ctx => _currentEnvCtx = ctx);
 
         _flatRequests = FlattenFolder(folder).ToList();
@@ -55,8 +53,8 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
         GoToRequestCommand = ReactiveCommand.CreateFromTask<RunResultViewModel>(
             async row =>
             {
-                if (row.Node is not null && _openRequest is not null)
-                    await _openRequest(row.Node);
+                if (row.Node is not null && openRequest is not null)
+                    await openRequest(row.Node);
             });
     }
 

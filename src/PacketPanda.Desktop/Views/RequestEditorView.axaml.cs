@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;
@@ -253,7 +251,7 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
         _popupCloseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         _popupCloseTimer.Tick += (_, _) =>
         {
-            _popupCloseTimer!.Stop();
+            _popupCloseTimer?.Stop();
             ClosePopup();
         };
         _popupCloseTimer.Start();
@@ -267,10 +265,10 @@ public partial class RequestEditorView : ReactiveUserControl<RequestEditorViewMo
 
     private void OnResponseTabClick(object? sender, RoutedEventArgs e)
     {
-        if (sender == RespTabBody) SelectResponseTab(0);
-        else if (sender == RespTabCookies) SelectResponseTab(1);
-        else if (sender == RespTabHeaders) SelectResponseTab(2);
-        else if (sender == RespTabTests) SelectResponseTab(3);
+        if (ReferenceEquals(sender, RespTabBody)) SelectResponseTab(0);
+        else if (ReferenceEquals(sender, RespTabCookies)) SelectResponseTab(1);
+        else if (ReferenceEquals(sender, RespTabHeaders)) SelectResponseTab(2);
+        else if (ReferenceEquals(sender, RespTabTests)) SelectResponseTab(3);
     }
 
     private void SelectResponseTab(int index)

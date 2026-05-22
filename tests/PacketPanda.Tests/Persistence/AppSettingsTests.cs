@@ -19,6 +19,7 @@ public class AppSettingsTests
         var settings = new AppSettings(IsDarkTheme: false);
         var json = JsonSerializer.Serialize(settings);
         var result = JsonSerializer.Deserialize<AppSettings>(json);
+        // ReSharper disable once NullableWarningSuppressionIsUsed
         result!.IsDarkTheme.Should().BeFalse();
     }
 }

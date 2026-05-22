@@ -1,6 +1,5 @@
 using FluentAssertions;
 using PacketPanda.Core.Environments;
-using Xunit;
 using Environment = PacketPanda.Core.Environments.Environment;
 
 namespace PacketPanda.Tests.Environments;

@@ -1,12 +1,9 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Reactive.Linq;
 using FluentAssertions;
 using Moq;
 using PacketPanda.Core.Environments;
 using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
-using Xunit;
 using Environment = PacketPanda.Core.Environments.Environment;
 
 namespace PacketPanda.Tests.ViewModels;
@@ -140,6 +137,7 @@ public class EnvironmentEditorViewModelTests
 
         store.Verify(s => s.SaveAsync(
             "/ws/environments/dev.json",
+            // ReSharper disable once NullableWarningSuppressionIsUsed
             It.Is<Environment>(e => e.Descriptions!["token"] == "Auth token")), Times.Once);
     }
 

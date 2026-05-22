@@ -13,6 +13,7 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.ViewModels;
 
+// ReSharper disable NullableWarningSuppressionIsUsed
 public sealed class RequestEditorViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
@@ -512,7 +513,7 @@ public sealed class RequestEditorViewModelTests
         var vm = CreateVm();
         var headers = new List<HttpHeader>
         {
-            new HttpHeader("X-Foo", "bar", true),
+            new HttpHeader("X-Foo", "bar"),
             new HttpHeader("X-Off", "skip", false)
         };
 
@@ -611,7 +612,7 @@ public sealed class RequestEditorViewModelTests
         var vm = CreateVm();
         var qp = new List<QueryParam>
         {
-            new QueryParam("foo", "bar", true),
+            new QueryParam("foo", "bar"),
             new QueryParam("debug", "1", false)
         };
 
@@ -676,7 +677,7 @@ public sealed class RequestEditorViewModelTests
     public void ParamRow_Disabled_ExcludedFromUrl()
     {
         var vm = CreateVm();
-        vm.LoadQueryParams(new[] { new QueryParam("foo", "bar", true) });
+        vm.LoadQueryParams(new[] { new QueryParam("foo", "bar") });
 
         vm.QueryParams[0].Enabled = false;
 

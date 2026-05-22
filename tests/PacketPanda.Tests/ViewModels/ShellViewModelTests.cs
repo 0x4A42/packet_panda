@@ -13,6 +13,7 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.ViewModels;
 
+// ReSharper disable NullableWarningSuppressionIsUsed
 public class ShellViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
@@ -60,7 +61,7 @@ public class ShellViewModelTests
             Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
 
         // Load a fake collection so the sidebar wires up the callback -> RequestOpened
-        var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
+        var collection = new Collection("col", "/ws/col.json",
             new FolderNode("root", "root", [rn]));
         _collectionStore.Setup(s => s.LoadAsync("/ws/col.json")).ReturnsAsync(collection);
         _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
@@ -82,7 +83,7 @@ public class ShellViewModelTests
         var rn = new RequestNode("r1", "my-request", "/ws/col.json", HttpMethod.Get, "https://x.com", new NoBody(),
             Array.Empty<HttpHeader>(), new NoAuth(), Array.Empty<QueryParam>());
 
-        var collection = new PacketPanda.Core.Persistence.Collection("col", "/ws/col.json",
+        var collection = new Collection("col", "/ws/col.json",
             new FolderNode("root", "root", [rn]));
         _collectionStore.Setup(s => s.LoadAsync("/ws/col.json")).ReturnsAsync(collection);
         _settings.Setup(s => s.LoadAsync()).ReturnsAsync(new AppSettings());
@@ -421,7 +422,7 @@ public class ShellViewModelTests
         });
         shell.SelectedEnvironment = new EnvironmentRef("dev", "/dev.json");
 
-        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val", VariableTarget.ActiveEnv);
+        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val");
 
         savedActiveEnv.Should().NotBeNull();
         savedActiveEnv!.Variables["token"].Should().Be("new-val");
@@ -463,7 +464,7 @@ public class ShellViewModelTests
         });
         shell.SelectedEnvironment = new EnvironmentRef("dev", "/dev.json");
 
-        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val", VariableTarget.ActiveEnv);
+        await shell.UpdateActiveEnvironmentVariableAsync("token", "new-val");
 
         savedActiveEnv.Should().NotBeNull();
         savedActiveEnv!.Variables["token"].Should().Be("new-val");

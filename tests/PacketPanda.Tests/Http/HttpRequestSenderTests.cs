@@ -1,4 +1,3 @@
-using System.Net.Http;
 using FluentAssertions;
 using PacketPanda.Core.Http;
 using WireMock.RequestBuilders;
@@ -8,6 +7,7 @@ using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
 namespace PacketPanda.Tests.Http;
 
+// ReSharper disable NullableWarningSuppressionIsUsed
 public class HttpRequestSenderTests : IDisposable
 {
     private readonly WireMockServer _server;

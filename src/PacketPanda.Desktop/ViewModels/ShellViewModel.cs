@@ -266,7 +266,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         if (!File.Exists(globalsPath))
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath)!);
+            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath) ?? throw new InvalidOperationException("Invalid globals path"));
             var empty = new Environment("Globals", globalsPath,
                 new Dictionary<string, string>(StringComparer.Ordinal));
             try { await _environmentStore.SaveAsync(globalsPath, empty); }

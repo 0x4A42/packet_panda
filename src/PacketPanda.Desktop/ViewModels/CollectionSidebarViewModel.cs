@@ -708,15 +708,15 @@ public class CollectionViewModel : ReactiveObject
                 changed = true;
                 return child switch
                 {
-                    FolderNode f => (CollectionNode)(f with { Name = newName }),
-                    RequestNode r => (CollectionNode)(r with { Name = newName }),
+                    FolderNode f => f with { Name = newName },
+                    RequestNode r => r with { Name = newName },
                     _ => child
                 };
             }
             if (child is FolderNode folder)
             {
                 var (updated, found) = RenameNodeInTree(folder, targetId, newName);
-                if (found) { changed = true; return (CollectionNode)updated; }
+                if (found) { changed = true; return updated; }
             }
             return child;
         }).ToList();
@@ -737,7 +737,7 @@ public class CollectionViewModel : ReactiveObject
             var (updated, found) = RemoveFromTree(f, targetId);
             if (!found) return child;
             changed = true;
-            return (CollectionNode)updated;
+            return updated;
         }).ToList();
 
         return changed ? (current with { Children = newChildren }, true) : (current, false);
@@ -775,7 +775,7 @@ public class CollectionViewModel : ReactiveObject
             var (updated, found) = InsertIntoFolder(f, targetId, newNode);
             if (!found) return child;
             changed = true;
-            return (CollectionNode)updated;
+            return updated;
         }).ToList();
 
         return changed ? (current with { Children = newChildren }, true) : (current, false);

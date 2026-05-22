@@ -1,16 +1,14 @@
-using System.Collections.Generic;
-using System.IO;
 using System.Reactive.Linq;
 using FluentAssertions;
 using Moq;
 using PacketPanda.Core.Environments;
 using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
-using Xunit;
 using Environment = PacketPanda.Core.Environments.Environment;
 
 namespace PacketPanda.Tests.ViewModels;
 
+// ReSharper disable NullableWarningSuppressionIsUsed
 public class EnvironmentSidebarViewModelTests
 {
     private static string NewTempEnvDir() =>

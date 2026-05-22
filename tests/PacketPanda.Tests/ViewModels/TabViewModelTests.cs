@@ -7,7 +7,6 @@ using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
-using Environment = PacketPanda.Core.Environments.Environment;
 
 namespace PacketPanda.Tests.ViewModels;
 

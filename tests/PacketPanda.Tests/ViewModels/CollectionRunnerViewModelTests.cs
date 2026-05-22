@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using FluentAssertions;
@@ -7,7 +5,6 @@ using Moq;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
-using PacketPanda.Core.Scripting;
 using PacketPanda.Desktop.ViewModels;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
 
