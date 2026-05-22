@@ -665,6 +665,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         editor.LoadBody(entry.Body);
         editor.LoadHeaders(entry.Headers);
         editor.LoadAuth(entry.Auth);
+        editor.LoadHistoryResponse(entry);
 
         var tab = new TabViewModel(editor, _dialog);
         _closeSubscriptions[tab] = new CompositeDisposable(

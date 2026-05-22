@@ -569,6 +569,29 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SelectedScriptSection = ScriptSection.PreRequest;
     }
 
+    public void LoadHistoryResponse(HistoryEntry entry)
+    {
+        StatusCode = entry.StatusCode;
+        ResponseBody = entry.ResponseBody;
+        ElapsedMilliseconds = entry.ElapsedMilliseconds;
+        ErrorMessage = entry.ErrorMessage;
+
+        ResponseHeaders.Clear();
+        ResponseCookies.Clear();
+        if (entry.ResponseHeaders is not null)
+        {
+            foreach (var h in entry.ResponseHeaders)
+            {
+                ResponseHeaders.Add(h);
+                if (string.Equals(h.Name, "Set-Cookie", StringComparison.OrdinalIgnoreCase))
+                    ResponseCookies.Add(CookieViewModel.FromHeader(h.Value));
+            }
+        }
+
+        TestResults.Clear();
+        RefreshResponseTabLabels();
+    }
+
     private async Task SendAsync()
     {
         ErrorMessage = null;
