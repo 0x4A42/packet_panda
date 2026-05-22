@@ -14,7 +14,7 @@ public sealed class HistorySidebarViewModelTests
     private readonly Mock<IHistoryStore> _store = new(MockBehavior.Strict);
 
     private static HistoryEntry Entry(string url) => new(
-        Guid.NewGuid(), DateTimeOffset.Now, HttpMethod.Get, url,
+        DateTimeOffset.Now, HttpMethod.Get, url,
         Array.Empty<HttpHeader>(), new NoBody(), new NoAuth(),
         200, "ok", null, 5, null);
 

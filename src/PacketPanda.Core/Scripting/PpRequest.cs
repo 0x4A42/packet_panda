@@ -1,3 +1,4 @@
+// ReSharper disable InconsistentNaming
 #pragma warning disable IDE1006
 using PacketPanda.Core.Http;
 

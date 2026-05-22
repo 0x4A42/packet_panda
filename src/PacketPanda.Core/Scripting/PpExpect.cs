@@ -1,3 +1,4 @@
+// ReSharper disable InconsistentNaming
 #pragma warning disable IDE1006 // lowercase names are intentional: JS-facing API
 namespace PacketPanda.Core.Scripting;
 

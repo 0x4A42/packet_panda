@@ -6,10 +6,9 @@ namespace PacketPanda.Core.History;
 
 /// <summary>
 /// One recorded HTTP send. All values are resolved — environment variables are
-/// already substituted and auth secrets are stored as-is.
+/// already substituted, and auth secrets are stored as-is.
 /// </summary>
 public sealed record HistoryEntry(
-    Guid Id,
     DateTimeOffset Timestamp,
     HttpMethod Method,
     string Url,

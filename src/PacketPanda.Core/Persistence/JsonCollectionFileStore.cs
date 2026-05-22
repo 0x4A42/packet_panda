@@ -29,7 +29,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
 
             var children = root.TryGetProperty("item", out var items)
                 ? ParseItems(items, path)
-                : (IReadOnlyList<CollectionNode>)Array.Empty<CollectionNode>();
+                : Array.Empty<CollectionNode>();
 
             return new Collection(name, path, new FolderNode(Guid.NewGuid().ToString(), name, children));
         }
@@ -399,22 +399,22 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
             case BearerAuth bearer:
                 writer.WriteString("type", "bearer");
                 writer.WriteStartArray("bearer");
-                WriteKV(writer, "token", bearer.Token);
+                WriteKv(writer, "token", bearer.Token);
                 writer.WriteEndArray();
                 break;
             case ApiKeyAuth apiKey:
                 writer.WriteString("type", "apikey");
                 writer.WriteStartArray("apikey");
-                WriteKV(writer, "key", apiKey.Name);
-                WriteKV(writer, "value", apiKey.Value);
-                WriteKV(writer, "in", apiKey.Target == ApiKeyTarget.QueryParam ? "query_param" : "header");
+                WriteKv(writer, "key", apiKey.Name);
+                WriteKv(writer, "value", apiKey.Value);
+                WriteKv(writer, "in", apiKey.Target == ApiKeyTarget.QueryParam ? "query_param" : "header");
                 writer.WriteEndArray();
                 break;
             case BasicAuth basic:
                 writer.WriteString("type", "basic");
                 writer.WriteStartArray("basic");
-                WriteKV(writer, "username", basic.Username);
-                WriteKV(writer, "password", basic.Password);
+                WriteKv(writer, "username", basic.Username);
+                WriteKv(writer, "password", basic.Password);
                 writer.WriteEndArray();
                 break;
             default:
@@ -424,7 +424,7 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
         writer.WriteEndObject();
     }
 
-    private static void WriteKV(Utf8JsonWriter writer, string key, string value)
+    private static void WriteKv(Utf8JsonWriter writer, string key, string value)
     {
         writer.WriteStartObject();
         writer.WriteString("key", key);

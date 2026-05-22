@@ -1,3 +1,4 @@
+// ReSharper disable InconsistentNaming
 #pragma warning disable IDE1006
 using Jint;
 using Jint.Native;
@@ -11,7 +12,7 @@ internal sealed class PpResponse
     private bool _available;
     private int _status;
     private string _body = string.Empty;
-    private IReadOnlyList<PacketPanda.Core.Http.HttpHeader> _headers = [];
+    private IReadOnlyList<HttpHeader> _headers = [];
 
     internal PpResponse(Engine engine) { _engine = engine; }
 

@@ -770,11 +770,11 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         var entry = result switch
         {
             SendResult.Ok ok => new HistoryEntry(
-                Guid.NewGuid(), DateTimeOffset.Now, method, url, headers, body, auth,
+                DateTimeOffset.Now, method, url, headers, body, auth,
                 ok.Response.StatusCode, ok.Response.Body, ok.Response.Headers,
                 ok.Response.ElapsedMilliseconds, null, capturedTests),
             SendResult.Error err => new HistoryEntry(
-                Guid.NewGuid(), DateTimeOffset.Now, method, url, headers, body, auth,
+                DateTimeOffset.Now, method, url, headers, body, auth,
                 null, null, null, null, err.Message),
             _ => null
         };

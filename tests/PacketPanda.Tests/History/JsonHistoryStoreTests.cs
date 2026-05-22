@@ -15,7 +15,7 @@ public sealed class JsonHistoryStoreTests : IDisposable
     }
 
     private static HistoryEntry Entry(string url) => new(
-        Guid.NewGuid(), DateTimeOffset.UtcNow, HttpMethod.Get, url,
+        DateTimeOffset.UtcNow, HttpMethod.Get, url,
         new[] { new HttpHeader("Accept", "application/json") },
         new JsonBody("{}"), new BearerAuth("tok"),
         200, "ok", new[] { new HttpHeader("Server", "test") }, 12, null);
