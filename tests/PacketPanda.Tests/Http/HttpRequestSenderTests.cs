@@ -329,18 +329,32 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
-    public void Create_DefaultSettings_ReturnsNonNullSender()
+    public async Task Create_DefaultSettings_CanSendRequest()
     {
+        _server
+            .Given(Request.Create().WithPath("/create-default").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("ok"));
+
         var settings = new AppSettings();
-        var sender = HttpRequestSender.Create(settings);
-        sender.Should().NotBeNull();
+        using var sender = HttpRequestSender.Create(settings);
+        var result = await sender.SendAsync(
+            new HttpRequest(HttpMethod.Get, _server.Url + "/create-default"));
+
+        result.Should().BeOfType<SendResult.Ok>();
     }
 
     [Fact]
-    public void Create_SslVerificationFalse_ReturnsNonNullSender()
+    public async Task Create_SslVerificationFalse_CanSendRequest()
     {
+        _server
+            .Given(Request.Create().WithPath("/create-nossl").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("ok"));
+
         var settings = new AppSettings(SslVerification: false, TimeoutSeconds: 10);
-        var sender = HttpRequestSender.Create(settings);
-        sender.Should().NotBeNull();
+        using var sender = HttpRequestSender.Create(settings);
+        var result = await sender.SendAsync(
+            new HttpRequest(HttpMethod.Get, _server.Url + "/create-nossl"));
+
+        result.Should().BeOfType<SendResult.Ok>();
     }
 }

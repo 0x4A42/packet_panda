@@ -7,7 +7,6 @@ namespace PacketPanda.Desktop.ViewModels;
 public sealed class SettingsViewModel : ViewModelBase
 {
     private readonly ISettingsStore _store;
-    private readonly AppSettings _original;
 
     private bool _isDarkTheme;
     private bool _sslVerification;
@@ -18,7 +17,6 @@ public sealed class SettingsViewModel : ViewModelBase
     public SettingsViewModel(ISettingsStore store, AppSettings current)
     {
         _store = store;
-        _original = current;
 
         _isDarkTheme = current.IsDarkTheme;
         _sslVerification = current.SslVerification;
@@ -63,7 +61,8 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private async Task SaveAsync()
     {
-        var updated = _original with
+        var current = await _store.LoadAsync();
+        var updated = current with
         {
             IsDarkTheme = IsDarkTheme,
             SslVerification = SslVerification,

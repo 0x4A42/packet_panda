@@ -41,15 +41,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             var dto = JsonSerializer.Deserialize<SettingsDto>(json, Options)
                 ?? new SettingsDto();
-            return new AppSettings(
-                OpenCollectionPaths: dto.OpenCollectionPaths,
-                ActiveEnvironmentName: dto.ActiveEnvironmentName,
-                KnownEnvironmentPaths: dto.KnownEnvironmentPaths,
-                IsDarkTheme: dto.IsDarkTheme,
-                SslVerification: dto.SslVerification,
-                FollowRedirects: dto.FollowRedirects,
-                TimeoutSeconds: dto.TimeoutSeconds,
-                HistoryLimit: dto.HistoryLimit);
+            return FromDto(dto);
         }
         catch (JsonException ex)
         {
@@ -91,21 +83,23 @@ public sealed class JsonSettingsStore : ISettingsStore
             if (!File.Exists(DefaultPath)) return new AppSettings();
             var json = File.ReadAllText(DefaultPath);
             var dto = JsonSerializer.Deserialize<SettingsDto>(json, Options) ?? new SettingsDto();
-            return new AppSettings(
-                OpenCollectionPaths: dto.OpenCollectionPaths,
-                ActiveEnvironmentName: dto.ActiveEnvironmentName,
-                KnownEnvironmentPaths: dto.KnownEnvironmentPaths,
-                IsDarkTheme: dto.IsDarkTheme,
-                SslVerification: dto.SslVerification,
-                FollowRedirects: dto.FollowRedirects,
-                TimeoutSeconds: dto.TimeoutSeconds,
-                HistoryLimit: dto.HistoryLimit);
+            return FromDto(dto);
         }
         catch
         {
             return new AppSettings();
         }
     }
+
+    private static AppSettings FromDto(SettingsDto dto) => new AppSettings(
+        OpenCollectionPaths: dto.OpenCollectionPaths,
+        ActiveEnvironmentName: dto.ActiveEnvironmentName,
+        KnownEnvironmentPaths: dto.KnownEnvironmentPaths,
+        IsDarkTheme: dto.IsDarkTheme,
+        SslVerification: dto.SslVerification,
+        FollowRedirects: dto.FollowRedirects,
+        TimeoutSeconds: dto.TimeoutSeconds,
+        HistoryLimit: dto.HistoryLimit);
 
     private sealed class SettingsDto
     {
