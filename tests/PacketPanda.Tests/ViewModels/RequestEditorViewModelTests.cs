@@ -4,6 +4,7 @@ using System.Reactive.Subjects;
 using FluentAssertions;
 using Moq;
 using PacketPanda.Core.Environments;
+using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.ViewModels;
@@ -16,12 +17,20 @@ public sealed class RequestEditorViewModelTests
 {
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
     private readonly Mock<ICollectionFileStore> _collectionStore = new(MockBehavior.Strict);
+    private readonly Mock<IHistoryStore> _historyStore = new(MockBehavior.Strict);
 
     private RequestEditorViewModel CreateVm() => new(
         _sender.Object,
         _collectionStore.Object,
         new VariableResolver(),
         new BehaviorSubject<EnvironmentContext?>(null));
+
+    private RequestEditorViewModel CreateVmWithHistory() => new(
+        _sender.Object,
+        _collectionStore.Object,
+        new VariableResolver(),
+        new BehaviorSubject<EnvironmentContext?>(null),
+        historyStore: _historyStore.Object);
 
     [Fact]
     public async Task Send_PopulatesResponseFieldsFromOkResult()
@@ -988,5 +997,64 @@ public sealed class RequestEditorViewModelTests
         var vm = CreateVm();
         vm.SelectedMethod = HttpMethod.Post;
         vm.IsBodyEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Send_OnSuccess_AppendsHistoryEntryWithResponseFields()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(201, "created", 7)));
+        HistoryEntry? captured = null;
+        _historyStore
+            .Setup(s => s.AppendAsync(It.IsAny<HistoryEntry>()))
+            .Callback<HistoryEntry>(e => captured = e)
+            .Returns(Task.CompletedTask);
+
+        var vm = CreateVmWithHistory();
+        vm.Url = "https://example.com";
+        vm.SelectedMethod = HttpMethod.Get;
+
+        await vm.SendCommand.Execute();
+
+        captured.Should().NotBeNull();
+        captured!.Url.Should().Be("https://example.com");
+        captured.StatusCode.Should().Be(201);
+        captured.ResponseBody.Should().Be("created");
+        captured.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Send_OnError_AppendsHistoryEntryWithErrorMessage()
+    {
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Error("connection refused"));
+        HistoryEntry? captured = null;
+        _historyStore
+            .Setup(s => s.AppendAsync(It.IsAny<HistoryEntry>()))
+            .Callback<HistoryEntry>(e => captured = e)
+            .Returns(Task.CompletedTask);
+
+        var vm = CreateVmWithHistory();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        captured.Should().NotBeNull();
+        captured!.ErrorMessage.Should().Be("connection refused");
+        captured.StatusCode.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Send_WithUnresolvedVariable_DoesNotAppendHistory()
+    {
+        var vm = CreateVmWithHistory();
+        vm.Url = "https://{{missing}}.com";
+
+        await vm.SendCommand.Execute();
+
+        _historyStore.Verify(s => s.AppendAsync(It.IsAny<HistoryEntry>()), Times.Never);
+        vm.ErrorMessage.Should().Contain("missing");
     }
 }

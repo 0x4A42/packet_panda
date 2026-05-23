@@ -35,6 +35,8 @@ dotnet test --watch   # run tests in watch mode
 
 **Scripting pipeline** runs per request execution in a sandboxed Jint JS engine: pre-request script → HTTP send → post-request script → tests. Scripts and tests share the same engine instance and context object, which exposes the request, response, and environment read/write API. Post-request scripts can write values back to the active environment (e.g., extract a token from a login response). In-client tests produce a pass/fail list displayed in the response panel, with sample snippets available in the UI.
 
+**Request history** — every successful or failed send is automatically recorded to `%AppData%/PacketPanda/history.json` (capped at 200 entries). `JsonHistoryStore` manages the file with a `SemaphoreSlim` gate for thread safety. `HistorySidebarViewModel` holds an `ObservableCollection<HistoryItemViewModel>` and exposes `HistoryOpenRequested` for re-open events. `ShellViewModel` subscribes to `RequestEditorViewModel.HistoryEntryRecorded` via `WireHistoryCapture()` and handles re-open via `OpenHistoryEntryInTab`.
+
 **Theming** — light and dark themes are swappable at runtime via the activity-bar toggle. The choice persists across sessions in app settings and defaults to light on first launch.
 
 **Examples** — the `examples/` directory holds sample JSON collections and environments that target a public echo server; they are loadable from the sidebar's open actions.

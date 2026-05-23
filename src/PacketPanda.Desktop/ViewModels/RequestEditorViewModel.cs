@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Reactive;
 using PacketPanda.Core.Environments;
+using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Core.Scripting;
@@ -47,6 +48,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private IDisposable? _authDirtySub;
     private IDisposable? _authDirtySubPassword;
     private readonly System.Reactive.Subjects.Subject<string> _savedSuccessfully = new();
+    private readonly IHistoryStore? _historyStore;
+    private readonly System.Reactive.Subjects.Subject<HistoryEntry> _historyEntryRecorded = new();
 
     private bool _syncingParams;
     private IDisposable? _urlParamsSyncSub;
@@ -73,13 +76,15 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         IVariableResolver resolver,
         IObservable<EnvironmentContext?> activeEnvironment,
         Func<string, string, VariableTarget, Task>? updateVariable = null,
-        Action? openEnvironmentEditor = null)
+        Action? openEnvironmentEditor = null,
+        IHistoryStore? historyStore = null)
     {
         _sender = sender;
         _collectionStore = collectionStore;
         _resolver = resolver;
         _updateVariable = updateVariable;
         _openEnvironmentEditor = openEnvironmentEditor;
+        _historyStore = historyStore;
         _activeEnvSub = activeEnvironment.Subscribe(ctx =>
         {
             _activeEnv = ctx?.Merged;
@@ -291,6 +296,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
     public System.IObservable<string> SavedSuccessfully => _savedSuccessfully;
+    public System.IObservable<HistoryEntry> HistoryEntryRecorded => _historyEntryRecorded;
 
     public ObservableCollection<QueryParamRowViewModel> QueryParams { get; } = new();
     public ReactiveCommand<Unit, Unit> AddQueryParamCommand { get; }
@@ -563,6 +569,33 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SelectedScriptSection = ScriptSection.PreRequest;
     }
 
+    public void LoadHistoryResponse(HistoryEntry entry)
+    {
+        StatusCode = entry.StatusCode;
+        ResponseBody = entry.ResponseBody;
+        ElapsedMilliseconds = entry.ElapsedMilliseconds;
+        ErrorMessage = entry.ErrorMessage;
+
+        ResponseHeaders.Clear();
+        ResponseCookies.Clear();
+        if (entry.ResponseHeaders is not null)
+        {
+            foreach (var h in entry.ResponseHeaders)
+            {
+                ResponseHeaders.Add(h);
+                if (string.Equals(h.Name, "Set-Cookie", StringComparison.OrdinalIgnoreCase))
+                    ResponseCookies.Add(CookieViewModel.FromHeader(h.Value));
+            }
+        }
+
+        TestResults.Clear();
+        if (entry.TestResults is not null)
+            foreach (var r in entry.TestResults)
+                TestResults.Add(new TestResultViewModel(r.Name, r.Passed, r.ErrorMessage));
+
+        RefreshResponseTabLabels();
+    }
+
     private async Task SendAsync()
     {
         ErrorMessage = null;
@@ -716,6 +749,39 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                 RefreshResponseTabLabels();
                 break;
         }
+
+        RecordHistory(SelectedMethod, urlResult.Text, resolvedHeaders, resolvedBody, resolvedAuth, result);
+    }
+
+    private void RecordHistory(
+        HttpMethod method,
+        string url,
+        IReadOnlyList<HttpHeader> headers,
+        BodyConfig body,
+        AuthConfig auth,
+        SendResult result)
+    {
+        if (_historyStore is null) return;
+
+        var capturedTests = TestResults
+            .Select(r => new PacketPanda.Core.Scripting.TestResult(r.Name, r.Passed, r.ErrorMessage))
+            .ToList();
+
+        var entry = result switch
+        {
+            SendResult.Ok ok => new HistoryEntry(
+                Guid.NewGuid(), DateTimeOffset.Now, method, url, headers, body, auth,
+                ok.Response.StatusCode, ok.Response.Body, ok.Response.Headers,
+                ok.Response.ElapsedMilliseconds, null, capturedTests),
+            SendResult.Error err => new HistoryEntry(
+                Guid.NewGuid(), DateTimeOffset.Now, method, url, headers, body, auth,
+                null, null, null, null, err.Message),
+            _ => null
+        };
+        if (entry is null) return;
+
+        _historyEntryRecorded.OnNext(entry);
+        _ = _historyStore.AppendAsync(entry);   // fire-and-forget, best-effort
     }
 
     private async Task SaveAsync()
@@ -745,6 +811,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _authDirtySubPassword?.Dispose();
         _urlParamsSyncSub?.Dispose();
         _savedSuccessfully.Dispose();
+        _historyEntryRecorded.Dispose();
     }
 
     private void RecomputeDirty()

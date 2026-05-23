@@ -55,6 +55,8 @@
 
   <StreamGeometry x:Key="IconNavEnvironments">M32 128a96 96 0 1 0 192 0a96 96 0 1 0-192 0Z M88 128c0 37.46 14.25 72.4 40 96 M168 128c0 37.46-14.25 72.4-40 96 M88 128c0-37.46 14.25-72.4 40-96 M168 128c0-37.46-14.25-72.4-40-96 M37.47 96h181.06 M37.47 160h181.06</StreamGeometry>
 
+  <StreamGeometry x:Key="IconNavHistory">M128 32a96 96 0 1 0 96 96A96.11 96.11 0 0 0 128 32Z M128 80v48l32 32</StreamGeometry>
+
   <StreamGeometry x:Key="IconNavDocs">M128 168s-32-24-80-24V64c48 0 80 24 80 24s32-24 80-24v80c-48 0-80 24-80 24Z M128 168V72 M48 200c48 0 80 24 80 24s32-24 80-24</StreamGeometry>
 
 </ResourceDictionary>

@@ -1,6 +1,7 @@
 {
   "info": {
-    "name": "Echo API Samples"
+    "name": "Echo API Samples",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
@@ -30,7 +31,8 @@
                   "value": "1"
                 }
               ]
-            }
+            },
+            "body": null
           },
           "event": [
             {
@@ -130,6 +132,7 @@
             "url": {
               "raw": "{{baseUrl}}/bearer"
             },
+            "body": null,
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -173,6 +176,7 @@
             "url": {
               "raw": "{{baseUrl}}/basic-auth"
             },
+            "body": null,
             "auth": {
               "type": "basic",
               "basic": [
@@ -217,6 +221,7 @@
             "url": {
               "raw": "{{baseUrl}}/get"
             },
+            "body": null,
             "auth": {
               "type": "apikey",
               "apikey": [
@@ -250,6 +255,43 @@
                   "",
                   "pp.test('API key arrived as a query param', function () {",
                   "  pp.expect(pp.response.json().parsedQueryParams.apiKey).to.equal(pp.environment.get('apiKey'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "id": "folder-cookies",
+      "name": "Cookies",
+      "item": [
+        {
+          "id": "req-cookie-set",
+          "name": "Set-Cookie response header",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://httpbin.org/response-headers?Set-Cookie=session%3Dabc123%3B%20Path%3D%2F"
+            },
+            "body": null
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pp.test('status is 200', function () {",
+                  "  pp.expect(pp.response.status).to.equal(200);",
+                  "});",
+                  "",
+                  "pp.test('response includes a Set-Cookie header', function () {",
+                  "  var cookie = pp.response.headers['Set-Cookie'];",
+                  "  pp.expect(cookie).to.include('session=abc123');",
                   "});"
                 ]
               }
@@ -325,7 +367,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/me"
-            }
+            },
+            "body": null
           },
           "event": [
             {
@@ -354,7 +397,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/get"
-            }
+            },
+            "body": null
           },
           "event": [
             {

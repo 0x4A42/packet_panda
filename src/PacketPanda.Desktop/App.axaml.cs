@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using PacketPanda.Core.Environments;
+using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -47,7 +48,7 @@ public partial class App : Application
         {
             ApplyTheme(isDark: false);
 
-            _httpClient = new HttpClient();
+            _httpClient = new HttpClient(new HttpClientHandler { UseCookies = false });
             var sender = new HttpRequestSender(_httpClient);
             var collectionStore = new JsonCollectionFileStore();
             var settingsStore = new JsonSettingsStore(JsonSettingsStore.DefaultPath);
@@ -61,16 +62,18 @@ public partial class App : Application
             var sidebar = new CollectionSidebarViewModel(collectionStore, settingsStore, filePicker, dialog);
 
             ShellViewModel? shell = null;
+            var historyStore = new JsonHistoryStore(JsonHistoryStore.DefaultPath);
             RequestEditorViewModel EditorFactory() => new(
                 sender,
                 collectionStore,
                 new VariableResolver(),
                 shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<EnvironmentContext?>(null),
                 updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
-                openEnvironmentEditor: () => shell!.SetEnvironmentsTabCommand.Execute().Subscribe());
+                openEnvironmentEditor: () => shell!.SetEnvironmentsTabCommand.Execute().Subscribe(),
+                historyStore: historyStore);
 
             var variableResolver = new VariableResolver();
-            shell = new ShellViewModel(sidebar, EditorFactory, dialog, environmentStore, filePicker, settingsStore,
+            shell = new ShellViewModel(sidebar, EditorFactory, dialog, environmentStore, filePicker, settingsStore, historyStore,
                 runnerFactory: folder => new CollectionRunnerViewModel(
                     folder,
                     sender,

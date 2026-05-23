@@ -18,6 +18,7 @@ PacketPanda is a developer tool for hitting HTTP endpoints — built to be fast,
 - **Authentication** — None, API Key, Bearer Token, and Basic Auth, injected into the request at send time
 - **Scripting & tests** — pre-request and post-response scripts run in a sandboxed JavaScript engine; write in-client tests that produce a pass/fail list
 - **Response viewer** — syntax-highlighted body, headers, cookies, status code, timing, and size
+- **Request history** — every send is recorded automatically; click any entry to re-open it as a full editable tab; history persists across sessions and is capped at 200 entries
 - **Light & dark themes** — switchable at runtime and remembered between sessions
 - **3-panel layout** — collections sidebar, request editor, response viewer
 

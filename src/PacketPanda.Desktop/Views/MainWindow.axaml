@@ -206,6 +206,37 @@
                   </Button>
 
                   <Button Classes="activity-btn"
+                          Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.History}}"
+                          Command="{Binding SetHistoryTabCommand}"
+                          ToolTip.Tip="History">
+                    <Grid>
+                      <Border Width="3" Height="20"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Top"
+                              Margin="0,10,0,0"
+                              CornerRadius="0,2,2,0"
+                              Background="{DynamicResource AccentPrimary}"
+                              IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.History}}" />
+                      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                        <Path Data="{StaticResource IconNavHistory}"
+                              Stretch="Uniform"
+                              Width="20" Height="20"
+                              HorizontalAlignment="Center"
+                              Stroke="{DynamicResource TextMuted}"
+                              StrokeThickness="1.5"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"
+                              Fill="Transparent" />
+                        <TextBlock Text="HISTORY"
+                                   FontSize="7"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextMuted}" />
+                      </StackPanel>
+                    </Grid>
+                  </Button>
+
+                  <Button Classes="activity-btn"
                           Classes.active="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Docs}}"
                           Command="{Binding SetDocsTabCommand}"
                           ToolTip.Tip="Docs">
@@ -505,6 +536,11 @@
                 <views:EnvironmentSidebarView
                     DataContext="{Binding EnvironmentSidebar}"
                     IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Environments}}" />
+
+                <!-- History panel -->
+                <views:HistorySidebarView
+                    DataContext="{Binding HistorySidebar}"
+                    IsVisible="{Binding $parent[Grid].DataContext.ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.History}}" />
 
                 <!-- Docs panel -->
                 <views:DocsSidebarView

@@ -6,4 +6,4 @@ public abstract class ViewModelBase : ReactiveObject
 {
 }
 
-public enum SidebarTab { Requests, Environments, Docs }
+public enum SidebarTab { Requests, Environments, History, Docs }
