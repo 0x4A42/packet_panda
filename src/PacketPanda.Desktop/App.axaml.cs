@@ -70,9 +70,9 @@ public partial class App : Application
                 // ReSharper disable once NullableWarningSuppressionIsUsed
                 shell!.ActiveEnvironmentObservable,
                 // ReSharper disable once NullableWarningSuppressionIsUsed
-                updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
+                updateVariable: (name, value, target) => shell.UpdateActiveEnvironmentVariableAsync(name, value, target),
                 // ReSharper disable once NullableWarningSuppressionIsUsed
-                openEnvironmentEditor: () => shell!.SetEnvironmentsTabCommand.Execute().Subscribe(),
+                openEnvironmentEditor: () => shell.SetEnvironmentsTabCommand.Execute().Subscribe(),
                 historyStore: historyStore);
 
             var variableResolver = new VariableResolver();
@@ -84,9 +84,9 @@ public partial class App : Application
                     // ReSharper disable once NullableWarningSuppressionIsUsed
                     shell!.ActiveEnvironmentObservable,
                     // ReSharper disable once NullableWarningSuppressionIsUsed
-                    updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
+                    updateVariable: (name, value, target) => shell.UpdateActiveEnvironmentVariableAsync(name, value, target),
                     // ReSharper disable once NullableWarningSuppressionIsUsed
-                    openRequest: node => shell!.OpenRequestNodeInTabAsync(node)));
+                    openRequest: node => shell.OpenRequestNodeInTabAsync(node)));
             // ReSharper restore AccessToModifiedClosure
             mainWindow.DataContext = shell;
 

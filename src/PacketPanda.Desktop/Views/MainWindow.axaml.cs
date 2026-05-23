@@ -5,7 +5,6 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PacketPanda.Desktop.ViewModels;
-using ReactiveUI;
 
 namespace PacketPanda.Desktop.Views;
 

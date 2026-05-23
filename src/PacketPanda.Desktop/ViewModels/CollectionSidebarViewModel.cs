@@ -90,7 +90,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private async Task NewCollectionAsync()
     {
         var colDir = Path.Combine(
-            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "PacketPanda", "collections");
         try { Directory.CreateDirectory(colDir); } catch { /* best-effort */ }
 
