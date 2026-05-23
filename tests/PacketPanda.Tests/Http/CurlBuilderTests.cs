@@ -139,12 +139,29 @@ public sealed class CurlBuilderTests
     }
 
     [Fact]
-    public void Build_SingleQuoteInUrl_IsEscaped()
+    public void Build_SingleQuoteInUrl_UsesDoubleQuotes()
     {
         var request = new HttpRequest(HttpMethod.Get, "https://example.com/it's");
 
         var result = CurlBuilder.Build(request);
 
-        result.Should().Contain("'https://example.com/it'\\''s'");
+        // When single quote is present, the builder switches to double-quote wrapping.
+        result.Should().Contain("\"https://example.com/it's\"");
+        result.Should().NotContain("'\\''");
+    }
+
+    [Fact]
+    public void Build_ApiKeyQueryParamAuth_AppendsToUrl()
+    {
+        var request = new HttpRequest(
+            HttpMethod.Get,
+            "https://example.com/api",
+            Auth: new ApiKeyAuth("api_key", "secret", ApiKeyTarget.QueryParam));
+
+        var result = CurlBuilder.Build(request);
+
+        result.Should().Contain("api_key=secret");
+        result.Should().NotContain("-H 'api_key");
+        result.Should().NotContain("-H \"api_key");
     }
 }

@@ -16,6 +16,7 @@ public static class CurlParser
         var headers = new List<HttpHeader>();
         string? rawBody = null;
         var hasBody = false;
+        var urlencodeFields = new List<FormField>();
 
         for (var i = 1; i < tokens.Count; i++)
         {
@@ -43,6 +44,19 @@ public static class CurlParser
                     if (++i < tokens.Count) { rawBody = tokens[i]; hasBody = true; }
                     break;
 
+                case "--data-urlencode":
+                    if (++i < tokens.Count)
+                    {
+                        hasBody = true;
+                        var pair = tokens[i];
+                        var eq = pair.IndexOf('=');
+                        if (eq >= 0)
+                            urlencodeFields.Add(new FormField(pair[..eq], pair[(eq + 1)..], true));
+                        else
+                            urlencodeFields.Add(new FormField(pair, string.Empty, true));
+                    }
+                    break;
+
                 case "--url":
                     if (++i < tokens.Count) url = tokens[i];
                     break;
@@ -62,7 +76,11 @@ public static class CurlParser
             ?.Value ?? string.Empty;
 
         BodyConfig body;
-        if (rawBody is not null)
+        if (urlencodeFields.Count > 0)
+        {
+            body = new FormBody(urlencodeFields);
+        }
+        else if (rawBody is not null)
         {
             if (contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
                 body = new JsonBody(rawBody);

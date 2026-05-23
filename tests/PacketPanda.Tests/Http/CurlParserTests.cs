@@ -120,4 +120,28 @@ public sealed class CurlParserTests
     {
         CurlParser.Parse("curl -X POST").Should().BeNull();
     }
+
+    [Fact]
+    public void Parse_DataUrlencode_ParsesFormFields()
+    {
+        var result = CurlParser.Parse(
+            "curl https://example.com --data-urlencode 'name=Alice' --data-urlencode 'age=30'");
+
+        result!.Method.Should().Be(HttpMethod.Post);
+        result.Body.Should().BeOfType<FormBody>();
+        var form = (FormBody)result.Body;
+        form.Fields.Should().HaveCount(2);
+        form.Fields[0].Name.Should().Be("name");
+        form.Fields[0].Value.Should().Be("Alice");
+        form.Fields[1].Name.Should().Be("age");
+        form.Fields[1].Value.Should().Be("30");
+    }
+
+    [Fact]
+    public void Parse_UrlWithSingleQuote_ParsedCorrectly()
+    {
+        var builtCurl = CurlBuilder.Build(new HttpRequest(HttpMethod.Get, "https://example.com/it's"));
+        var parsed = CurlParser.Parse(builtCurl);
+        parsed!.Url.Should().Be("https://example.com/it's");
+    }
 }

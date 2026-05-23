@@ -8,15 +8,23 @@ public static class CurlBuilder
     {
         var sb = new StringBuilder("curl");
         sb.Append($" -X {request.Method.ToString().ToUpperInvariant()}");
-        sb.Append($" '{Escape(request.Url)}'");
+
+        var effectiveUrl = request.Url;
+        if (request.Auth is ApiKeyAuth { Target: ApiKeyTarget.QueryParam } qp)
+        {
+            var separator = effectiveUrl.Contains('?') ? "&" : "?";
+            effectiveUrl = $"{effectiveUrl}{separator}{Uri.EscapeDataString(qp.Name)}={Uri.EscapeDataString(qp.Value)}";
+        }
+
+        sb.Append($" {Quote(effectiveUrl)}");
 
         foreach (var h in (request.Headers ?? []).Where(h => h.Enabled))
-            sb.Append($" -H '{Escape(h.Name)}: {Escape(h.Value)}'");
+            sb.Append($" -H {Quote($"{h.Name}: {h.Value}")}");
 
         switch (request.Auth)
         {
             case BearerAuth bearer:
-                sb.Append($" -H 'Authorization: Bearer {Escape(bearer.Token)}'");
+                sb.Append($" -H {Quote($"Authorization: Bearer {bearer.Token}")}");
                 break;
             case BasicAuth basic:
                 var encoded = Convert.ToBase64String(
@@ -24,7 +32,7 @@ public static class CurlBuilder
                 sb.Append($" -H 'Authorization: Basic {encoded}'");
                 break;
             case ApiKeyAuth { Target: ApiKeyTarget.Header } hdr:
-                sb.Append($" -H '{Escape(hdr.Name)}: {Escape(hdr.Value)}'");
+                sb.Append($" -H {Quote($"{hdr.Name}: {hdr.Value}")}");
                 break;
         }
 
@@ -34,18 +42,18 @@ public static class CurlBuilder
             {
                 case JsonBody { Text: { Length: > 0 } text }:
                     sb.Append(" -H 'Content-Type: application/json'");
-                    sb.Append($" --data-raw '{Escape(text)}'");
+                    sb.Append($" --data-raw {Quote(text)}");
                     break;
                 case PlainTextBody { Text: { Length: > 0 } text }:
-                    sb.Append($" --data-raw '{Escape(text)}'");
+                    sb.Append($" --data-raw {Quote(text)}");
                     break;
                 case XmlBody { Text: { Length: > 0 } text }:
                     sb.Append(" -H 'Content-Type: application/xml'");
-                    sb.Append($" --data-raw '{Escape(text)}'");
+                    sb.Append($" --data-raw {Quote(text)}");
                     break;
                 case FormBody form:
                     foreach (var f in form.Fields.Where(f => f.Enabled))
-                        sb.Append($" --data-urlencode '{Escape(f.Name)}={Escape(f.Value)}'");
+                        sb.Append($" --data-urlencode {Quote($"{f.Name}={f.Value}")}");
                     break;
             }
         }
@@ -53,5 +61,11 @@ public static class CurlBuilder
         return sb.ToString();
     }
 
-    private static string Escape(string s) => s.Replace("'", "'\\''");
+    /// <summary>
+    /// Wraps <paramref name="s"/> in single quotes, switching to double quotes
+    /// if the string contains a single quote (avoids shell escape complexity
+    /// and ensures the tokenizer can round-trip the value).
+    /// </summary>
+    private static string Quote(string s) =>
+        s.Contains('\'') ? $"\"{s.Replace("\"", "\\\"")}\"" : $"'{s}'";
 }
