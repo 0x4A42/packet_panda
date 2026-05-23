@@ -64,4 +64,11 @@ public sealed class AvaloniaFilePickerService(Window window) : IFilePickerServic
         });
         return file?.Path.LocalPath;
     }
+
+    public async Task<string?> PickSingleFileAsync()
+    {
+        var files = await window.StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions { AllowMultiple = false });
+        return files.Count > 0 ? files[0].Path.LocalPath : null;
+    }
 }

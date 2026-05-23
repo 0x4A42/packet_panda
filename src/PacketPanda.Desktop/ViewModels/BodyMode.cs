@@ -6,5 +6,6 @@ public enum BodyMode
     Json,
     Text,
     Xml,
-    Form
+    Form,
+    Multipart
 }
