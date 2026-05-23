@@ -72,4 +72,51 @@ public sealed class JsonSettingsStoreTests : IDisposable
 
         json.Should().NotContain("openCollectionPaths");
     }
+
+    [Fact]
+    public async Task RoundTrip_NewSettings_PreservesAllFields()
+    {
+        var store = new JsonSettingsStore(JsonPath);
+        var settings = new AppSettings(
+            SslVerification: false,
+            FollowRedirects: false,
+            TimeoutSeconds: 60,
+            HistoryLimit: 500,
+            IsDarkTheme: true);
+
+        await store.SaveAsync(settings);
+        var loaded = await store.LoadAsync();
+
+        loaded.SslVerification.Should().BeFalse();
+        loaded.FollowRedirects.Should().BeFalse();
+        loaded.TimeoutSeconds.Should().Be(60);
+        loaded.HistoryLimit.Should().Be(500);
+        loaded.IsDarkTheme.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Load_MissingNewFields_UsesDefaults()
+    {
+        Directory.CreateDirectory(_dir);
+        await File.WriteAllTextAsync(JsonPath, "{\"openCollectionPaths\":[]}");
+
+        var store = new JsonSettingsStore(JsonPath);
+        var loaded = await store.LoadAsync();
+
+        loaded.SslVerification.Should().BeTrue();
+        loaded.FollowRedirects.Should().BeTrue();
+        loaded.TimeoutSeconds.Should().Be(30);
+        loaded.HistoryLimit.Should().Be(200);
+        loaded.IsDarkTheme.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RoundTrip_IsDarkTheme_IsPersistedCorrectly()
+    {
+        var store = new JsonSettingsStore(JsonPath);
+        await store.SaveAsync(new AppSettings(IsDarkTheme: true));
+        var loaded = await store.LoadAsync();
+
+        loaded.IsDarkTheme.Should().BeTrue();
+    }
 }
