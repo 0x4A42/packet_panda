@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Subjects;
 using System.Text.Json;
-using PacketPanda.Core.Environments;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
@@ -91,7 +90,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private async Task NewCollectionAsync()
     {
         var colDir = Path.Combine(
-            System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "PacketPanda", "collections");
         try { Directory.CreateDirectory(colDir); } catch { /* best-effort */ }
 
@@ -210,6 +209,11 @@ public class CollectionSidebarViewModel : ReactiveObject
                 Collections.Remove(v);
                 _ = PersistOpenPathsAsync();
             },
+            onRemoved: v =>
+            {
+                Collections.Remove(v);
+                _ = PersistOpenPathsAsync();
+            },
             onFolderRunRequested: folder => _folderRunRequested.OnNext(folder));
         Collections.Add(vm);
     }
@@ -246,6 +250,7 @@ public class CollectionViewModel : ReactiveObject
         Action<RequestNode> onRequestOpened,
         Action<Collection>? onDuplicated = null,
         Action<CollectionViewModel>? onDeleted = null,
+        Action<CollectionViewModel>? onRemoved = null,
         Action<object>? onEditingStarted = null,
         Action<FolderNode>? onFolderRunRequested = null)
     {
@@ -271,6 +276,7 @@ public class CollectionViewModel : ReactiveObject
         DuplicateCommand = ReactiveCommand.CreateFromTask(DuplicateCollectionAsync);
         DeleteCommand = ReactiveCommand.CreateFromTask(DeleteCollectionAsync);
         RunCollectionCommand = ReactiveCommand.Create(() => _onFolderRunRequested?.Invoke(_collection.Root));
+        RemoveCommand = ReactiveCommand.Create(() => onRemoved?.Invoke(this));
     }
 
     public string Name => _collection.Name;
@@ -332,6 +338,7 @@ public class CollectionViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> DuplicateCommand { get; }
     public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
     public ReactiveCommand<Unit, Unit> RunCollectionCommand { get; }
+    public ReactiveCommand<Unit, Unit> RemoveCommand { get; }
 
     private CollectionNodeViewModel BuildNodeVm(CollectionNode node)
     {
@@ -698,15 +705,15 @@ public class CollectionViewModel : ReactiveObject
                 changed = true;
                 return child switch
                 {
-                    FolderNode f => (CollectionNode)(f with { Name = newName }),
-                    RequestNode r => (CollectionNode)(r with { Name = newName }),
+                    FolderNode f => f with { Name = newName },
+                    RequestNode r => r with { Name = newName },
                     _ => child
                 };
             }
             if (child is FolderNode folder)
             {
                 var (updated, found) = RenameNodeInTree(folder, targetId, newName);
-                if (found) { changed = true; return (CollectionNode)updated; }
+                if (found) { changed = true; return updated; }
             }
             return child;
         }).ToList();
@@ -727,7 +734,7 @@ public class CollectionViewModel : ReactiveObject
             var (updated, found) = RemoveFromTree(f, targetId);
             if (!found) return child;
             changed = true;
-            return (CollectionNode)updated;
+            return updated;
         }).ToList();
 
         return changed ? (current with { Children = newChildren }, true) : (current, false);
@@ -765,7 +772,7 @@ public class CollectionViewModel : ReactiveObject
             var (updated, found) = InsertIntoFolder(f, targetId, newNode);
             if (!found) return child;
             changed = true;
-            return (CollectionNode)updated;
+            return updated;
         }).ToList();
 
         return changed ? (current with { Children = newChildren }, true) : (current, false);

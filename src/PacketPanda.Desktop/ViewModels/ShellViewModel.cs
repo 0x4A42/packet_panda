@@ -23,7 +23,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly ISettingsStore _settings;
     private readonly Dictionary<TabViewModel, IDisposable> _closeSubscriptions = new();
     private readonly BehaviorSubject<EnvironmentContext?> _activeEnvSubject = new(null);
-    private readonly IHistoryStore _historyStore;
     private readonly IDisposable _envOpenSub;
     private readonly IDisposable _newEnvCreatedSub;
     private readonly IDisposable _activateEnvSub;
@@ -40,7 +39,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private EnvironmentRef? _selectedEnvironment;
     private SidebarTab _activeSidebarTab = SidebarTab.Requests;
     private string? _pendingActiveEnvName;
-    private bool _isDarkTheme = false;
+    private bool _isDarkTheme;
 
     private EnvironmentRef? _globalsRef;
     private Environment? _globals;
@@ -62,7 +61,6 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _filePicker = filePicker;
         _environmentStore = environmentStore;
         _settings = settings;
-        _historyStore = historyStore;
 
         Tabs = new ObservableCollection<TabViewModel>();
         EnvironmentsForPicker = new ObservableCollection<EnvironmentRef> { NoEnvironmentSentinel };
@@ -92,8 +90,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         EnvironmentSidebar = new EnvironmentSidebarViewModel(
             environmentStore,
             dialog,
-            filePicker,
-            () => null);
+            filePicker);
 
         DocsSidebar = new DocsSidebarViewModel(
             Path.Combine(AppContext.BaseDirectory, "docs"));
@@ -105,13 +102,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _collectionEnvFoundSub = sidebar.EnvironmentFileFound
             .Subscribe(path => _ = EnvironmentSidebar.RegisterEnvironmentFromPathAsync(path));
 
-        if (runnerFactory != null)
+        if (runnerFactory is not null)
         {
             _folderRunSub = sidebar.FolderRunRequested.Subscribe(folder =>
             {
                 var existing = Tabs.FirstOrDefault(t => t.Content is CollectionRunnerViewModel runner
                     && runner.CurrentFilePath == folder.Id);
-                if (existing != null)
+                if (existing is not null)
                 {
                     ActiveTab = existing;
                     return;
@@ -266,7 +263,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         if (!File.Exists(globalsPath))
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath)!);
+            Directory.CreateDirectory(Path.GetDirectoryName(globalsPath) ?? throw new InvalidOperationException("Invalid globals path"));
             var empty = new Environment("Globals", globalsPath,
                 new Dictionary<string, string>(StringComparer.Ordinal));
             try { await _environmentStore.SaveAsync(globalsPath, empty); }
@@ -486,6 +483,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
 
         try
         {
+            // ReSharper disable once NullableWarningSuppressionIsUsed
             var env = await _environmentStore.LoadAsync(envRef!.FilePath);
             _loadedActiveEnv = env;
             await PersistActiveEnvNameAsync(envRef.Name);
@@ -596,7 +594,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         return new Environment(name, filePath, mergedVars);
     }
 
-    private void SyncEnvRefOnSave(PacketPanda.Core.Environments.Environment env)
+    private void SyncEnvRefOnSave(Environment env)
     {
         if (_globalsRef?.FilePath == env.FilePath) return;
 
@@ -657,7 +655,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         catch (SettingsException) { }
     }
 
-    private void OpenHistoryEntryInTab(PacketPanda.Core.History.HistoryEntry entry)
+    private void OpenHistoryEntryInTab(HistoryEntry entry)
     {
         var editor = _editorFactory();
         editor.SelectedMethod = entry.Method;

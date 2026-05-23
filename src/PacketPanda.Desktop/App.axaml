@@ -7,9 +7,8 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://PacketPanda/Assets/Icons.axaml" />
+        <ResourceInclude Source="avares://PacketPanda/Assets/Fonts.axaml" />
       </ResourceDictionary.MergedDictionaries>
-      <FontFamily x:Key="ArcasFont">avares://PacketPanda/font#Arcas Light</FontFamily>
-      <FontFamily x:Key="ArcasBoldFont">avares://PacketPanda/font#Arcas Bold</FontFamily>
       <!-- Unify the FluentTheme accent (checkboxes, focus, selection) with the purple brand colour -->
       <Color x:Key="SystemAccentColor">#7C5CFC</Color>
       <!-- Search/input placeholder text colour -->
@@ -91,15 +90,7 @@
     </Style>
 
     <!-- Purple accent button -->
-    <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource AccentPrimary}" />
-    </Style>
-    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource AccentHover}" />
-    </Style>
-    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource AccentPrimary}" />
-    </Style>
+    <StyleInclude Source="avares://PacketPanda/Assets/AccentButton.axaml" />
   </Application.Styles>
 
 </Application>

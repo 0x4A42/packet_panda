@@ -115,10 +115,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
         Headers.CollectionChanged += (_, e) =>
         {
-            if (e.NewItems != null)
+            if (e.NewItems is not null)
                 foreach (HeaderRowViewModel row in e.NewItems)
                     row.PropertyChanged += OnHeaderRowChanged;
-            if (e.OldItems != null)
+            if (e.OldItems is not null)
                 foreach (HeaderRowViewModel row in e.OldItems)
                     row.PropertyChanged -= OnHeaderRowChanged;
             RecomputeDirty();
@@ -137,7 +137,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
         AddQueryParamCommand = ReactiveCommand.Create(() => QueryParams.Add(CreateParamRow()));
 
-        void OnParamRowChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+        void OnParamRowChanged(object? s, PropertyChangedEventArgs e)
         {
             EnsureTrailingEmptyParamRow();
             if (!_syncingParams) SyncUrlFromParams();
@@ -145,10 +145,10 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         }
         QueryParams.CollectionChanged += (_, e) =>
         {
-            if (e.NewItems != null)
+            if (e.NewItems is not null)
                 foreach (QueryParamRowViewModel row in e.NewItems)
                     row.PropertyChanged += OnParamRowChanged;
-            if (e.OldItems != null)
+            if (e.OldItems is not null)
                 foreach (QueryParamRowViewModel row in e.OldItems)
                     row.PropertyChanged -= OnParamRowChanged;
             RecomputeDirty();
@@ -159,17 +159,17 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             .Subscribe(_ => SyncParamsFromUrl());
 
         FormRows = new ObservableCollection<FormRowViewModel>();
-        void OnFormRowChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+        void OnFormRowChanged(object? s, PropertyChangedEventArgs e)
         {
             EnsureTrailingEmptyFormRow();
             RecomputeDirty();
         }
         FormRows.CollectionChanged += (_, e) =>
         {
-            if (e.NewItems != null)
+            if (e.NewItems is not null)
                 foreach (FormRowViewModel row in e.NewItems)
                     row.PropertyChanged += OnFormRowChanged;
-            if (e.OldItems != null)
+            if (e.OldItems is not null)
                 foreach (FormRowViewModel row in e.OldItems)
                     row.PropertyChanged -= OnFormRowChanged;
             RecomputeDirty();
@@ -206,7 +206,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public string Url
     {
         get => _url;
-        set => this.RaiseAndSetIfChanged(ref _url, value ?? string.Empty);
+        set => this.RaiseAndSetIfChanged(ref _url, value);
     }
 
     public BodyMode SelectedBodyMode
@@ -225,7 +225,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public string RawBodyText
     {
         get => _rawBodyText;
-        set => this.RaiseAndSetIfChanged(ref _rawBodyText, value ?? string.Empty);
+        set => this.RaiseAndSetIfChanged(ref _rawBodyText, value);
     }
 
     public ObservableCollection<FormRowViewModel> FormRows { get; private set; } = new();
@@ -295,8 +295,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
-    public System.IObservable<string> SavedSuccessfully => _savedSuccessfully;
-    public System.IObservable<HistoryEntry> HistoryEntryRecorded => _historyEntryRecorded;
+    public IObservable<string> SavedSuccessfully => _savedSuccessfully;
+    public IObservable<HistoryEntry> HistoryEntryRecorded => _historyEntryRecorded;
 
     public ObservableCollection<QueryParamRowViewModel> QueryParams { get; } = new();
     public ReactiveCommand<Unit, Unit> AddQueryParamCommand { get; }
@@ -316,7 +316,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         get => _preRequestScript;
         set
         {
-            this.RaiseAndSetIfChanged(ref _preRequestScript, value ?? string.Empty);
+            this.RaiseAndSetIfChanged(ref _preRequestScript, value);
             RecomputeDirty();
         }
     }
@@ -326,7 +326,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         get => _postResponseScript;
         set
         {
-            this.RaiseAndSetIfChanged(ref _postResponseScript, value ?? string.Empty);
+            this.RaiseAndSetIfChanged(ref _postResponseScript, value);
             RecomputeDirty();
         }
     }
@@ -764,17 +764,17 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         if (_historyStore is null) return;
 
         var capturedTests = TestResults
-            .Select(r => new PacketPanda.Core.Scripting.TestResult(r.Name, r.Passed, r.ErrorMessage))
+            .Select(r => new TestResult(r.Name, r.Passed, r.ErrorMessage))
             .ToList();
 
         var entry = result switch
         {
             SendResult.Ok ok => new HistoryEntry(
-                Guid.NewGuid(), DateTimeOffset.Now, method, url, headers, body, auth,
+                DateTimeOffset.Now, method, url, headers, body, auth,
                 ok.Response.StatusCode, ok.Response.Body, ok.Response.Headers,
                 ok.Response.ElapsedMilliseconds, null, capturedTests),
             SendResult.Error err => new HistoryEntry(
-                Guid.NewGuid(), DateTimeOffset.Now, method, url, headers, body, auth,
+                DateTimeOffset.Now, method, url, headers, body, auth,
                 null, null, null, null, err.Message),
             _ => null
         };
@@ -953,5 +953,5 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     string? ITabContent.CurrentFilePath => CollectionFilePath;
     string? ITabContent.RequestId => RequestId;
     string ITabContent.DisplayTitle => RequestName ?? "Untitled";
-    string? ITabContent.MethodLabel => SelectedMethod.ToString().ToUpperInvariant();
+    string ITabContent.MethodLabel => SelectedMethod.ToString().ToUpperInvariant();
 }

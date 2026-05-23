@@ -1,3 +1,4 @@
+// ReSharper disable InconsistentNaming
 #pragma warning disable IDE1006
 using Jint;
 using Jint.Native;
@@ -13,8 +14,6 @@ public sealed class ScriptSession : IDisposable
     private readonly List<TestResult> _results = new();
     private readonly Dictionary<string, string> _envOverlay = new();
     private readonly PpResponse _ppResponse;
-    private readonly PpRequest _ppRequest;
-    private readonly PpEnvironment _ppEnvironment;
 
     public IReadOnlyList<TestResult> TestResults => _results;
     public IReadOnlyDictionary<string, string> EnvironmentUpdates => _envOverlay;
@@ -23,12 +22,12 @@ public sealed class ScriptSession : IDisposable
     {
         _engine = new Engine();
         _ppResponse = new PpResponse(_engine);
-        _ppRequest = new PpRequest();
-        _ppEnvironment = new PpEnvironment(activeEnv, _envOverlay);
+        var ppRequest = new PpRequest();
+        var ppEnvironment = new PpEnvironment(activeEnv, _envOverlay);
 
         // Register each sub-object under a temp name, then assemble pp as a plain JS object.
-        _engine.SetValue("_ppEnv", _ppEnvironment);
-        _engine.SetValue("_ppReq", _ppRequest);
+        _engine.SetValue("_ppEnv", ppEnvironment);
+        _engine.SetValue("_ppReq", ppRequest);
         _engine.SetValue("_ppRes", _ppResponse);
         _engine.SetValue("_ppCtx", this);
         _engine.Execute("""

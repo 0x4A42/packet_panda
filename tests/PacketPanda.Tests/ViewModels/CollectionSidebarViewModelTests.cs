@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Reactive.Linq;
 using FluentAssertions;
 using Moq;
@@ -8,6 +7,7 @@ using PacketPanda.Desktop.ViewModels;
 
 namespace PacketPanda.Tests.ViewModels;
 
+// ReSharper disable NullableWarningSuppressionIsUsed
 public sealed class CollectionSidebarViewModelTests
 {
     private readonly Mock<ICollectionFileStore> _storeMock = new();

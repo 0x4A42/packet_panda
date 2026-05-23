@@ -1,5 +1,3 @@
-using System.Net.Http;
-using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -14,12 +12,13 @@ using PacketPanda.Desktop.Views;
 
 namespace PacketPanda.Desktop;
 
+// ReSharper disable once PartialTypeWithSinglePart
 public partial class App : Application
 {
     private HttpClient? _httpClient;
     private IResourceDictionary? _activeThemeDictionary;
 
-    public static App Instance => (App)Current!;
+    public static App Instance => Current as App ?? throw new InvalidOperationException("App instance not initialized");
 
     public void ApplyTheme(bool isDark)
     {
@@ -28,7 +27,7 @@ public partial class App : Application
             : new Uri("avares://PacketPanda/Assets/Themes/Light.axaml");
 
         var merged = Resources.MergedDictionaries;
-        if (_activeThemeDictionary != null)
+        if (_activeThemeDictionary is not null)
             merged.Remove(_activeThemeDictionary);
 
         _activeThemeDictionary = AvaloniaXamlLoader.Load(uri) as IResourceDictionary
@@ -61,15 +60,19 @@ public partial class App : Application
 
             var sidebar = new CollectionSidebarViewModel(collectionStore, settingsStore, filePicker, dialog);
 
+            // ReSharper disable AccessToModifiedClosure
             ShellViewModel? shell = null;
             var historyStore = new JsonHistoryStore(JsonHistoryStore.DefaultPath);
             RequestEditorViewModel EditorFactory() => new(
                 sender,
                 collectionStore,
                 new VariableResolver(),
-                shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<EnvironmentContext?>(null),
-                updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
-                openEnvironmentEditor: () => shell!.SetEnvironmentsTabCommand.Execute().Subscribe(),
+                // ReSharper disable once NullableWarningSuppressionIsUsed
+                shell!.ActiveEnvironmentObservable,
+                // ReSharper disable once NullableWarningSuppressionIsUsed
+                updateVariable: (name, value, target) => shell.UpdateActiveEnvironmentVariableAsync(name, value, target),
+                // ReSharper disable once NullableWarningSuppressionIsUsed
+                openEnvironmentEditor: () => shell.SetEnvironmentsTabCommand.Execute().Subscribe(),
                 historyStore: historyStore);
 
             var variableResolver = new VariableResolver();
@@ -78,9 +81,13 @@ public partial class App : Application
                     folder,
                     sender,
                     variableResolver,
-                    shell?.ActiveEnvironmentObservable ?? System.Reactive.Linq.Observable.Return<EnvironmentContext?>(null),
-                    updateVariable: (name, value, target) => shell!.UpdateActiveEnvironmentVariableAsync(name, value, target),
-                    openRequest: node => shell!.OpenRequestNodeInTabAsync(node)));
+                    // ReSharper disable once NullableWarningSuppressionIsUsed
+                    shell!.ActiveEnvironmentObservable,
+                    // ReSharper disable once NullableWarningSuppressionIsUsed
+                    updateVariable: (name, value, target) => shell.UpdateActiveEnvironmentVariableAsync(name, value, target),
+                    // ReSharper disable once NullableWarningSuppressionIsUsed
+                    openRequest: node => shell.OpenRequestNodeInTabAsync(node)));
+            // ReSharper restore AccessToModifiedClosure
             mainWindow.DataContext = shell;
 
             desktop.MainWindow = mainWindow;

@@ -11,7 +11,7 @@ public sealed partial class VariableResolver : IVariableResolver
     public ResolveResult Resolve(string template, Environment? activeEnv)
     {
         if (string.IsNullOrEmpty(template))
-            return new ResolveResult(template ?? string.Empty, Array.Empty<string>());
+            return new ResolveResult(template, Array.Empty<string>());
 
         var sb = new StringBuilder(template.Length);
         var unresolved = new List<string>();

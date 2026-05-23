@@ -808,6 +808,7 @@
         </Grid>
 
         <Popup x:Name="VarPopup"
+               Grid.Row="0"
                IsOpen="False"
                Placement="Pointer"
                IsLightDismissEnabled="False">

@@ -1,13 +1,17 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
-             xmlns:envs="using:PacketPanda.Core.Environments"
              xmlns:conv="using:PacketPanda.Desktop.Converters"
              x:Class="PacketPanda.Desktop.Views.EnvironmentSidebarView"
              x:DataType="vm:EnvironmentSidebarViewModel">
 
     <UserControl.Resources>
-        <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://PacketPanda/Assets/Fonts.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,Auto,*">
@@ -96,19 +100,15 @@
                         <Grid.ContextFlyout>
                             <MenuFlyout>
                                 <MenuItem Header="Set as active"
-                                          Command="{Binding $parent[ListBox].DataContext.ActivateEnvironmentCommand}"
-                                          CommandParameter="{Binding Ref}" />
+                                          Command="{Binding ActivateCommand}" />
                                 <Separator />
                                 <MenuItem Header="Rename"
-                                          Command="{Binding $parent[ListBox].DataContext.RenameEnvironmentCommand}"
-                                          CommandParameter="{Binding}" />
+                                          Command="{Binding RenameCommand}" />
                                 <MenuItem Header="Duplicate"
-                                          Command="{Binding $parent[ListBox].DataContext.DuplicateEnvironmentCommand}"
-                                          CommandParameter="{Binding Ref}" />
+                                          Command="{Binding DuplicateCommand}" />
                                 <Separator />
                                 <MenuItem Header="Delete"
-                                          Command="{Binding $parent[ListBox].DataContext.DeleteEnvironmentCommand}"
-                                          CommandParameter="{Binding Ref}" />
+                                          Command="{Binding DeleteCommand}" />
                             </MenuFlyout>
                         </Grid.ContextFlyout>
 
@@ -130,11 +130,9 @@
                                  LostFocus="OnRenameTextBoxLostFocus">
                             <TextBox.KeyBindings>
                                 <KeyBinding Gesture="Return"
-                                            Command="{Binding $parent[ListBox].DataContext.CommitRenameCommand}"
-                                            CommandParameter="{Binding}" />
+                                            Command="{Binding CommitRenameCommand}" />
                                 <KeyBinding Gesture="Escape"
-                                            Command="{Binding $parent[ListBox].DataContext.CancelRenameCommand}"
-                                            CommandParameter="{Binding}" />
+                                            Command="{Binding CancelRenameCommand}" />
                             </TextBox.KeyBindings>
                         </TextBox>
                     </Grid>

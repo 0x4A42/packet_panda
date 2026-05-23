@@ -1,6 +1,4 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
 using Avalonia.Threading;
@@ -18,7 +16,7 @@ public partial class EnvironmentSidebarView : ReactiveUserControl<EnvironmentSid
     {
         InitializeComponent();
 
-        var listBox = this.FindControl<ListBox>("EnvList")!;
+        var listBox = this.FindControl<ListBox>("EnvList") ?? throw new InvalidOperationException("EnvList control not found");
         listBox.SelectionChanged += OnSelectionChanged;
     }
 
@@ -40,7 +38,7 @@ public partial class EnvironmentSidebarView : ReactiveUserControl<EnvironmentSid
 
     private void FocusRenameTextBox(EnvironmentItemViewModel item)
     {
-        var listBox = this.FindControl<ListBox>("EnvList")!;
+        var listBox = this.FindControl<ListBox>("EnvList") ?? throw new InvalidOperationException("EnvList control not found");
         Dispatcher.UIThread.Post(() =>
         {
             var container = listBox.ContainerFromItem(item);

@@ -43,7 +43,7 @@ public class CollectionNodeViewModel : ReactiveObject
         {
             if (SourceNode is FolderNode folder)
                 _runFolderCallback?.Invoke(folder);
-        }, System.Reactive.Linq.Observable.Return(isFolder));
+        }, Observable.Return(isFolder));
     }
 
     private string _name;

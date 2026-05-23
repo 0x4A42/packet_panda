@@ -220,9 +220,10 @@ public class EnvironmentEditorViewModel : ViewModelBase, ITabContent
             CurrentFilePath = picked;
         }
 
-        var env = new Environment(EnvironmentName, CurrentFilePath!, vars, descs,
+        var filePath = CurrentFilePath ?? throw new InvalidOperationException("File path not set");
+        var env = new Environment(EnvironmentName, filePath, vars, descs,
             disabled.Count > 0 ? disabled : null);
-        await _store.SaveAsync(CurrentFilePath!, env);
+        await _store.SaveAsync(filePath, env);
         CaptureSnapshot();
         _saved.OnNext(env);
     }

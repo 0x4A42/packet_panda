@@ -6,7 +6,6 @@
              x:DataType="vm:HistorySidebarViewModel">
 
     <UserControl.Resources>
-        <conv:IsNotNullConverter x:Key="IsNotNullConverter" />
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
     </UserControl.Resources>
 

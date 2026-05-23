@@ -1,4 +1,3 @@
-using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 using PacketPanda.Core.Http;
@@ -20,7 +19,7 @@ public sealed class AuthTypeDisplayConverter : IValueConverter
             _               => value.ToString()
         } : value;
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
 
@@ -36,6 +35,6 @@ public sealed class ApiKeyTargetDisplayConverter : IValueConverter
             _                       => value.ToString()
         } : value;
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }

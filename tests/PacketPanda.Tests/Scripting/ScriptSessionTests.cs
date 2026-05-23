@@ -136,7 +136,7 @@ public sealed class ScriptSessionTests
         var session = new ScriptSession(null);
         var response = new PacketPanda.Core.Http.HttpResponse(200, "ok", 10);
         session.RunPostResponse("throw new Error('boom');", response);
-        session.TestResults.Should().ContainSingle(r => !r.Passed && r.ErrorMessage!.Contains("boom"));
+        session.TestResults.Should().ContainSingle(r => !r.Passed && r.ErrorMessage != null && r.ErrorMessage.Contains("boom"));
     }
 
     [Fact]

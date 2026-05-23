@@ -1,4 +1,3 @@
-using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -6,7 +5,6 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PacketPanda.Desktop.ViewModels;
-using ReactiveUI;
 
 namespace PacketPanda.Desktop.Views;
 
@@ -75,10 +73,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CollectionTreeView_Tapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    private void CollectionTreeView_Tapped(object? sender, TappedEventArgs e)
     {
         // Handles re-clicking an already-selected item (SelectionChanged doesn't fire then).
-        if (e.Source is Avalonia.Controls.Control ctrl &&
+        if (e.Source is Control ctrl &&
             ctrl.DataContext is CollectionNodeViewModel vm &&
             !vm.IsFolder)
         {

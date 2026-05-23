@@ -16,8 +16,7 @@ public sealed class PolymorphicSerializationTests
         var json = JsonSerializer.Serialize(original, Options);
         var restored = JsonSerializer.Deserialize<BodyConfig>(json, Options);
 
-        restored.Should().BeOfType<JsonBody>();
-        ((JsonBody)restored!).Text.Should().Be("{\"a\":1}");
+        restored.Should().BeOfType<JsonBody>().Which.Text.Should().Be("{\"a\":1}");
     }
 
     [Fact]
@@ -28,8 +27,7 @@ public sealed class PolymorphicSerializationTests
         var json = JsonSerializer.Serialize(original, Options);
         var restored = JsonSerializer.Deserialize<AuthConfig>(json, Options);
 
-        restored.Should().BeOfType<BearerAuth>();
-        ((BearerAuth)restored!).Token.Should().Be("secret-token");
+        restored.Should().BeOfType<BearerAuth>().Which.Token.Should().Be("secret-token");
     }
 
     [Fact]
@@ -40,8 +38,7 @@ public sealed class PolymorphicSerializationTests
         var json = JsonSerializer.Serialize(original, Options);
         var restored = JsonSerializer.Deserialize<BodyConfig>(json, Options);
 
-        restored.Should().BeOfType<FormBody>();
-        ((FormBody)restored!).Fields.Should().ContainSingle()
+        restored.Should().BeOfType<FormBody>().Which.Fields.Should().ContainSingle()
             .Which.Should().Be(new FormField("k", "v", true));
     }
 }

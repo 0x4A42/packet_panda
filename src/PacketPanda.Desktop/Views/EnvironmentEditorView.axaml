@@ -3,6 +3,19 @@
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
              x:Class="PacketPanda.Desktop.Views.EnvironmentEditorView"
              x:DataType="vm:EnvironmentEditorViewModel">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://PacketPanda/Assets/Fonts.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <StyleInclude Source="avares://PacketPanda/Assets/AccentButton.axaml" />
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
 
         <TextBox Grid.Row="0"
@@ -41,7 +54,7 @@
             <DataGrid.Columns>
                 <DataGridTemplateColumn Header="" Width="44" IsReadOnly="False">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="vm:EnvironmentVariableRowViewModel">
                             <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center" />
@@ -59,7 +72,7 @@
                                     Width="3*" />
                 <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="vm:EnvironmentVariableRowViewModel">
                             <Button Content="✕"
                                     Command="{Binding DeleteCommand}"
                                     Background="Transparent"

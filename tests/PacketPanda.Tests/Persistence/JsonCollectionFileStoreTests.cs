@@ -248,7 +248,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
             ]
             """));
 
-        await _store.UpdateRequestAsync(_tempPath, "r1", new HttpRequest(HttpMethod.Post, "http://new", null));
+        await _store.UpdateRequestAsync(_tempPath, "r1", new HttpRequest(HttpMethod.Post, "http://new"));
         var reloaded = await _store.LoadAsync(_tempPath);
 
         var folder = reloaded.Root.Children.Single().Should().BeOfType<FolderNode>().Subject;
@@ -282,7 +282,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
 
         req.Headers.Should().HaveCount(2);
-        req.Headers[0].Should().Be(new HttpHeader("X-Foo", "bar", true));
+        req.Headers[0].Should().Be(new HttpHeader("X-Foo", "bar"));
         req.Headers[1].Should().Be(new HttpHeader("X-Disabled", "skip", false));
     }
 
@@ -403,7 +403,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
 
         var req = loaded.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
         req.Headers.Should().HaveCount(2);
-        req.Headers[0].Should().Be(new HttpHeader("X-Foo", "bar", true));
+        req.Headers[0].Should().Be(new HttpHeader("X-Foo", "bar"));
         req.Headers[1].Should().Be(new HttpHeader("X-Off", "skip", false));
     }
 
@@ -481,7 +481,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         await _store.SaveAsync(_tempPath, col);
 
         await _store.UpdateRequestAsync(_tempPath, "r1",
-            new HttpRequest(HttpMethod.Post, "https://updated", null));
+            new HttpRequest(HttpMethod.Post, "https://updated"));
 
         var loaded = await _store.LoadAsync(_tempPath);
         var req = loaded.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
@@ -556,7 +556,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
     {
         var queryParams = new List<QueryParam>
         {
-            new QueryParam("q", "hello", true),
+            new QueryParam("q", "hello"),
             new QueryParam("debug", "1", false)
         };
 
@@ -684,7 +684,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         await File.WriteAllTextAsync(_tempPath, original);
 
         await _store.UpdateRequestAsync(_tempPath, "r1",
-            new PacketPanda.Core.Http.HttpRequest(PacketPanda.Core.Http.HttpMethod.Get, "https://x.com"),
+            new HttpRequest(HttpMethod.Get, "https://x.com"),
             preRequestScript: "pp.environment.set('k','v');");
 
         var col = await _store.LoadAsync(_tempPath);
@@ -708,7 +708,7 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         await File.WriteAllTextAsync(_tempPath, original);
 
         await _store.UpdateRequestAsync(_tempPath, "r1",
-            new PacketPanda.Core.Http.HttpRequest(PacketPanda.Core.Http.HttpMethod.Get, "https://x.com"),
+            new HttpRequest(HttpMethod.Get, "https://x.com"),
             postResponseScript: "pp.test('x', function(){});");
 
         var col = await _store.LoadAsync(_tempPath);

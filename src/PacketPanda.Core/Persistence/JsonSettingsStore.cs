@@ -60,11 +60,11 @@ public sealed class JsonSettingsStore : ISettingsStore
 
         var dto = new SettingsDto
         {
-            OpenCollectionPaths = settings.OpenCollectionPaths is { Count: > 0 }
+            OpenCollectionPaths = settings.OpenCollectionPaths is not null and { Count: > 0 }
                 ? settings.OpenCollectionPaths.ToList()
                 : null,
             ActiveEnvironmentName = settings.ActiveEnvironmentName,
-            KnownEnvironmentPaths = settings.KnownEnvironmentPaths is { Count: > 0 }
+            KnownEnvironmentPaths = settings.KnownEnvironmentPaths is not null and { Count: > 0 }
                 ? settings.KnownEnvironmentPaths.ToList()
                 : null
         };
