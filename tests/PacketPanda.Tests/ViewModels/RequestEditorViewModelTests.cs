@@ -7,6 +7,7 @@ using PacketPanda.Core.Environments;
 using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
+using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
 using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
@@ -19,6 +20,7 @@ public sealed class RequestEditorViewModelTests
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
     private readonly Mock<ICollectionFileStore> _collectionStore = new(MockBehavior.Strict);
     private readonly Mock<IHistoryStore> _historyStore = new(MockBehavior.Strict);
+    private readonly Mock<IClipboardService> _clipboard = new();
 
     private RequestEditorViewModel CreateVm() => new(
         _sender.Object,
@@ -32,6 +34,13 @@ public sealed class RequestEditorViewModelTests
         new VariableResolver(),
         new BehaviorSubject<EnvironmentContext?>(null),
         historyStore: _historyStore.Object);
+
+    private RequestEditorViewModel CreateVmWithClipboard() => new(
+        _sender.Object,
+        _collectionStore.Object,
+        new VariableResolver(),
+        new BehaviorSubject<EnvironmentContext?>(null),
+        clipboardService: _clipboard.Object);
 
     [Fact]
     public async Task Send_PopulatesResponseFieldsFromOkResult()
@@ -1057,5 +1066,36 @@ public sealed class RequestEditorViewModelTests
 
         _historyStore.Verify(s => s.AppendAsync(It.IsAny<HistoryEntry>()), Times.Never);
         vm.ErrorMessage.Should().Contain("missing");
+    }
+
+    [Fact]
+    public async Task CopyCurl_SimpleGetRequest_CopiesCorrectString()
+    {
+        string? copied = null;
+        _clipboard
+            .Setup(c => c.SetTextAsync(It.IsAny<string>()))
+            .Callback<string>(s => copied = s)
+            .Returns(Task.CompletedTask);
+
+        var vm = CreateVmWithClipboard();
+        vm.Url = "https://example.com/api";
+        vm.SelectedMethod = HttpMethod.Get;
+
+        await vm.CopyCurlCommand.Execute();
+
+        copied.Should().NotBeNull();
+        copied.Should().StartWith("curl -X GET");
+        copied.Should().Contain("example.com/api");
+    }
+
+    [Fact]
+    public async Task CopyCurl_NullClipboard_DoesNotThrow()
+    {
+        var vm = CreateVm(); // no clipboard injected
+        vm.Url = "https://example.com";
+
+        var act = async () => await vm.CopyCurlCommand.Execute();
+
+        await act.Should().NotThrowAsync();
     }
 }

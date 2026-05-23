@@ -6,6 +6,7 @@ using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Core.Scripting;
+using PacketPanda.Desktop.Services;
 using ReactiveUI;
 using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
@@ -50,6 +51,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private readonly System.Reactive.Subjects.Subject<string> _savedSuccessfully = new();
     private readonly IHistoryStore? _historyStore;
     private readonly System.Reactive.Subjects.Subject<HistoryEntry> _historyEntryRecorded = new();
+    private readonly IClipboardService? _clipboard;
 
     private bool _syncingParams;
     private IDisposable? _urlParamsSyncSub;
@@ -77,7 +79,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         IObservable<EnvironmentContext?> activeEnvironment,
         Func<string, string, VariableTarget, Task>? updateVariable = null,
         Action? openEnvironmentEditor = null,
-        IHistoryStore? historyStore = null)
+        IHistoryStore? historyStore = null,
+        IClipboardService? clipboardService = null)
     {
         _sender = sender;
         _collectionStore = collectionStore;
@@ -85,6 +88,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _updateVariable = updateVariable;
         _openEnvironmentEditor = openEnvironmentEditor;
         _historyStore = historyStore;
+        _clipboard = clipboardService;
         _activeEnvSub = activeEnvironment.Subscribe(ctx =>
         {
             _activeEnv = ctx?.Merged;
@@ -102,6 +106,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
         SelectPreRequestCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PreRequest; });
         SelectPostResponseCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PostResponse; });
+        CopyCurlCommand = ReactiveCommand.CreateFromTask(CopyCurlAsync);
 
         _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RawBodyText, vm => vm.SelectedBodyMode)
             .Subscribe(_ => RecomputeDirty());
@@ -292,6 +297,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
     public ReactiveCommand<Unit, Unit> SelectPreRequestCommand { get; }
     public ReactiveCommand<Unit, Unit> SelectPostResponseCommand { get; }
+    public ReactiveCommand<Unit, Unit> CopyCurlCommand { get; }
 
     public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
@@ -801,6 +807,13 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         {
             ErrorMessage = ex.Message;
         }
+    }
+
+    private async Task CopyCurlAsync()
+    {
+        if (_clipboard is null) return;
+        var curl = CurlBuilder.Build(BuildRequest());
+        await _clipboard.SetTextAsync(curl);
     }
 
     public void Dispose()
