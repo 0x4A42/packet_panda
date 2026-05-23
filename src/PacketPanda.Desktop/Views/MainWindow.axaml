@@ -269,25 +269,23 @@
 
                 </StackPanel>
 
-                <!-- Theme toggle pinned to bottom -->
+                <!-- Settings button pinned to bottom -->
                 <Button Grid.Row="1"
                         Classes="activity-btn"
-                        Command="{Binding ToggleThemeCommand}"
-                        ToolTip.Tip="Toggle theme"
+                        Command="{Binding OpenSettingsCommand}"
+                        ToolTip.Tip="Settings"
                         Margin="0,0,0,8">
-                  <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Path Data="{StaticResource IconMoon}"
+                  <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                    <Path Data="{StaticResource IconSettings}"
                           Stretch="Uniform"
                           Width="18" Height="18"
                           HorizontalAlignment="Center"
-                          Fill="{DynamicResource TextMuted}"
-                          IsVisible="{Binding IsDarkTheme}" />
-                    <Path Data="{StaticResource IconSun}"
-                          Stretch="Uniform"
-                          Width="18" Height="18"
-                          HorizontalAlignment="Center"
-                          Fill="{DynamicResource TextMuted}"
-                          IsVisible="{Binding !IsDarkTheme}" />
+                          Fill="{DynamicResource TextMuted}" />
+                    <TextBlock Text="SETTINGS"
+                               FontSize="7"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextMuted}" />
                   </StackPanel>
                 </Button>
 

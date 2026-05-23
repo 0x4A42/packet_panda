@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using PacketPanda.Desktop.ViewModels;
+using PacketPanda.Desktop.Views;
 
 namespace PacketPanda.Desktop.Services;
 
@@ -183,5 +185,19 @@ public sealed class AvaloniaDialogService(Window owner) : IDialogService
 
         var result = textBox.Text;
         return string.IsNullOrWhiteSpace(result) ? null : result.Trim();
+    }
+
+    public async Task ShowSettingsAsync(SettingsViewModel vm)
+    {
+        var view = new SettingsView { DataContext = vm };
+        var dialog = new Window
+        {
+            Title = "Settings",
+            Content = view,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            SizeToContent = SizeToContent.WidthAndHeight,
+        };
+        await dialog.ShowDialog(owner);
     }
 }
