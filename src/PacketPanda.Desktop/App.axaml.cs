@@ -15,7 +15,7 @@ namespace PacketPanda.Desktop;
 // ReSharper disable once PartialTypeWithSinglePart
 public partial class App : Application
 {
-    private HttpClient? _httpClient;
+    private HttpRequestSender? _sender;
     private IResourceDictionary? _activeThemeDictionary;
 
     public static App Instance => Current as App ?? throw new InvalidOperationException("App instance not initialized");
@@ -45,10 +45,12 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            ApplyTheme(isDark: false);
+            var startupSettings = JsonSettingsStore.LoadOrDefault();
 
-            _httpClient = new HttpClient(new HttpClientHandler { UseCookies = false });
-            var sender = new HttpRequestSender(_httpClient);
+            ApplyTheme(startupSettings.IsDarkTheme);
+
+            var sender = HttpRequestSender.Create(startupSettings);
+            _sender = sender;
             var collectionStore = new JsonCollectionFileStore();
             var settingsStore = new JsonSettingsStore(JsonSettingsStore.DefaultPath);
             var environmentStore = new JsonEnvironmentFileStore();
@@ -62,7 +64,7 @@ public partial class App : Application
 
             // ReSharper disable AccessToModifiedClosure
             ShellViewModel? shell = null;
-            var historyStore = new JsonHistoryStore(JsonHistoryStore.DefaultPath);
+            var historyStore = new JsonHistoryStore(JsonHistoryStore.DefaultPath, startupSettings.HistoryLimit);
             RequestEditorViewModel EditorFactory() => new(
                 sender,
                 collectionStore,
@@ -94,7 +96,7 @@ public partial class App : Application
 
             _ = InitializeShellAsync(settingsStore, shell);
 
-            desktop.Exit += (_, _) => { _httpClient?.Dispose(); shell.Dispose(); };
+            desktop.Exit += (_, _) => { _sender?.Dispose(); shell.Dispose(); };
         }
 
         base.OnFrameworkInitializationCompleted();
