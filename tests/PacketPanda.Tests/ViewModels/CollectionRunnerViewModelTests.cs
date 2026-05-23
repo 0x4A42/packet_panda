@@ -199,7 +199,8 @@ public sealed class CollectionRunnerViewModelTests
 
         await vm.RunCommand.Execute();
 
-        vm.RunResults[0].ResponseBody.Should().Be("{\"ok\":true}");
+        vm.RunResults[0].ResponseBody.Should().Contain("\"ok\"");
+        vm.RunResults[0].ResponseBody.Should().Contain("\n");
         vm.RunResults[0].ResponseHeaders.Should().ContainSingle(h => h.Name == "Content-Type");
     }
 

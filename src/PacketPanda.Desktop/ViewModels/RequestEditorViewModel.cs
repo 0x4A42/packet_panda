@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Reactive;
-using System.Text.Json;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
@@ -573,7 +572,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public void LoadHistoryResponse(HistoryEntry entry)
     {
         StatusCode = entry.StatusCode;
-        ResponseBody = MaybePrettyPrint(entry.ResponseBody, entry.ResponseHeaders);
+        ResponseBody = ResponseFormatter.MaybePrettyPrint(entry.ResponseBody, entry.ResponseHeaders);
         ElapsedMilliseconds = entry.ElapsedMilliseconds;
         ErrorMessage = entry.ErrorMessage;
 
@@ -724,7 +723,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                     TestResults.Add(new TestResultViewModel(r.Name, r.Passed, r.ErrorMessage));
 
                 StatusCode = ok.Response.StatusCode;
-                ResponseBody = MaybePrettyPrint(ok.Response.Body, ok.Response.Headers);
+                ResponseBody = ResponseFormatter.MaybePrettyPrint(ok.Response.Body, ok.Response.Headers);
                 ElapsedMilliseconds = ok.Response.ElapsedMilliseconds;
                 ErrorMessage = null;
 
@@ -938,23 +937,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             .Where(r => !string.IsNullOrEmpty(r.Name))
             .Select(r => $"{r.Enabled}:{r.Name}:{r.Value}"));
 
-    private static string? MaybePrettyPrint(string? body, IReadOnlyList<HttpHeader>? headers)
-    {
-        if (string.IsNullOrEmpty(body)) return body;
-        var isJson = headers?.Any(h =>
-            h.Name.Equals("Content-Type", StringComparison.OrdinalIgnoreCase) &&
-            h.Value.Contains("application/json", StringComparison.OrdinalIgnoreCase)) ?? false;
-        if (!isJson) return body;
-        try
-        {
-            using var doc = JsonDocument.Parse(body);
-            return JsonSerializer.Serialize(doc.RootElement,
-                new JsonSerializerOptions { WriteIndented = true });
-        }
-        catch (JsonException) { return body; }
-    }
-
-    private FormRowViewModel CreateFormRow() =>
+private FormRowViewModel CreateFormRow() =>
         new FormRowViewModel(row => { FormRows.Remove(row); EnsureTrailingEmptyFormRow(); });
 
     private void EnsureTrailingEmptyFormRow()

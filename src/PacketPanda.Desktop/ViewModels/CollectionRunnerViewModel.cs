@@ -159,7 +159,7 @@ public sealed class CollectionRunnerViewModel : ReactiveObject, ITabContent, IDi
                     var testResults = session.TestResults.ToList();
                     row.StatusCode = ok.Response.StatusCode;
                     row.DurationMs = ok.Response.ElapsedMilliseconds;
-                    row.ResponseBody = ok.Response.Body;
+                    row.ResponseBody = ResponseFormatter.MaybePrettyPrint(ok.Response.Body, ok.Response.Headers);
                     row.ResponseHeaders = ok.Response.Headers;
                     row.TestsTotal = testResults.Count;
                     row.TestsPassed = testResults.Count(t => t.Passed);
