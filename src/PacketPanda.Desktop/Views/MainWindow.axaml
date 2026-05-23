@@ -22,6 +22,43 @@
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
         <conv:EqualityConverter x:Key="EqualityConverter" />
 
+        <!-- Flat TreeViewItem template: no native chevron, indent driven by Level,
+             header stretched so the whole row is clickable. -->
+        <ControlTheme x:Key="{x:Type TreeViewItem}" TargetType="TreeViewItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="14,3,4,3" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <StackPanel>
+                        <Border Name="PART_LayoutRoot"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="5"
+                                MinHeight="{TemplateBinding MinHeight}"
+                                Margin="{Binding Level, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static conv:TreeIndentConverter.Instance}}"
+                                TemplatedControl.IsTemplateFocusTarget="True">
+                            <ContentPresenter Name="PART_HeaderPresenter"
+                                              Content="{TemplateBinding Header}"
+                                              ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                              Padding="{TemplateBinding Padding}"
+                                              HorizontalContentAlignment="Stretch"
+                                              VerticalContentAlignment="Center" />
+                        </Border>
+                        <ItemsPresenter Name="PART_ItemsPresenter"
+                                        IsVisible="{TemplateBinding IsExpanded}"
+                                        ItemsPanel="{TemplateBinding ItemsPanel}" />
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#PART_LayoutRoot">
+                <Setter Property="Background" Value="{DynamicResource TreeRowHover}" />
+            </Style>
+            <Style Selector="^:selected /template/ Border#PART_LayoutRoot">
+                <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
+            </Style>
+        </ControlTheme>
+
         <!-- Minimal chevron toggle: no FluentTheme button chrome, just the glyph -->
         <ControlTheme x:Key="TreeChevronToggle" TargetType="ToggleButton">
             <Setter Property="Background" Value="Transparent" />
@@ -39,42 +76,6 @@
     </Window.Resources>
 
     <Window.Styles>
-      <!-- Flat TreeViewItem template: no native chevron, indent driven by Level,
-           header stretched so the whole row is clickable. -->
-      <ControlTheme TargetType="TreeViewItem">
-          <Setter Property="Background" Value="Transparent" />
-          <Setter Property="Padding" Value="14,3,4,3" />
-          <Setter Property="MinHeight" Value="28" />
-          <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
-          <Setter Property="Template">
-              <ControlTemplate>
-                  <StackPanel>
-                      <Border Name="PART_LayoutRoot"
-                              Background="{TemplateBinding Background}"
-                              CornerRadius="5"
-                              MinHeight="{TemplateBinding MinHeight}"
-                              Margin="{Binding Level, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static conv:TreeIndentConverter.Instance}}"
-                              TemplatedControl.IsTemplateFocusTarget="True">
-                          <ContentPresenter Name="PART_HeaderPresenter"
-                                            Content="{TemplateBinding Header}"
-                                            ContentTemplate="{TemplateBinding HeaderTemplate}"
-                                            Padding="{TemplateBinding Padding}"
-                                            HorizontalContentAlignment="Stretch"
-                                            VerticalContentAlignment="Center" />
-                      </Border>
-                      <ItemsPresenter Name="PART_ItemsPresenter"
-                                      IsVisible="{TemplateBinding IsExpanded}"
-                                      ItemsPanel="{TemplateBinding ItemsPanel}" />
-                  </StackPanel>
-              </ControlTemplate>
-          </Setter>
-          <Style Selector="^:pointerover /template/ Border#PART_LayoutRoot">
-              <Setter Property="Background" Value="{DynamicResource TreeRowHover}" />
-          </Style>
-          <Style Selector="^:selected /template/ Border#PART_LayoutRoot">
-              <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
-          </Style>
-      </ControlTheme>
       <!-- Activity bar button base -->
       <Style Selector="Button.activity-btn">
         <Setter Property="Background" Value="Transparent" />
