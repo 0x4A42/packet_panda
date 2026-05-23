@@ -1111,4 +1111,32 @@ public sealed class RequestEditorViewModelTests
 
         vm.ResponseBody.Should().Be("not valid json {{{");
     }
+
+    [Fact]
+    public void LoadHistoryResponse_JsonBodyWithJsonContentTypeHeader_PrettyPrintsResponseBody()
+    {
+        var minified = "{\"status\":\"ok\",\"count\":3}";
+        var responseHeaders = new List<HttpHeader> { new("Content-Type", "application/json") };
+        var entry = new HistoryEntry(
+            DateTimeOffset.Now,
+            HttpMethod.Get,
+            "https://example.com",
+            Array.Empty<HttpHeader>(),
+            new NoBody(),
+            new NoAuth(),
+            StatusCode: 200,
+            ResponseBody: minified,
+            ResponseHeaders: responseHeaders,
+            ElapsedMilliseconds: 42,
+            ErrorMessage: null);
+
+        var vm = CreateVm();
+        vm.LoadHistoryResponse(entry);
+
+        vm.StatusCode.Should().Be(200);
+        vm.ElapsedMilliseconds.Should().Be(42);
+        vm.ResponseBody.Should().Contain("\n");
+        vm.ResponseBody.Should().Contain("  \"status\"");
+        vm.ResponseBody.Should().Contain("\"ok\"");
+    }
 }

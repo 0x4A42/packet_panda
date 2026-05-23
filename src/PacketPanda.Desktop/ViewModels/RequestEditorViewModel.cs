@@ -937,7 +937,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             .Where(r => !string.IsNullOrEmpty(r.Name))
             .Select(r => $"{r.Enabled}:{r.Name}:{r.Value}"));
 
-private FormRowViewModel CreateFormRow() =>
+    private FormRowViewModel CreateFormRow() =>
         new FormRowViewModel(row => { FormRows.Remove(row); EnsureTrailingEmptyFormRow(); });
 
     private void EnsureTrailingEmptyFormRow()
