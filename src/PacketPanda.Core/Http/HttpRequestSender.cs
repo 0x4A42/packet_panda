@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using SystemHttpMethod = System.Net.Http.HttpMethod;
 
@@ -134,9 +135,48 @@ public sealed class HttpRequestSender : IHttpRequestSender
                         .ToList();
                     message.Content = new FormUrlEncodedContent(encoded);
                     break;
+                case MultipartBody multipart:
+                    var multipartContent = new MultipartFormDataContent();
+                    foreach (var part in multipart.Parts.Where(p => p.Enabled))
+                    {
+                        if (part.Type == MultipartPartType.File)
+                        {
+                            if (!File.Exists(part.Value)) continue;
+                            var stream = File.OpenRead(part.Value);
+                            var streamContent = new StreamContent(stream);
+                            streamContent.Headers.ContentType =
+                                new System.Net.Http.Headers.MediaTypeHeaderValue(MimeTypeFor(part.Value));
+                            multipartContent.Add(streamContent, part.Name, Path.GetFileName(part.Value));
+                        }
+                        else
+                        {
+                            multipartContent.Add(new StringContent(part.Value), part.Name);
+                        }
+                    }
+                    message.Content = multipartContent;
+                    break;
             }
         }
 
         return message;
+    }
+
+    public static string MimeTypeFor(string filePath)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return ext switch
+        {
+            ".json" => "application/json",
+            ".xml"  => "application/xml",
+            ".txt"  => "text/plain",
+            ".html" => "text/html",
+            ".csv"  => "text/csv",
+            ".png"  => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".gif"  => "image/gif",
+            ".pdf"  => "application/pdf",
+            ".zip"  => "application/zip",
+            _       => "application/octet-stream"
+        };
     }
 }
