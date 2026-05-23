@@ -8,11 +8,13 @@ namespace PacketPanda.Tests.Persistence;
 public sealed class JsonCollectionFileStoreTests : IDisposable
 {
     private readonly string _tempPath = Path.GetTempFileName() + ".json";
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
     private readonly ICollectionFileStore _store = new JsonCollectionFileStore();
 
     public void Dispose()
     {
         if (File.Exists(_tempPath)) File.Delete(_tempPath);
+        if (Directory.Exists(_dir)) Directory.Delete(_dir, recursive: true);
     }
 
     private static string MinimalCollection(string name, string itemsJson) => $$"""
@@ -842,5 +844,92 @@ public sealed class JsonCollectionFileStoreTests : IDisposable
         var collection = await _store.LoadAsync(_tempPath);
         var req = collection.Root.Children.Single().Should().BeOfType<RequestNode>().Subject;
         req.Body.Should().BeOfType<NoBody>();
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_MultipartBodyWithTextAndFileParts_RoundTrips()
+    {
+        Directory.CreateDirectory(_dir);
+        var store = new JsonCollectionFileStore();
+        var path = Path.Combine(_dir, "col.json");
+
+        var request = new RequestNode(
+            "req-1", "Upload", path, HttpMethod.Post,
+            "https://example.com/upload",
+            new MultipartBody([
+                new MultipartPart("field1", MultipartPartType.Text, "hello", true),
+                new MultipartPart("file1", MultipartPartType.File, "/path/to/file.png", true),
+                new MultipartPart("disabled", MultipartPartType.Text, "skip", false),
+            ]),
+            [],
+            new NoAuth(),
+            []);
+
+        var collection = new Collection("Test", path,
+            new FolderNode("root", "Test", [request]));
+
+        await store.SaveAsync(path, collection);
+        var loaded = await store.LoadAsync(path);
+        var loadedReq = (RequestNode)loaded.Root.Children[0];
+
+        loadedReq.Body.Should().BeOfType<MultipartBody>();
+        var body = (MultipartBody)loadedReq.Body;
+        body.Parts.Should().HaveCount(3);
+
+        body.Parts[0].Name.Should().Be("field1");
+        body.Parts[0].Type.Should().Be(MultipartPartType.Text);
+        body.Parts[0].Value.Should().Be("hello");
+        body.Parts[0].Enabled.Should().BeTrue();
+
+        body.Parts[1].Name.Should().Be("file1");
+        body.Parts[1].Type.Should().Be(MultipartPartType.File);
+        body.Parts[1].Value.Should().Be("/path/to/file.png");
+        body.Parts[1].Enabled.Should().BeTrue();
+
+        body.Parts[2].Enabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Load_FormDataMode_ParsesMultipartBody()
+    {
+        Directory.CreateDirectory(_dir);
+        var path = Path.Combine(_dir, "col.json");
+
+        var json = """
+        {
+          "info": { "name": "Test" },
+          "item": [{
+            "id": "r1",
+            "name": "Upload",
+            "request": {
+              "method": "POST",
+              "url": { "raw": "https://example.com" },
+              "header": [],
+              "body": {
+                "mode": "formdata",
+                "formdata": [
+                  { "key": "field1", "value": "hello", "type": "text" },
+                  { "key": "file1", "src": "/path/to/file.png", "type": "file" },
+                  { "key": "hidden", "value": "skip", "type": "text", "disabled": true }
+                ]
+              }
+            }
+          }]
+        }
+        """;
+        await File.WriteAllTextAsync(path, json);
+
+        var store = new JsonCollectionFileStore();
+        var collection = await store.LoadAsync(path);
+        var req = (RequestNode)collection.Root.Children[0];
+
+        req.Body.Should().BeOfType<MultipartBody>();
+        var body = (MultipartBody)req.Body;
+        body.Parts.Should().HaveCount(3);
+        body.Parts[0].Type.Should().Be(MultipartPartType.Text);
+        body.Parts[0].Value.Should().Be("hello");
+        body.Parts[1].Type.Should().Be(MultipartPartType.File);
+        body.Parts[1].Value.Should().Be("/path/to/file.png");
+        body.Parts[2].Enabled.Should().BeFalse();
     }
 }
