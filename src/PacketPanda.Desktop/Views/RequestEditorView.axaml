@@ -89,7 +89,7 @@
         <Border Grid.Row="0"
                 Background="{DynamicResource AppBackground}"
                 Padding="0,0,0,8">
-          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="6">
 
             <!-- Method selector -->
             <Border Grid.Column="0"
@@ -182,6 +182,20 @@
                            Foreground="{DynamicResource TextMuted}"
                            FontSize="12" />
               </StackPanel>
+            </Button>
+
+            <!-- Copy as cURL button (ghost) -->
+            <Button Grid.Column="4"
+                    Command="{Binding CopyCurlCommand}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="10,8"
+                    ToolTip.Tip="Copy as cURL">
+              <!-- Copy icon: two overlapping rectangles (document copy) -->
+              <Path Data="M186,32H126a6,6,0,0,0-4.24,1.76l-56,56A6,6,0,0,0,64,94v96a14,14,0,0,0,14,14h28v18a14,14,0,0,0,14,14H192a14,14,0,0,0,14-14V46A14,14,0,0,0,186,32ZM122,57.52V88H91.52Zm68,145.48H120V94a6,6,0,0,0-6-6H76V96h40a2,2,0,0,1,2,2v80h68Zm12,18H120a2,2,0,0,1-2-2V108h66a2,2,0,0,1,2,2Zm-2-118H158V60h30a2,2,0,0,1,2,2Z"
+                    Stretch="Uniform"
+                    Width="14" Height="14"
+                    Fill="{DynamicResource TextMuted}" />
             </Button>
 
           </Grid>
