@@ -1,5 +1,6 @@
 using FluentAssertions;
 using PacketPanda.Core.Http;
+using PacketPanda.Core.Persistence;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
 using WireMock.Server;
@@ -325,5 +326,21 @@ public class HttpRequestSenderTests : IDisposable
             Body: new NoBody()));
 
         result.Should().BeOfType<SendResult.Ok>();
+    }
+
+    [Fact]
+    public void Create_DefaultSettings_ReturnsNonNullSender()
+    {
+        var settings = new AppSettings();
+        var sender = HttpRequestSender.Create(settings);
+        sender.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Create_SslVerificationFalse_ReturnsNonNullSender()
+    {
+        var settings = new AppSettings(SslVerification: false, TimeoutSeconds: 10);
+        var sender = HttpRequestSender.Create(settings);
+        sender.Should().NotBeNull();
     }
 }
