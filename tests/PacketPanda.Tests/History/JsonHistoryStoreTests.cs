@@ -89,4 +89,28 @@ public sealed class JsonHistoryStoreTests : IDisposable
 
         (await store.LoadAsync()).Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task AppendAsync_ExceedsCustomLimit_TrimsToLimit()
+    {
+        var customPath = Path.Combine(Path.GetTempPath(), $"pp-history-custom-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new JsonHistoryStore(customPath, maxEntries: 3);
+            var entry = new HistoryEntry(DateTimeOffset.Now, HttpMethod.Get, "https://a.com",
+                Array.Empty<HttpHeader>(), new NoBody(), new NoAuth(), 200, "ok", null, 10, null);
+
+            await store.AppendAsync(entry);
+            await store.AppendAsync(entry);
+            await store.AppendAsync(entry);
+            await store.AppendAsync(entry); // 4th → should trim to 3
+
+            var entries = await store.LoadAsync();
+            entries.Should().HaveCount(3);
+        }
+        finally
+        {
+            if (File.Exists(customPath)) File.Delete(customPath);
+        }
+    }
 }
