@@ -812,8 +812,42 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private async Task CopyCurlAsync()
     {
         if (_clipboard is null) return;
-        var curl = CurlBuilder.Build(BuildRequest());
+        var curl = CurlBuilder.Build(BuildResolvedRequest());
         await _clipboard.SetTextAsync(curl);
+    }
+
+    private HttpRequest BuildResolvedRequest()
+    {
+        var url = _resolver.Resolve(Url, _activeEnv).Text;
+
+        var headers = Headers
+            .Where(h => h.Enabled && !string.IsNullOrEmpty(h.Name))
+            .Select(h => new HttpHeader(h.Name, _resolver.Resolve(h.Value, _activeEnv).Text))
+            .ToList();
+
+        AuthConfig auth = SelectedAuthType switch
+        {
+            AuthType.Bearer => new BearerAuth(_resolver.Resolve(BearerToken, _activeEnv).Text),
+            AuthType.ApiKey => new ApiKeyAuth(ApiKeyName, _resolver.Resolve(ApiKeyValue, _activeEnv).Text, ApiKeyTarget),
+            AuthType.Basic  => new BasicAuth(
+                _resolver.Resolve(BasicUsername, _activeEnv).Text,
+                _resolver.Resolve(BasicPassword, _activeEnv).Text),
+            _ => new NoAuth()
+        };
+
+        BodyConfig body = SelectedBodyMode switch
+        {
+            BodyMode.Json => new JsonBody(_resolver.Resolve(RawBodyText, _activeEnv).Text),
+            BodyMode.Text => new PlainTextBody(_resolver.Resolve(RawBodyText, _activeEnv).Text),
+            BodyMode.Xml  => new XmlBody(_resolver.Resolve(RawBodyText, _activeEnv).Text),
+            BodyMode.Form => new FormBody(FormRows
+                .Where(r => r.Enabled && !string.IsNullOrEmpty(r.Name))
+                .Select(r => new FormField(r.Name, _resolver.Resolve(r.Value, _activeEnv).Text, r.Enabled))
+                .ToList()),
+            _ => new NoBody()
+        };
+
+        return new HttpRequest(SelectedMethod, url, body, headers, auth);
     }
 
     public void Dispose()
