@@ -4,7 +4,7 @@ namespace PacketPanda.Core.Http;
 
 public static class CurlParser
 {
-    public static ParsedCurlRequest? Parse(string curlString)
+    public static ParsedCurlRequest? Parse(string? curlString)
     {
         if (string.IsNullOrWhiteSpace(curlString)) return null;
 

@@ -11,5 +11,5 @@ public sealed class AvaloniaClipboardService : IClipboardService
         _clipboard = clipboard;
     }
 
-    public Task SetTextAsync(string text) => _clipboard.SetTextAsync(text) ?? Task.CompletedTask;
+    public Task SetTextAsync(string text) => _clipboard.SetTextAsync(text);
 }

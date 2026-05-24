@@ -37,7 +37,7 @@ public sealed class CurlBuilderTests
         var request = new HttpRequest(
             HttpMethod.Get,
             "https://example.com",
-            Headers: [new HttpHeader("Accept", "application/json", true)]);
+            Headers: [new HttpHeader("Accept", "application/json")]);
 
         var result = CurlBuilder.Build(request);
 

@@ -12,7 +12,7 @@ public sealed class CurlParserTests
         var result = CurlParser.Parse("curl https://example.com/api");
 
         result.Should().NotBeNull();
-        result!.Url.Should().Be("https://example.com/api");
+        result.Url.Should().Be("https://example.com/api");
         result.Method.Should().Be(HttpMethod.Get);
         result.Headers.Should().BeEmpty();
         result.Body.Should().BeOfType<NoBody>();
@@ -23,7 +23,8 @@ public sealed class CurlParserTests
     {
         var result = CurlParser.Parse("curl -X GET https://example.com/api");
 
-        result!.Method.Should().Be(HttpMethod.Get);
+        result.Should().NotBeNull();
+        result.Method.Should().Be(HttpMethod.Get);
         result.Url.Should().Be("https://example.com/api");
     }
 
@@ -34,7 +35,7 @@ public sealed class CurlParserTests
             "curl -X POST https://example.com/api -H 'Content-Type: application/json' -d '{\"key\":\"value\"}'");
 
         result.Should().NotBeNull();
-        result!.Method.Should().Be(HttpMethod.Post);
+        result.Method.Should().Be(HttpMethod.Post);
         result.Body.Should().BeOfType<JsonBody>();
         ((JsonBody)result.Body).Text.Should().Be("{\"key\":\"value\"}");
     }
@@ -44,7 +45,8 @@ public sealed class CurlParserTests
     {
         var result = CurlParser.Parse("curl https://example.com -d 'some data'");
 
-        result!.Method.Should().Be(HttpMethod.Post);
+        result.Should().NotBeNull();
+        result.Method.Should().Be(HttpMethod.Post);
         result.Body.Should().BeOfType<PlainTextBody>();
     }
 
@@ -54,7 +56,8 @@ public sealed class CurlParserTests
         var result = CurlParser.Parse(
             "curl https://example.com -H 'Accept: application/json' -H 'X-Api-Key: abc123'");
 
-        result!.Headers.Should().HaveCount(2);
+        result.Should().NotBeNull();
+        result.Headers.Should().HaveCount(2);
         result.Headers[0].Name.Should().Be("Accept");
         result.Headers[0].Value.Should().Be("application/json");
         result.Headers[1].Name.Should().Be("X-Api-Key");
@@ -67,7 +70,8 @@ public sealed class CurlParserTests
         var result = CurlParser.Parse(
             "curl -X POST https://example.com -H 'Content-Type: application/x-www-form-urlencoded' -d 'name=Alice&age=30'");
 
-        result!.Body.Should().BeOfType<FormBody>();
+        result.Should().NotBeNull();
+        result.Body.Should().BeOfType<FormBody>();
         var form = (FormBody)result.Body;
         form.Fields.Should().HaveCount(2);
         form.Fields[0].Name.Should().Be("name");
@@ -81,7 +85,8 @@ public sealed class CurlParserTests
     {
         var result = CurlParser.Parse("curl https://example.com --data-raw 'hello world'");
 
-        result!.Body.Should().BeOfType<PlainTextBody>();
+        result.Should().NotBeNull();
+        result.Body.Should().BeOfType<PlainTextBody>();
         ((PlainTextBody)result.Body).Text.Should().Be("hello world");
     }
 
@@ -90,7 +95,8 @@ public sealed class CurlParserTests
     {
         var result = CurlParser.Parse("curl --url https://example.com/path");
 
-        result!.Url.Should().Be("https://example.com/path");
+        result.Should().NotBeNull();
+        result.Url.Should().Be("https://example.com/path");
     }
 
     [Fact]
@@ -98,13 +104,14 @@ public sealed class CurlParserTests
     {
         var result = CurlParser.Parse("curl 'https://example.com/path?q=1'");
 
-        result!.Url.Should().Be("https://example.com/path?q=1");
+        result.Should().NotBeNull();
+        result.Url.Should().Be("https://example.com/path?q=1");
     }
 
     [Fact]
     public void Parse_NullOrEmpty_ReturnsNull()
     {
-        CurlParser.Parse(null!).Should().BeNull();
+        CurlParser.Parse(null).Should().BeNull();
         CurlParser.Parse(string.Empty).Should().BeNull();
         CurlParser.Parse("   ").Should().BeNull();
     }
@@ -127,7 +134,8 @@ public sealed class CurlParserTests
         var result = CurlParser.Parse(
             "curl https://example.com --data-urlencode 'name=Alice' --data-urlencode 'age=30'");
 
-        result!.Method.Should().Be(HttpMethod.Post);
+        result.Should().NotBeNull();
+        result.Method.Should().Be(HttpMethod.Post);
         result.Body.Should().BeOfType<FormBody>();
         var form = (FormBody)result.Body;
         form.Fields.Should().HaveCount(2);
@@ -142,6 +150,7 @@ public sealed class CurlParserTests
     {
         var builtCurl = CurlBuilder.Build(new HttpRequest(HttpMethod.Get, "https://example.com/it's"));
         var parsed = CurlParser.Parse(builtCurl);
-        parsed!.Url.Should().Be("https://example.com/it's");
+        parsed.Should().NotBeNull();
+        parsed.Url.Should().Be("https://example.com/it's");
     }
 }
