@@ -6,6 +6,7 @@ using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Core.Scripting;
+using PacketPanda.Desktop.Services;
 using ReactiveUI;
 using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
@@ -50,6 +51,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     private readonly System.Reactive.Subjects.Subject<string> _savedSuccessfully = new();
     private readonly IHistoryStore? _historyStore;
     private readonly System.Reactive.Subjects.Subject<HistoryEntry> _historyEntryRecorded = new();
+    private readonly IClipboardService? _clipboard;
 
     private bool _syncingParams;
     private IDisposable? _urlParamsSyncSub;
@@ -77,7 +79,8 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         IObservable<EnvironmentContext?> activeEnvironment,
         Func<string, string, VariableTarget, Task>? updateVariable = null,
         Action? openEnvironmentEditor = null,
-        IHistoryStore? historyStore = null)
+        IHistoryStore? historyStore = null,
+        IClipboardService? clipboardService = null)
     {
         _sender = sender;
         _collectionStore = collectionStore;
@@ -85,6 +88,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _updateVariable = updateVariable;
         _openEnvironmentEditor = openEnvironmentEditor;
         _historyStore = historyStore;
+        _clipboard = clipboardService;
         _activeEnvSub = activeEnvironment.Subscribe(ctx =>
         {
             _activeEnv = ctx?.Merged;
@@ -102,6 +106,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, canSave);
         SelectPreRequestCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PreRequest; });
         SelectPostResponseCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PostResponse; });
+        CopyCurlCommand = ReactiveCommand.CreateFromTask(CopyCurlAsync);
 
         _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RawBodyText, vm => vm.SelectedBodyMode)
             .Subscribe(_ => RecomputeDirty());
@@ -228,7 +233,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         set => this.RaiseAndSetIfChanged(ref _rawBodyText, value);
     }
 
-    public ObservableCollection<FormRowViewModel> FormRows { get; private set; } = new();
+    public ObservableCollection<FormRowViewModel> FormRows { get; } = new();
 
     public bool IsRawBodyMode  => SelectedBodyMode is BodyMode.Json or BodyMode.Text or BodyMode.Xml;
     public bool IsFormBodyMode => SelectedBodyMode == BodyMode.Form;
@@ -292,6 +297,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ReactiveCommand<Unit, Unit> SaveCommand { get; }
     public ReactiveCommand<Unit, Unit> SelectPreRequestCommand { get; }
     public ReactiveCommand<Unit, Unit> SelectPostResponseCommand { get; }
+    public ReactiveCommand<Unit, Unit> CopyCurlCommand { get; }
 
     public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
@@ -572,7 +578,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public void LoadHistoryResponse(HistoryEntry entry)
     {
         StatusCode = entry.StatusCode;
-        ResponseBody = entry.ResponseBody;
+        ResponseBody = ResponseFormatter.MaybePrettyPrint(entry.ResponseBody, entry.ResponseHeaders);
         ElapsedMilliseconds = entry.ElapsedMilliseconds;
         ErrorMessage = entry.ErrorMessage;
 
@@ -723,7 +729,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                     TestResults.Add(new TestResultViewModel(r.Name, r.Passed, r.ErrorMessage));
 
                 StatusCode = ok.Response.StatusCode;
-                ResponseBody = ok.Response.Body;
+                ResponseBody = ResponseFormatter.MaybePrettyPrint(ok.Response.Body, ok.Response.Headers);
                 ElapsedMilliseconds = ok.Response.ElapsedMilliseconds;
                 ErrorMessage = null;
 
@@ -801,6 +807,47 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         {
             ErrorMessage = ex.Message;
         }
+    }
+
+    private async Task CopyCurlAsync()
+    {
+        if (_clipboard is null) return;
+        var curl = CurlBuilder.Build(BuildResolvedRequest());
+        await _clipboard.SetTextAsync(curl);
+    }
+
+    private HttpRequest BuildResolvedRequest()
+    {
+        var url = _resolver.Resolve(Url, _activeEnv).Text;
+
+        var headers = Headers
+            .Where(h => h.Enabled && !string.IsNullOrEmpty(h.Name))
+            .Select(h => new HttpHeader(h.Name, _resolver.Resolve(h.Value, _activeEnv).Text))
+            .ToList();
+
+        AuthConfig auth = SelectedAuthType switch
+        {
+            AuthType.Bearer => new BearerAuth(_resolver.Resolve(BearerToken, _activeEnv).Text),
+            AuthType.ApiKey => new ApiKeyAuth(ApiKeyName, _resolver.Resolve(ApiKeyValue, _activeEnv).Text, ApiKeyTarget),
+            AuthType.Basic  => new BasicAuth(
+                _resolver.Resolve(BasicUsername, _activeEnv).Text,
+                _resolver.Resolve(BasicPassword, _activeEnv).Text),
+            _ => new NoAuth()
+        };
+
+        BodyConfig body = SelectedBodyMode switch
+        {
+            BodyMode.Json => new JsonBody(_resolver.Resolve(RawBodyText, _activeEnv).Text),
+            BodyMode.Text => new PlainTextBody(_resolver.Resolve(RawBodyText, _activeEnv).Text),
+            BodyMode.Xml  => new XmlBody(_resolver.Resolve(RawBodyText, _activeEnv).Text),
+            BodyMode.Form => new FormBody(FormRows
+                .Where(r => r.Enabled && !string.IsNullOrEmpty(r.Name))
+                .Select(r => new FormField(r.Name, _resolver.Resolve(r.Value, _activeEnv).Text, r.Enabled))
+                .ToList()),
+            _ => new NoBody()
+        };
+
+        return new HttpRequest(SelectedMethod, url, body, headers, auth);
     }
 
     public void Dispose()

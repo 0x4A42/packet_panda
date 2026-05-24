@@ -5,6 +5,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.History;
+using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using Environment = PacketPanda.Core.Environments.Environment;
 using PacketPanda.Desktop.Services;
@@ -34,6 +35,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _docOpenSub;
     private readonly IDisposable _collectionEnvFoundSub;
     private readonly IDisposable _historyOpenSub;
+    private readonly IDisposable _pasteCurlSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -93,6 +95,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _docOpenSub = DocsSidebar.DocOpenRequested.Subscribe(OpenDocInTab);
 
         _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
+        _pasteCurlSub = sidebar.PasteCurlRequested.Subscribe(OpenCurlImportInTab);
 
         _collectionEnvFoundSub = sidebar.EnvironmentFileFound
             .Subscribe(path => _ = EnvironmentSidebar.RegisterEnvironmentFromPathAsync(path));
@@ -670,6 +673,23 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private IDisposable WireHistoryCapture(RequestEditorViewModel editor)
         => editor.HistoryEntryRecorded.Subscribe(HistorySidebar.AddEntry);
 
+    private void OpenCurlImportInTab(ParsedCurlRequest parsed)
+    {
+        var editor = _editorFactory();
+        editor.Url = parsed.Url;
+        editor.SelectedMethod = parsed.Method;
+        editor.LoadHeaders(parsed.Headers);
+        editor.LoadBody(parsed.Body);
+        editor.RequestName = "Imported from cURL";
+
+        var tab = new TabViewModel(editor, _dialog);
+        _closeSubscriptions[tab] = new CompositeDisposable(
+            tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
+            WireHistoryCapture(editor));
+        Tabs.Add(tab);
+        ActiveTab = tab;
+    }
+
     public void Dispose()
     {
         _envOpenSub.Dispose();
@@ -683,6 +703,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _docOpenSub.Dispose();
         _collectionEnvFoundSub.Dispose();
         _historyOpenSub.Dispose();
+        _pasteCurlSub.Dispose();
         HistorySidebar.Dispose();
         DocsSidebar.Dispose();
         foreach (var sub in _closeSubscriptions.Values)

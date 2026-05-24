@@ -300,7 +300,7 @@
                       IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}">
 
                     <!-- Toolbar -->
-                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="14,8,8,6" ColumnSpacing="4">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*" Margin="14,8,8,6" ColumnSpacing="4">
                       <Button Grid.Column="0"
                               Classes="toolbar-icon"
                               VerticalAlignment="Center"
@@ -327,7 +327,17 @@
                               Margin="0,2,0,0"
                               Fill="{DynamicResource TextMuted}" />
                       </Button>
-                      <Border Grid.Column="2"
+                      <Button Grid.Column="2"
+                              Classes="toolbar-icon"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="Import from cURL"
+                              Command="{Binding Sidebar.PasteCurlCommand}">
+                        <Path Data="{StaticResource IconCode}"
+                              Stretch="Uniform"
+                              Width="14" Height="14"
+                              Fill="{DynamicResource TextMuted}" />
+                      </Button>
+                      <Border Grid.Column="3"
                               Height="28"
                               Background="{DynamicResource ActivityBarBackground}"
                               BorderBrush="{DynamicResource BorderSubtle}"

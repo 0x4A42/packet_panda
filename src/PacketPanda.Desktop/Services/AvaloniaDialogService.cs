@@ -200,4 +200,57 @@ public sealed class AvaloniaDialogService(Window owner) : IDialogService
         };
         await dialog.ShowDialog(owner);
     }
+
+    public async Task<string?> PromptLargeTextAsync(string title, string placeholder)
+    {
+        var textBox = new TextBox
+        {
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Watermark = placeholder,
+            MinHeight = 140,
+            FontFamily = new FontFamily("Consolas,Menlo,monospace"),
+            FontSize = 12,
+        };
+
+        var okButton = new Button { Content = "Import", IsDefault = true };
+        var cancelButton = new Button { Content = "Cancel", IsCancel = true };
+        var buttonRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 8,
+            Children = { okButton, cancelButton }
+        };
+
+        var panel = new StackPanel
+        {
+            Spacing = 12,
+            Margin = new Avalonia.Thickness(16),
+            Children =
+            {
+                new TextBlock { Text = title, FontWeight = FontWeight.SemiBold },
+                textBox,
+                buttonRow
+            }
+        };
+
+        var dialog = new Window
+        {
+            Title = title,
+            Content = panel,
+            Width = 540,
+            Height = 260,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            SizeToContent = SizeToContent.Height,
+        };
+
+        string? result = null;
+        okButton.Click += (_, _) => { result = textBox.Text; dialog.Close(); };
+        cancelButton.Click += (_, _) => dialog.Close();
+
+        await dialog.ShowDialog(owner);
+        return string.IsNullOrWhiteSpace(result) ? null : result;
+    }
 }

@@ -60,6 +60,11 @@ public partial class App : Application
             var filePicker = new AvaloniaFilePickerService(mainWindow);
             var dialog = new AvaloniaDialogService(mainWindow);
 
+            var avaloniaClipboard = TopLevel.GetTopLevel(mainWindow)?.Clipboard;
+            IClipboardService? clipboardService = avaloniaClipboard is not null
+                ? new AvaloniaClipboardService(avaloniaClipboard)
+                : null;
+
             var sidebar = new CollectionSidebarViewModel(collectionStore, settingsStore, filePicker, dialog);
 
             // ReSharper disable AccessToModifiedClosure
@@ -75,7 +80,8 @@ public partial class App : Application
                 updateVariable: (name, value, target) => shell.UpdateActiveEnvironmentVariableAsync(name, value, target),
                 // ReSharper disable once NullableWarningSuppressionIsUsed
                 openEnvironmentEditor: () => shell.SetEnvironmentsTabCommand.Execute().Subscribe(),
-                historyStore: historyStore);
+                historyStore: historyStore,
+                clipboardService: clipboardService);
 
             var variableResolver = new VariableResolver();
             shell = new ShellViewModel(sidebar, EditorFactory, dialog, environmentStore, filePicker, settingsStore, historyStore,
