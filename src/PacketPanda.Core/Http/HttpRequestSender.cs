@@ -142,8 +142,8 @@ public sealed class HttpRequestSender : IHttpRequestSender
                         if (part.Type == MultipartPartType.File)
                         {
                             if (!File.Exists(part.Value)) continue;
-                            var stream = File.OpenRead(part.Value);
-                            var streamContent = new StreamContent(stream);
+                            var bytes = File.ReadAllBytes(part.Value);
+                            var streamContent = new StreamContent(new MemoryStream(bytes));
                             streamContent.Headers.ContentType =
                                 new System.Net.Http.Headers.MediaTypeHeaderValue(MimeTypeFor(part.Value));
                             multipartContent.Add(streamContent, part.Name, Path.GetFileName(part.Value));
