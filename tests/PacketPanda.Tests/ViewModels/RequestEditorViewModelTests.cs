@@ -1058,4 +1058,55 @@ public sealed class RequestEditorViewModelTests
         _historyStore.Verify(s => s.AppendAsync(It.IsAny<HistoryEntry>()), Times.Never);
         vm.ErrorMessage.Should().Contain("missing");
     }
+
+    [Fact]
+    public void LoadBody_MultipartBody_SetsMultipartModeAndRows()
+    {
+        var vm = CreateVm();
+        var body = new MultipartBody([
+            new MultipartPart("field1", MultipartPartType.Text, "hello", true),
+            new MultipartPart("file1", MultipartPartType.File, "/path/to/file.png", false),
+        ]);
+
+        vm.LoadBody(body);
+
+        vm.SelectedBodyMode.Should().Be(BodyMode.Multipart);
+        vm.MultipartRows.Where(r => !string.IsNullOrEmpty(r.Name)).Should().HaveCount(2);
+        var row0 = vm.MultipartRows.First(r => r.Name == "field1");
+        row0.PartType.Should().Be(MultipartPartType.Text);
+        row0.Value.Should().Be("hello");
+        row0.Enabled.Should().BeTrue();
+        var row1 = vm.MultipartRows.First(r => r.Name == "file1");
+        row1.PartType.Should().Be(MultipartPartType.File);
+        row1.FilePath.Should().Be("/path/to/file.png");
+        row1.Enabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Send_MultipartBody_BuildsCorrectBodyConfig()
+    {
+        MultipartBody? captured = null;
+        _sender
+            .Setup(s => s.SendAsync(
+                It.Is<HttpRequest>(r => r.Body is MultipartBody),
+                It.IsAny<CancellationToken>()))
+            .Callback<HttpRequest, CancellationToken>((r, _) => captured = (MultipartBody?)r.Body)
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, "ok", 10)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com/upload";
+        vm.SelectedMethod = HttpMethod.Post;
+        vm.SelectedBodyMode = BodyMode.Multipart;
+
+        var row = vm.MultipartRows.First();
+        row.Name = "field1";
+        row.PartType = MultipartPartType.Text;
+        row.Value = "hello";
+
+        await vm.SendCommand.Execute();
+
+        captured.Should().NotBeNull();
+        captured!.Parts.Should().Contain(p =>
+            p.Name == "field1" && p.Type == MultipartPartType.Text && p.Value == "hello");
+    }
 }
