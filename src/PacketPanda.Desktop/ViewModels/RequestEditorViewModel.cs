@@ -228,7 +228,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         set => this.RaiseAndSetIfChanged(ref _rawBodyText, value);
     }
 
-    public ObservableCollection<FormRowViewModel> FormRows { get; private set; } = new();
+    public ObservableCollection<FormRowViewModel> FormRows { get; } = new();
 
     public bool IsRawBodyMode  => SelectedBodyMode is BodyMode.Json or BodyMode.Text or BodyMode.Xml;
     public bool IsFormBodyMode => SelectedBodyMode == BodyMode.Form;
@@ -572,7 +572,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public void LoadHistoryResponse(HistoryEntry entry)
     {
         StatusCode = entry.StatusCode;
-        ResponseBody = entry.ResponseBody;
+        ResponseBody = ResponseFormatter.MaybePrettyPrint(entry.ResponseBody, entry.ResponseHeaders);
         ElapsedMilliseconds = entry.ElapsedMilliseconds;
         ErrorMessage = entry.ErrorMessage;
 
@@ -723,7 +723,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                     TestResults.Add(new TestResultViewModel(r.Name, r.Passed, r.ErrorMessage));
 
                 StatusCode = ok.Response.StatusCode;
-                ResponseBody = ok.Response.Body;
+                ResponseBody = ResponseFormatter.MaybePrettyPrint(ok.Response.Body, ok.Response.Headers);
                 ElapsedMilliseconds = ok.Response.ElapsedMilliseconds;
                 ErrorMessage = null;
 

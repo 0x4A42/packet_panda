@@ -1058,4 +1058,85 @@ public sealed class RequestEditorViewModelTests
         _historyStore.Verify(s => s.AppendAsync(It.IsAny<HistoryEntry>()), Times.Never);
         vm.ErrorMessage.Should().Contain("missing");
     }
+
+    [Fact]
+    public async Task Send_JsonContentTypeHeader_PrettyPrintsResponseBody()
+    {
+        var minified = "{\"status\":\"ok\",\"count\":3}";
+        var headers = new List<HttpHeader> { new("Content-Type", "application/json; charset=utf-8") };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, minified, 10, headers)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseBody.Should().Contain("\n");
+        vm.ResponseBody.Should().Contain("  \"status\"");
+        vm.ResponseBody.Should().Contain("\"ok\"");
+    }
+
+    [Fact]
+    public async Task Send_NonJsonContentType_LeavesBodyUntouched()
+    {
+        var body = "plain text response";
+        var headers = new List<HttpHeader> { new("Content-Type", "text/plain") };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, body, 10, headers)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseBody.Should().Be("plain text response");
+    }
+
+    [Fact]
+    public async Task Send_InvalidJsonWithJsonContentType_LeavesBodyUntouched()
+    {
+        var body = "not valid json {{{";
+        var headers = new List<HttpHeader> { new("Content-Type", "application/json") };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, body, 10, headers)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseBody.Should().Be("not valid json {{{");
+    }
+
+    [Fact]
+    public void LoadHistoryResponse_JsonBodyWithJsonContentTypeHeader_PrettyPrintsResponseBody()
+    {
+        var minified = "{\"status\":\"ok\",\"count\":3}";
+        var responseHeaders = new List<HttpHeader> { new("Content-Type", "application/json") };
+        var entry = new HistoryEntry(
+            DateTimeOffset.Now,
+            HttpMethod.Get,
+            "https://example.com",
+            Array.Empty<HttpHeader>(),
+            new NoBody(),
+            new NoAuth(),
+            StatusCode: 200,
+            ResponseBody: minified,
+            ResponseHeaders: responseHeaders,
+            ElapsedMilliseconds: 42,
+            ErrorMessage: null);
+
+        var vm = CreateVm();
+        vm.LoadHistoryResponse(entry);
+
+        vm.StatusCode.Should().Be(200);
+        vm.ElapsedMilliseconds.Should().Be(42);
+        vm.ResponseBody.Should().Contain("\n");
+        vm.ResponseBody.Should().Contain("  \"status\"");
+        vm.ResponseBody.Should().Contain("\"ok\"");
+    }
 }
