@@ -10,6 +10,10 @@
              x:Class="PacketPanda.Desktop.Views.RequestEditorView"
              x:DataType="vm:RequestEditorViewModel">
 
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Ctrl+Return" Command="{Binding SendCommand}" />
+    </UserControl.KeyBindings>
+
     <UserControl.Resources>
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
         <conv:AuthTypeDisplayConverter x:Key="AuthTypeDisplayConverter" />
