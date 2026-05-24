@@ -228,7 +228,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         set => this.RaiseAndSetIfChanged(ref _rawBodyText, value);
     }
 
-    public ObservableCollection<FormRowViewModel> FormRows { get; private set; } = new();
+    public ObservableCollection<FormRowViewModel> FormRows { get; } = new();
 
     public bool IsRawBodyMode  => SelectedBodyMode is BodyMode.Json or BodyMode.Text or BodyMode.Xml;
     public bool IsFormBodyMode => SelectedBodyMode == BodyMode.Form;
