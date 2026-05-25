@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
@@ -33,6 +34,8 @@ public partial class App : Application
         _activeThemeDictionary = AvaloniaXamlLoader.Load(uri) as IResourceDictionary
             ?? throw new InvalidOperationException($"Theme file did not produce a ResourceDictionary: {uri}");
         merged.Insert(0, _activeThemeDictionary);
+
+        RequestedThemeVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
     }
 
     public override void Initialize()

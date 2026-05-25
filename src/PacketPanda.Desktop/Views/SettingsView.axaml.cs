@@ -14,4 +14,10 @@ public partial class SettingsView : UserControl
     {
         AvaloniaXamlLoader.Load(this);
     }
+
+    private void OnNumericValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    {
+        if (sender is NumericUpDown nud && nud.Value is null)
+            nud.Value = nud.Minimum;
+    }
 }

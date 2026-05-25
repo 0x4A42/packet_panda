@@ -11,8 +11,8 @@ public sealed class SettingsViewModel : ViewModelBase
     private bool _isDarkTheme;
     private bool _sslVerification;
     private bool _followRedirects;
-    private int _timeoutSeconds;
-    private int _historyLimit;
+    private decimal? _timeoutSeconds;
+    private decimal? _historyLimit;
 
     public SettingsViewModel(ISettingsStore store, AppSettings current)
     {
@@ -45,13 +45,13 @@ public sealed class SettingsViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _followRedirects, value);
     }
 
-    public int TimeoutSeconds
+    public decimal? TimeoutSeconds
     {
         get => _timeoutSeconds;
         set => this.RaiseAndSetIfChanged(ref _timeoutSeconds, value);
     }
 
-    public int HistoryLimit
+    public decimal? HistoryLimit
     {
         get => _historyLimit;
         set => this.RaiseAndSetIfChanged(ref _historyLimit, value);
@@ -67,8 +67,8 @@ public sealed class SettingsViewModel : ViewModelBase
             IsDarkTheme = IsDarkTheme,
             SslVerification = SslVerification,
             FollowRedirects = FollowRedirects,
-            TimeoutSeconds = Math.Clamp(TimeoutSeconds, 1, 300),
-            HistoryLimit = Math.Clamp(HistoryLimit, 50, 1000),
+            TimeoutSeconds = Math.Clamp((int)(TimeoutSeconds ?? 1), 1, 300),
+            HistoryLimit = Math.Clamp((int)(HistoryLimit ?? 50), 50, 1000),
         };
         await _store.SaveAsync(updated);
 

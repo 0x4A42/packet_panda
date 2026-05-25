@@ -198,6 +198,7 @@ public sealed class AvaloniaDialogService(Window owner) : IDialogService
             CanResize = false,
             SizeToContent = SizeToContent.WidthAndHeight,
         };
+        using var _ = vm.SaveCommand.Subscribe(_ => dialog.Close());
         await dialog.ShowDialog(owner);
     }
 

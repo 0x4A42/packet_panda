@@ -3,7 +3,8 @@
              xmlns:vm="using:PacketPanda.Desktop.ViewModels"
              x:Class="PacketPanda.Desktop.Views.SettingsView"
              x:DataType="vm:SettingsViewModel"
-             Width="380">
+             Width="380"
+             Background="{DynamicResource AppBackground}">
 
   <StackPanel Spacing="20" Margin="24">
 
@@ -45,10 +46,13 @@
         <TextBlock Grid.Column="0" Text="Request timeout (seconds)" VerticalAlignment="Center"
                    Foreground="{DynamicResource TextPrimary}" />
         <NumericUpDown Grid.Column="2"
-                       Value="{Binding TimeoutSeconds}"
+                       Value="{Binding TimeoutSeconds, Mode=TwoWay}"
                        Minimum="1" Maximum="300"
-                       Width="100"
-                       FormatString="0" />
+                       Width="80"
+                       ShowButtonSpinner="False"
+                       ClipValueToMinMax="True"
+                       FormatString="0"
+                       ValueChanged="OnNumericValueChanged" />
       </Grid>
     </StackPanel>
 
@@ -62,10 +66,13 @@
         <TextBlock Grid.Column="0" Text="Max history entries" VerticalAlignment="Center"
                    Foreground="{DynamicResource TextPrimary}" />
         <NumericUpDown Grid.Column="2"
-                       Value="{Binding HistoryLimit}"
+                       Value="{Binding HistoryLimit, Mode=TwoWay}"
                        Minimum="50" Maximum="1000"
-                       Width="100"
-                       FormatString="0" />
+                       Width="80"
+                       ShowButtonSpinner="False"
+                       ClipValueToMinMax="True"
+                       FormatString="0"
+                       ValueChanged="OnNumericValueChanged" />
       </Grid>
     </StackPanel>
 
