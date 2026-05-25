@@ -1,0 +1,90 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PacketPanda.Desktop.ViewModels"
+             x:Class="PacketPanda.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel"
+             Width="380"
+             Background="{DynamicResource AppBackground}">
+
+  <StackPanel Spacing="20" Margin="24">
+
+    <TextBlock Text="Settings"
+               FontSize="16"
+               FontWeight="SemiBold"
+               Foreground="{DynamicResource TextPrimary}" />
+
+    <!-- Theme -->
+    <StackPanel Spacing="6">
+      <TextBlock Text="APPEARANCE"
+                 FontSize="10"
+                 FontWeight="SemiBold"
+                 Foreground="{DynamicResource TextMuted}" />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Column="0" Text="Dark theme" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextPrimary}" />
+        <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsDarkTheme}" OnContent="" OffContent="" />
+      </Grid>
+    </StackPanel>
+
+    <!-- Network -->
+    <StackPanel Spacing="6">
+      <TextBlock Text="NETWORK (takes effect on next launch)"
+                 FontSize="10"
+                 FontWeight="SemiBold"
+                 Foreground="{DynamicResource TextMuted}" />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Column="0" Text="Verify SSL certificates" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextPrimary}" />
+        <ToggleSwitch Grid.Column="1" IsChecked="{Binding SslVerification}" OnContent="" OffContent="" />
+      </Grid>
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Column="0" Text="Follow redirects" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextPrimary}" />
+        <ToggleSwitch Grid.Column="1" IsChecked="{Binding FollowRedirects}" OnContent="" OffContent="" />
+      </Grid>
+      <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
+        <TextBlock Grid.Column="0" Text="Request timeout (seconds)" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextPrimary}" />
+        <NumericUpDown Grid.Column="2"
+                       Value="{Binding TimeoutSeconds, Mode=TwoWay}"
+                       Minimum="1" Maximum="300"
+                       Width="80"
+                       ShowButtonSpinner="False"
+                       ClipValueToMinMax="True"
+                       FormatString="0"
+                       ValueChanged="OnNumericValueChanged" />
+      </Grid>
+    </StackPanel>
+
+    <!-- History -->
+    <StackPanel Spacing="6">
+      <TextBlock Text="HISTORY (takes effect on next launch)"
+                 FontSize="10"
+                 FontWeight="SemiBold"
+                 Foreground="{DynamicResource TextMuted}" />
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBlock Grid.Column="0" Text="Max history entries" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextPrimary}" />
+        <NumericUpDown Grid.Column="2"
+                       Value="{Binding HistoryLimit, Mode=TwoWay}"
+                       Minimum="50" Maximum="1000"
+                       Width="80"
+                       ShowButtonSpinner="False"
+                       ClipValueToMinMax="True"
+                       FormatString="0"
+                       ValueChanged="OnNumericValueChanged" />
+      </Grid>
+    </StackPanel>
+
+    <!-- Save button -->
+    <Button Command="{Binding SaveCommand}"
+            HorizontalAlignment="Right"
+            Padding="16,8"
+            Background="{DynamicResource AccentPrimary}"
+            Foreground="White"
+            CornerRadius="6">
+      Save
+    </Button>
+
+  </StackPanel>
+</UserControl>

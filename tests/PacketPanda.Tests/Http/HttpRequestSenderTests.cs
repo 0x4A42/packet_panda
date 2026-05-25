@@ -1,5 +1,6 @@
 using FluentAssertions;
 using PacketPanda.Core.Http;
+using PacketPanda.Core.Persistence;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
 using WireMock.Server;
@@ -323,6 +324,36 @@ public class HttpRequestSenderTests : IDisposable
         var result = await _sender.SendAsync(new HttpRequest(
             HttpMethod.Post, _server.Url + "/nobody",
             Body: new NoBody()));
+
+        result.Should().BeOfType<SendResult.Ok>();
+    }
+
+    [Fact]
+    public async Task Create_DefaultSettings_CanSendRequest()
+    {
+        _server
+            .Given(Request.Create().WithPath("/create-default").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("ok"));
+
+        var settings = new AppSettings();
+        using var sender = HttpRequestSender.Create(settings);
+        var result = await sender.SendAsync(
+            new HttpRequest(HttpMethod.Get, _server.Url + "/create-default"));
+
+        result.Should().BeOfType<SendResult.Ok>();
+    }
+
+    [Fact]
+    public async Task Create_SslVerificationFalse_CanSendRequest()
+    {
+        _server
+            .Given(Request.Create().WithPath("/create-nossl").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("ok"));
+
+        var settings = new AppSettings(SslVerification: false, TimeoutSeconds: 10);
+        using var sender = HttpRequestSender.Create(settings);
+        var result = await sender.SendAsync(
+            new HttpRequest(HttpMethod.Get, _server.Url + "/create-nossl"));
 
         result.Should().BeOfType<SendResult.Ok>();
     }

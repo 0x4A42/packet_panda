@@ -1,3 +1,5 @@
+using PacketPanda.Desktop.ViewModels;
+
 namespace PacketPanda.Desktop.Services;
 
 public interface IDialogService
@@ -7,4 +9,5 @@ public interface IDialogService
     Task<string?> PromptTextAsync(string title, string prompt);
     Task<string?> PromptLargeTextAsync(string title, string placeholder);
     Task AlertAsync(string title, string message);
+    Task ShowSettingsAsync(SettingsViewModel vm);
 }

@@ -79,12 +79,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         SetHistoryTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.History; });
         SetDocsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Docs; });
         SaveActiveTabCommand = ReactiveCommand.CreateFromTask(SaveActiveTabAsync);
-        ToggleThemeCommand = ReactiveCommand.Create(() =>
-        {
-            IsDarkTheme = !IsDarkTheme;
-            if (Avalonia.Application.Current is App appInstance) appInstance.ApplyTheme(IsDarkTheme);
-            _ = PersistThemeAsync(IsDarkTheme);
-        });
+        OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
 
         HistorySidebar = new HistorySidebarViewModel(historyStore);
         _historyOpenSub = HistorySidebar.HistoryOpenRequested.Subscribe(OpenHistoryEntryInTab);
@@ -206,7 +201,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> SetHistoryTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetDocsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveActiveTabCommand { get; }
-    public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
 
     public async Task InitializeAsync(AppSettings settings)
     {
@@ -648,14 +643,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
         catch (SettingsException) { }
     }
 
-    private async Task PersistThemeAsync(bool isDark)
+    private async Task OpenSettingsAsync()
     {
-        try
-        {
-            var current = await _settings.LoadAsync();
-            await _settings.SaveAsync(current with { IsDarkTheme = isDark });
-        }
-        catch (SettingsException) { }
+        var current = await _settings.LoadAsync();
+        var vm = new SettingsViewModel(_settings, current);
+        await _dialog.ShowSettingsAsync(vm);
+        var updated = await _settings.LoadAsync();
+        IsDarkTheme = updated.IsDarkTheme;
     }
 
     private void OpenHistoryEntryInTab(HistoryEntry entry)

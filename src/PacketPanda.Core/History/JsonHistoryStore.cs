@@ -5,8 +5,6 @@ namespace PacketPanda.Core.History;
 
 public sealed class JsonHistoryStore : IHistoryStore
 {
-    private const int MaxEntries = 200;
-
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
@@ -16,9 +14,14 @@ public sealed class JsonHistoryStore : IHistoryStore
     };
 
     private readonly string _jsonPath;
+    private readonly int _maxEntries;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public JsonHistoryStore(string path) => _jsonPath = path;
+    public JsonHistoryStore(string path, int maxEntries = 200)
+    {
+        _jsonPath = path;
+        _maxEntries = maxEntries;
+    }
 
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -39,8 +42,8 @@ public sealed class JsonHistoryStore : IHistoryStore
         {
             var entries = new List<HistoryEntry>(ReadUnlocked());
             entries.Insert(0, entry);
-            if (entries.Count > MaxEntries)
-                entries.RemoveRange(MaxEntries, entries.Count - MaxEntries);
+            if (entries.Count > _maxEntries)
+                entries.RemoveRange(_maxEntries, entries.Count - _maxEntries);
             WriteUnlocked(entries);
         }
         finally { _gate.Release(); }
