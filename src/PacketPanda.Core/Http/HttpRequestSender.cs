@@ -1,11 +1,12 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using PacketPanda.Core.Persistence;
 using SystemHttpMethod = System.Net.Http.HttpMethod;
 
 namespace PacketPanda.Core.Http;
 
-public sealed class HttpRequestSender : IHttpRequestSender
+public sealed class HttpRequestSender : IHttpRequestSender, IDisposable
 {
     private readonly HttpClient _httpClient;
 
@@ -13,6 +14,25 @@ public sealed class HttpRequestSender : IHttpRequestSender
     {
         _httpClient = httpClient;
     }
+
+    public static HttpRequestSender Create(AppSettings settings)
+    {
+        var handler = new HttpClientHandler
+        {
+            UseCookies = false,
+            AllowAutoRedirect = settings.FollowRedirects,
+            ServerCertificateCustomValidationCallback = settings.SslVerification
+                ? null
+                : HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        };
+        var client = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds)
+        };
+        return new HttpRequestSender(client);
+    }
+
+    public void Dispose() => _httpClient.Dispose();
 
     public async Task<SendResult> SendAsync(HttpRequest request, CancellationToken cancellationToken = default)
     {

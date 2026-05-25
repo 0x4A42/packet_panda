@@ -7,6 +7,7 @@ using PacketPanda.Core.Environments;
 using PacketPanda.Core.History;
 using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
+using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
 using Environment = PacketPanda.Core.Environments.Environment;
 using HttpMethod = PacketPanda.Core.Http.HttpMethod;
@@ -19,6 +20,7 @@ public sealed class RequestEditorViewModelTests
     private readonly Mock<IHttpRequestSender> _sender = new(MockBehavior.Strict);
     private readonly Mock<ICollectionFileStore> _collectionStore = new(MockBehavior.Strict);
     private readonly Mock<IHistoryStore> _historyStore = new(MockBehavior.Strict);
+    private readonly Mock<IClipboardService> _clipboard = new();
 
     private RequestEditorViewModel CreateVm() => new(
         _sender.Object,
@@ -32,6 +34,13 @@ public sealed class RequestEditorViewModelTests
         new VariableResolver(),
         new BehaviorSubject<EnvironmentContext?>(null),
         historyStore: _historyStore.Object);
+
+    private RequestEditorViewModel CreateVmWithClipboard() => new(
+        _sender.Object,
+        _collectionStore.Object,
+        new VariableResolver(),
+        new BehaviorSubject<EnvironmentContext?>(null),
+        clipboardService: _clipboard.Object);
 
     [Fact]
     public async Task Send_PopulatesResponseFieldsFromOkResult()
@@ -1108,5 +1117,117 @@ public sealed class RequestEditorViewModelTests
         captured.Should().NotBeNull();
         captured!.Parts.Should().Contain(p =>
             p.Name == "field1" && p.Type == MultipartPartType.Text && p.Value == "hello");
+    }
+
+    [Fact]
+    public async Task CopyCurl_SimpleGetRequest_CopiesCorrectString()
+    {
+        string? copied = null;
+        _clipboard
+            .Setup(c => c.SetTextAsync(It.IsAny<string>()))
+            .Callback<string>(s => copied = s)
+            .Returns(Task.CompletedTask);
+
+        var vm = CreateVmWithClipboard();
+        vm.Url = "https://example.com/api";
+        vm.SelectedMethod = HttpMethod.Get;
+
+        await vm.CopyCurlCommand.Execute();
+
+        copied.Should().NotBeNull();
+        copied.Should().StartWith("curl -X GET");
+        copied.Should().Contain("example.com/api");
+    }
+
+    [Fact]
+    public async Task CopyCurl_NullClipboard_DoesNotThrow()
+    {
+        var vm = CreateVm(); // no clipboard injected
+        vm.Url = "https://example.com";
+
+        var act = async () => await vm.CopyCurlCommand.Execute();
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Send_JsonContentTypeHeader_PrettyPrintsResponseBody()
+    {
+        var minified = "{\"status\":\"ok\",\"count\":3}";
+        var headers = new List<HttpHeader> { new("Content-Type", "application/json; charset=utf-8") };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, minified, 10, headers)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseBody.Should().Contain("\n");
+        vm.ResponseBody.Should().Contain("  \"status\"");
+        vm.ResponseBody.Should().Contain("\"ok\"");
+    }
+
+    [Fact]
+    public async Task Send_NonJsonContentType_LeavesBodyUntouched()
+    {
+        var body = "plain text response";
+        var headers = new List<HttpHeader> { new("Content-Type", "text/plain") };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, body, 10, headers)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseBody.Should().Be("plain text response");
+    }
+
+    [Fact]
+    public async Task Send_InvalidJsonWithJsonContentType_LeavesBodyUntouched()
+    {
+        var body = "not valid json {{{";
+        var headers = new List<HttpHeader> { new("Content-Type", "application/json") };
+        _sender
+            .Setup(s => s.SendAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SendResult.Ok(new HttpResponse(200, body, 10, headers)));
+
+        var vm = CreateVm();
+        vm.Url = "https://example.com";
+
+        await vm.SendCommand.Execute();
+
+        vm.ResponseBody.Should().Be("not valid json {{{");
+    }
+
+    [Fact]
+    public void LoadHistoryResponse_JsonBodyWithJsonContentTypeHeader_PrettyPrintsResponseBody()
+    {
+        var minified = "{\"status\":\"ok\",\"count\":3}";
+        var responseHeaders = new List<HttpHeader> { new("Content-Type", "application/json") };
+        var entry = new HistoryEntry(
+            DateTimeOffset.Now,
+            HttpMethod.Get,
+            "https://example.com",
+            Array.Empty<HttpHeader>(),
+            new NoBody(),
+            new NoAuth(),
+            StatusCode: 200,
+            ResponseBody: minified,
+            ResponseHeaders: responseHeaders,
+            ElapsedMilliseconds: 42,
+            ErrorMessage: null);
+
+        var vm = CreateVm();
+        vm.LoadHistoryResponse(entry);
+
+        vm.StatusCode.Should().Be(200);
+        vm.ElapsedMilliseconds.Should().Be(42);
+        vm.ResponseBody.Should().Contain("\n");
+        vm.ResponseBody.Should().Contain("  \"status\"");
+        vm.ResponseBody.Should().Contain("\"ok\"");
     }
 }

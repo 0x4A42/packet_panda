@@ -269,25 +269,23 @@
 
                 </StackPanel>
 
-                <!-- Theme toggle pinned to bottom -->
+                <!-- Settings button pinned to bottom -->
                 <Button Grid.Row="1"
                         Classes="activity-btn"
-                        Command="{Binding ToggleThemeCommand}"
-                        ToolTip.Tip="Toggle theme"
+                        Command="{Binding OpenSettingsCommand}"
+                        ToolTip.Tip="Settings"
                         Margin="0,0,0,8">
-                  <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Path Data="{StaticResource IconMoon}"
+                  <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3">
+                    <Path Data="{StaticResource IconSettings}"
                           Stretch="Uniform"
                           Width="18" Height="18"
                           HorizontalAlignment="Center"
-                          Fill="{DynamicResource TextMuted}"
-                          IsVisible="{Binding IsDarkTheme}" />
-                    <Path Data="{StaticResource IconSun}"
-                          Stretch="Uniform"
-                          Width="18" Height="18"
-                          HorizontalAlignment="Center"
-                          Fill="{DynamicResource TextMuted}"
-                          IsVisible="{Binding !IsDarkTheme}" />
+                          Fill="{DynamicResource TextMuted}" />
+                    <TextBlock Text="SETTINGS"
+                               FontSize="7"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextMuted}" />
                   </StackPanel>
                 </Button>
 
@@ -302,7 +300,7 @@
                       IsVisible="{Binding ActiveSidebarTab, Converter={StaticResource EqualityConverter}, ConverterParameter={x:Static vm:SidebarTab.Requests}}">
 
                     <!-- Toolbar -->
-                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="14,8,8,6" ColumnSpacing="4">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*" Margin="14,8,8,6" ColumnSpacing="4">
                       <Button Grid.Column="0"
                               Classes="toolbar-icon"
                               VerticalAlignment="Center"
@@ -329,7 +327,17 @@
                               Margin="0,2,0,0"
                               Fill="{DynamicResource TextMuted}" />
                       </Button>
-                      <Border Grid.Column="2"
+                      <Button Grid.Column="2"
+                              Classes="toolbar-icon"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="Import from cURL"
+                              Command="{Binding Sidebar.PasteCurlCommand}">
+                        <Path Data="{StaticResource IconCode}"
+                              Stretch="Uniform"
+                              Width="14" Height="14"
+                              Fill="{DynamicResource TextMuted}" />
+                      </Button>
+                      <Border Grid.Column="3"
                               Height="28"
                               Background="{DynamicResource ActivityBarBackground}"
                               BorderBrush="{DynamicResource BorderSubtle}"

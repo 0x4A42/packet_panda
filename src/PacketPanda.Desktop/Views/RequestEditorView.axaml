@@ -10,6 +10,10 @@
              x:Class="PacketPanda.Desktop.Views.RequestEditorView"
              x:DataType="vm:RequestEditorViewModel">
 
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Ctrl+Return" Command="{Binding SendCommand}" />
+    </UserControl.KeyBindings>
+
     <UserControl.Resources>
         <conv:HttpMethodBrushConverter x:Key="MethodBrushConverter" />
         <conv:AuthTypeDisplayConverter x:Key="AuthTypeDisplayConverter" />
@@ -89,7 +93,7 @@
         <Border Grid.Row="0"
                 Background="{DynamicResource AppBackground}"
                 Padding="0,0,0,8">
-          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="6">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="6">
 
             <!-- Method selector -->
             <Border Grid.Column="0"
@@ -182,6 +186,19 @@
                            Foreground="{DynamicResource TextMuted}"
                            FontSize="12" />
               </StackPanel>
+            </Button>
+
+            <!-- Copy as cURL button (ghost) -->
+            <Button Grid.Column="4"
+                    Command="{Binding CopyCurlCommand}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="10,8"
+                    ToolTip.Tip="Copy as cURL">
+              <Path Data="{StaticResource IconCode}"
+                    Stretch="Uniform"
+                    Width="14" Height="14"
+                    Fill="{DynamicResource TextMuted}" />
             </Button>
 
           </Grid>

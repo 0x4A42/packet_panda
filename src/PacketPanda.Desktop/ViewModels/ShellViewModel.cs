@@ -5,6 +5,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using PacketPanda.Core.Environments;
 using PacketPanda.Core.History;
+using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using Environment = PacketPanda.Core.Environments.Environment;
 using PacketPanda.Desktop.Services;
@@ -34,6 +35,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private readonly IDisposable _docOpenSub;
     private readonly IDisposable _collectionEnvFoundSub;
     private readonly IDisposable _historyOpenSub;
+    private readonly IDisposable _pasteCurlSub;
 
     private TabViewModel? _activeTab;
     private EnvironmentRef? _selectedEnvironment;
@@ -77,12 +79,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         SetHistoryTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.History; });
         SetDocsTabCommand = ReactiveCommand.Create(() => { ActiveSidebarTab = SidebarTab.Docs; });
         SaveActiveTabCommand = ReactiveCommand.CreateFromTask(SaveActiveTabAsync);
-        ToggleThemeCommand = ReactiveCommand.Create(() =>
-        {
-            IsDarkTheme = !IsDarkTheme;
-            if (Avalonia.Application.Current is App appInstance) appInstance.ApplyTheme(IsDarkTheme);
-            _ = PersistThemeAsync(IsDarkTheme);
-        });
+        OpenSettingsCommand = ReactiveCommand.CreateFromTask(OpenSettingsAsync);
 
         HistorySidebar = new HistorySidebarViewModel(historyStore);
         _historyOpenSub = HistorySidebar.HistoryOpenRequested.Subscribe(OpenHistoryEntryInTab);
@@ -98,6 +95,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _docOpenSub = DocsSidebar.DocOpenRequested.Subscribe(OpenDocInTab);
 
         _requestOpenedSub = sidebar.RequestOpened.Subscribe(node => _ = OpenRequestNodeInTabAsync(node));
+        _pasteCurlSub = sidebar.PasteCurlRequested.Subscribe(OpenCurlImportInTab);
 
         _collectionEnvFoundSub = sidebar.EnvironmentFileFound
             .Subscribe(path => _ = EnvironmentSidebar.RegisterEnvironmentFromPathAsync(path));
@@ -203,7 +201,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> SetHistoryTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SetDocsTabCommand { get; }
     public ReactiveCommand<Unit, Unit> SaveActiveTabCommand { get; }
-    public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
 
     public async Task InitializeAsync(AppSettings settings)
     {
@@ -645,14 +643,13 @@ public class ShellViewModel : ViewModelBase, IDisposable
         catch (SettingsException) { }
     }
 
-    private async Task PersistThemeAsync(bool isDark)
+    private async Task OpenSettingsAsync()
     {
-        try
-        {
-            var current = await _settings.LoadAsync();
-            await _settings.SaveAsync(current with { IsDarkTheme = isDark });
-        }
-        catch (SettingsException) { }
+        var current = await _settings.LoadAsync();
+        var vm = new SettingsViewModel(_settings, current);
+        await _dialog.ShowSettingsAsync(vm);
+        var updated = await _settings.LoadAsync();
+        IsDarkTheme = updated.IsDarkTheme;
     }
 
     private void OpenHistoryEntryInTab(HistoryEntry entry)
@@ -676,6 +673,23 @@ public class ShellViewModel : ViewModelBase, IDisposable
     private IDisposable WireHistoryCapture(RequestEditorViewModel editor)
         => editor.HistoryEntryRecorded.Subscribe(HistorySidebar.AddEntry);
 
+    private void OpenCurlImportInTab(ParsedCurlRequest parsed)
+    {
+        var editor = _editorFactory();
+        editor.Url = parsed.Url;
+        editor.SelectedMethod = parsed.Method;
+        editor.LoadHeaders(parsed.Headers);
+        editor.LoadBody(parsed.Body);
+        editor.RequestName = "Imported from cURL";
+
+        var tab = new TabViewModel(editor, _dialog);
+        _closeSubscriptions[tab] = new CompositeDisposable(
+            tab.CloseRequested.Subscribe(_ => CloseTab(tab)),
+            WireHistoryCapture(editor));
+        Tabs.Add(tab);
+        ActiveTab = tab;
+    }
+
     public void Dispose()
     {
         _envOpenSub.Dispose();
@@ -689,6 +703,7 @@ public class ShellViewModel : ViewModelBase, IDisposable
         _docOpenSub.Dispose();
         _collectionEnvFoundSub.Dispose();
         _historyOpenSub.Dispose();
+        _pasteCurlSub.Dispose();
         HistorySidebar.Dispose();
         DocsSidebar.Dispose();
         foreach (var sub in _closeSubscriptions.Values)

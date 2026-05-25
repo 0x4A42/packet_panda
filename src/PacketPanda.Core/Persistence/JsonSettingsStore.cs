@@ -41,10 +41,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             var dto = JsonSerializer.Deserialize<SettingsDto>(json, Options)
                 ?? new SettingsDto();
-            return new AppSettings(
-                OpenCollectionPaths: dto.OpenCollectionPaths,
-                ActiveEnvironmentName: dto.ActiveEnvironmentName,
-                KnownEnvironmentPaths: dto.KnownEnvironmentPaths);
+            return FromDto(dto);
         }
         catch (JsonException ex)
         {
@@ -66,7 +63,12 @@ public sealed class JsonSettingsStore : ISettingsStore
             ActiveEnvironmentName = settings.ActiveEnvironmentName,
             KnownEnvironmentPaths = settings.KnownEnvironmentPaths is not null and { Count: > 0 }
                 ? settings.KnownEnvironmentPaths.ToList()
-                : null
+                : null,
+            IsDarkTheme = settings.IsDarkTheme,
+            SslVerification = settings.SslVerification,
+            FollowRedirects = settings.FollowRedirects,
+            TimeoutSeconds = settings.TimeoutSeconds,
+            HistoryLimit = settings.HistoryLimit
         };
 
         var json = JsonSerializer.Serialize(dto, Options);
@@ -74,10 +76,40 @@ public sealed class JsonSettingsStore : ISettingsStore
         catch (IOException ex) { throw new SettingsException($"Could not write settings: {ex.Message}", ex); }
     }
 
+    public static AppSettings LoadOrDefault()
+    {
+        try
+        {
+            if (!File.Exists(DefaultPath)) return new AppSettings();
+            var json = File.ReadAllText(DefaultPath);
+            var dto = JsonSerializer.Deserialize<SettingsDto>(json, Options) ?? new SettingsDto();
+            return FromDto(dto);
+        }
+        catch
+        {
+            return new AppSettings();
+        }
+    }
+
+    private static AppSettings FromDto(SettingsDto dto) => new AppSettings(
+        OpenCollectionPaths: dto.OpenCollectionPaths,
+        ActiveEnvironmentName: dto.ActiveEnvironmentName,
+        KnownEnvironmentPaths: dto.KnownEnvironmentPaths,
+        IsDarkTheme: dto.IsDarkTheme,
+        SslVerification: dto.SslVerification,
+        FollowRedirects: dto.FollowRedirects,
+        TimeoutSeconds: dto.TimeoutSeconds,
+        HistoryLimit: dto.HistoryLimit);
+
     private sealed class SettingsDto
     {
         public List<string>? OpenCollectionPaths { get; set; }
         public string? ActiveEnvironmentName { get; set; }
         public List<string>? KnownEnvironmentPaths { get; set; }
+        public bool IsDarkTheme { get; set; }
+        public bool SslVerification { get; set; } = true;
+        public bool FollowRedirects { get; set; } = true;
+        public int TimeoutSeconds { get; set; } = 30;
+        public int HistoryLimit { get; set; } = 200;
     }
 }

@@ -20,6 +20,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     private readonly Subject<object> _editingNodeStarted = new();
     private readonly Subject<FolderNode> _folderRunRequested = new();
     private readonly Subject<string> _environmentFileFound = new();
+    private readonly Subject<ParsedCurlRequest> _pasteCurlRequested = new();
 
     private string? _filterText;
     private string? _errorMessage;
@@ -41,6 +42,7 @@ public class CollectionSidebarViewModel : ReactiveObject
         OpenFilesCommand = ReactiveCommand.CreateFromTask(OpenFilesAsync);
         OpenFolderCommand = ReactiveCommand.CreateFromTask(OpenFolderAsync);
         RemoveCollectionCommand = ReactiveCommand.Create<CollectionViewModel>(RemoveCollection);
+        PasteCurlCommand = ReactiveCommand.CreateFromTask(PasteCurlAsync);
     }
 
     public ObservableCollection<CollectionViewModel> Collections { get; }
@@ -61,6 +63,7 @@ public class CollectionSidebarViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> OpenFilesCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenFolderCommand { get; }
     public ReactiveCommand<CollectionViewModel, Unit> RemoveCollectionCommand { get; }
+    public ReactiveCommand<Unit, Unit> PasteCurlCommand { get; }
 
     public IObservable<RequestNode> RequestOpened => _requestOpened;
     public IObservable<object> EditingNodeStarted => _editingNodeStarted;
@@ -68,6 +71,9 @@ public class CollectionSidebarViewModel : ReactiveObject
 
     /// <summary>Environment files discovered while opening a folder, for the environment sidebar to load.</summary>
     public IObservable<string> EnvironmentFileFound => _environmentFileFound;
+
+    /// <summary>Fires when the user pastes a valid cURL command and wants to open it as a new request tab.</summary>
+    public IObservable<ParsedCurlRequest> PasteCurlRequested => _pasteCurlRequested;
 
     public async Task LoadCollectionsAsync(IReadOnlyList<string> paths)
     {
@@ -227,6 +233,19 @@ public class CollectionSidebarViewModel : ReactiveObject
             await _settings.SaveAsync(current with { OpenCollectionPaths = paths });
         }
         catch (SettingsException) { }
+    }
+
+    private async Task PasteCurlAsync()
+    {
+        var text = await _dialog.PromptLargeTextAsync("Paste cURL command", "curl https://...");
+        if (text is null) return;
+        var parsed = CurlParser.Parse(text);
+        if (parsed is null)
+        {
+            ErrorMessage = "Could not parse cURL command. Make sure it starts with 'curl'.";
+            return;
+        }
+        _pasteCurlRequested.OnNext(parsed);
     }
 }
 
