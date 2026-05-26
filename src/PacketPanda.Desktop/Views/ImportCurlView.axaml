@@ -14,7 +14,7 @@
              AcceptsReturn="True"
              TextWrapping="Wrap"
              Watermark="curl https://..."
-             MinHeight="180"
+             MaxHeight="240"
              FontFamily="Consolas,Menlo,monospace"
              FontSize="12" />
 
