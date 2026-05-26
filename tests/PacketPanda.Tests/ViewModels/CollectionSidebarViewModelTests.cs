@@ -1,6 +1,7 @@
 using System.Reactive.Linq;
 using FluentAssertions;
 using Moq;
+using PacketPanda.Core.Http;
 using PacketPanda.Core.Persistence;
 using PacketPanda.Desktop.Services;
 using PacketPanda.Desktop.ViewModels;
@@ -196,5 +197,48 @@ public sealed class CollectionSidebarViewModelTests
         await vm.RunCollectionCommand.Execute();
 
         captured.Should().BeSameAs(root);
+    }
+
+    [Fact]
+    public async Task PasteCurl_ValidCurlString_FiresPasteCurlRequested()
+    {
+        _dialogMock.Setup(d => d.ShowImportCurlAsync())
+            .ReturnsAsync("curl https://example.com");
+
+        var vm = Build();
+        ParsedCurlRequest? fired = null;
+        vm.PasteCurlRequested.Subscribe(r => fired = r);
+
+        await vm.PasteCurlCommand.Execute();
+
+        fired.Should().NotBeNull();
+        fired!.Url.Should().Be("https://example.com");
+    }
+
+    [Fact]
+    public async Task PasteCurl_UnparseableCurlString_SetsErrorMessage()
+    {
+        _dialogMock.Setup(d => d.ShowImportCurlAsync())
+            .ReturnsAsync("not a curl command");
+
+        var vm = Build();
+        await vm.PasteCurlCommand.Execute();
+
+        vm.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task PasteCurl_UserCancels_DoesNotFireEventOrSetError()
+    {
+        _dialogMock.Setup(d => d.ShowImportCurlAsync()).ReturnsAsync((string?)null);
+
+        var vm = Build();
+        ParsedCurlRequest? fired = null;
+        vm.PasteCurlRequested.Subscribe(r => fired = r);
+
+        await vm.PasteCurlCommand.Execute();
+
+        fired.Should().BeNull();
+        vm.ErrorMessage.Should().BeNull();
     }
 }

@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PacketPanda.Desktop.Views.ImportCurlView"
+             Background="{DynamicResource AppBackground}"
+             Width="540">
+
+  <StackPanel Spacing="12" Margin="24">
+
+    <TextBlock Text="Paste a cURL command. It will open as a new unsaved request tab."
+               Foreground="{DynamicResource TextPrimary}"
+               TextWrapping="Wrap" />
+
+    <TextBox x:Name="CurlTextBox"
+             AcceptsReturn="True"
+             TextWrapping="Wrap"
+             Watermark="curl https://..."
+             MaxHeight="240"
+             FontFamily="Consolas,Menlo,monospace"
+             FontSize="12" />
+
+    <StackPanel Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Spacing="8">
+      <Button x:Name="CancelButton"
+              Content="Cancel"
+              IsCancel="True" />
+      <Button x:Name="ImportButton"
+              Content="Import"
+              IsDefault="True"
+              Background="{DynamicResource AccentPrimary}"
+              Foreground="White"
+              CornerRadius="6"
+              Padding="16,8" />
+    </StackPanel>
+
+  </StackPanel>
+</UserControl>

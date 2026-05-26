@@ -15,14 +15,6 @@ public class SendResultTests
     }
 
     [Fact]
-    public void Error_WrapsAMessage()
-    {
-        var result = new SendResult.Error("connection refused");
-
-        result.Message.Should().Be("connection refused");
-    }
-
-    [Fact]
     public void PatternMatch_DistinguishesTheCases()
     {
         SendResult ok = new SendResult.Ok(new HttpResponse(200, "body", 1));

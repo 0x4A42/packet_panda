@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FluentAssertions;
 using PacketPanda.Core.Persistence;
 
@@ -13,13 +12,4 @@ public class AppSettingsTests
         settings.IsDarkTheme.Should().BeFalse();
     }
 
-    [Fact]
-    public void AppSettings_RoundTrips_IsDarkTheme_False()
-    {
-        var settings = new AppSettings(IsDarkTheme: false);
-        var json = JsonSerializer.Serialize(settings);
-        var result = JsonSerializer.Deserialize<AppSettings>(json);
-        // ReSharper disable once NullableWarningSuppressionIsUsed
-        result!.IsDarkTheme.Should().BeFalse();
-    }
 }

@@ -160,7 +160,7 @@
                               Stretch="Uniform"
                               Width="20" Height="20"
                               HorizontalAlignment="Center"
-                              Stroke="{DynamicResource TextMuted}"
+                              Stroke="{DynamicResource TextPrimary}"
                               StrokeThickness="1.5"
                               StrokeLineCap="Round"
                               StrokeJoin="Round"
@@ -169,7 +169,7 @@
                                    FontSize="7"
                                    FontWeight="SemiBold"
                                    HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource TextMuted}" />
+                                   Foreground="{DynamicResource TextPrimary}" />
                       </StackPanel>
                     </Grid>
                   </Button>
@@ -191,7 +191,7 @@
                               Stretch="Uniform"
                               Width="20" Height="20"
                               HorizontalAlignment="Center"
-                              Stroke="{DynamicResource TextMuted}"
+                              Stroke="{DynamicResource TextPrimary}"
                               StrokeThickness="1.5"
                               StrokeLineCap="Round"
                               StrokeJoin="Round"
@@ -200,7 +200,7 @@
                                    FontSize="7"
                                    FontWeight="SemiBold"
                                    HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource TextMuted}" />
+                                   Foreground="{DynamicResource TextPrimary}" />
                       </StackPanel>
                     </Grid>
                   </Button>
@@ -222,7 +222,7 @@
                               Stretch="Uniform"
                               Width="20" Height="20"
                               HorizontalAlignment="Center"
-                              Stroke="{DynamicResource TextMuted}"
+                              Stroke="{DynamicResource TextPrimary}"
                               StrokeThickness="1.5"
                               StrokeLineCap="Round"
                               StrokeJoin="Round"
@@ -231,7 +231,7 @@
                                    FontSize="7"
                                    FontWeight="SemiBold"
                                    HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource TextMuted}" />
+                                   Foreground="{DynamicResource TextPrimary}" />
                       </StackPanel>
                     </Grid>
                   </Button>
@@ -253,7 +253,7 @@
                               Stretch="Uniform"
                               Width="20" Height="20"
                               HorizontalAlignment="Center"
-                              Stroke="{DynamicResource TextMuted}"
+                              Stroke="{DynamicResource TextPrimary}"
                               StrokeThickness="1.5"
                               StrokeLineCap="Round"
                               StrokeJoin="Round"
@@ -262,7 +262,7 @@
                                    FontSize="7"
                                    FontWeight="SemiBold"
                                    HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource TextMuted}" />
+                                   Foreground="{DynamicResource TextPrimary}" />
                       </StackPanel>
                     </Grid>
                   </Button>
@@ -280,12 +280,12 @@
                           Stretch="Uniform"
                           Width="18" Height="18"
                           HorizontalAlignment="Center"
-                          Fill="{DynamicResource TextMuted}" />
+                          Fill="{DynamicResource TextPrimary}" />
                     <TextBlock Text="SETTINGS"
                                FontSize="7"
                                FontWeight="SemiBold"
                                HorizontalAlignment="Center"
-                               Foreground="{DynamicResource TextMuted}" />
+                               Foreground="{DynamicResource TextPrimary}" />
                   </StackPanel>
                 </Button>
 

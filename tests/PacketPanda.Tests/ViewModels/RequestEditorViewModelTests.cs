@@ -993,20 +993,14 @@ public sealed class RequestEditorViewModelTests
         form.Fields.Should().Contain(f => f.Name == "key" && f.Value == "val");
     }
 
-    [Fact]
-    public void SelectedMethod_Head_IsBodyEnabledFalse()
+    [Theory]
+    [InlineData(HttpMethod.Head, false)]
+    [InlineData(HttpMethod.Post, true)]
+    public void SelectedMethod_IsBodyEnabled_ReflectsWhetherBodyIsAllowed(HttpMethod method, bool expected)
     {
         var vm = CreateVm();
-        vm.SelectedMethod = HttpMethod.Head;
-        vm.IsBodyEnabled.Should().BeFalse();
-    }
-
-    [Fact]
-    public void SelectedMethod_Post_IsBodyEnabledTrue()
-    {
-        var vm = CreateVm();
-        vm.SelectedMethod = HttpMethod.Post;
-        vm.IsBodyEnabled.Should().BeTrue();
+        vm.SelectedMethod = method;
+        vm.IsBodyEnabled.Should().Be(expected);
     }
 
     [Fact]

@@ -41,4 +41,32 @@ public sealed class PolymorphicSerializationTests
         restored.Should().BeOfType<FormBody>().Which.Fields.Should().ContainSingle()
             .Which.Should().Be(new FormField("k", "v", true));
     }
+
+    [Fact]
+    public void XmlBody_RoundTripSerialized_RestoresConcreteType()
+    {
+        BodyConfig original = new XmlBody("<root/>");
+
+        var json = JsonSerializer.Serialize(original, Options);
+        var restored = JsonSerializer.Deserialize<BodyConfig>(json, Options);
+
+        restored.Should().BeOfType<XmlBody>().Which.Text.Should().Be("<root/>");
+    }
+
+    [Fact]
+    public void MultipartBody_RoundTripSerialized_RestoresPartsWithTypes()
+    {
+        BodyConfig original = new MultipartBody([
+            new MultipartPart("field1", MultipartPartType.Text, "hello", true),
+            new MultipartPart("file1", MultipartPartType.File, "/tmp/a.png", false),
+        ]);
+
+        var json = JsonSerializer.Serialize(original, Options);
+        var restored = JsonSerializer.Deserialize<BodyConfig>(json, Options);
+
+        var body = restored.Should().BeOfType<MultipartBody>().Subject;
+        body.Parts.Should().HaveCount(2);
+        body.Parts[0].Should().Be(new MultipartPart("field1", MultipartPartType.Text, "hello", true));
+        body.Parts[1].Should().Be(new MultipartPart("file1", MultipartPartType.File, "/tmp/a.png", false));
+    }
 }

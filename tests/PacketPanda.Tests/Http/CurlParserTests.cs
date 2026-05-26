@@ -108,12 +108,13 @@ public sealed class CurlParserTests
         result.Url.Should().Be("https://example.com/path?q=1");
     }
 
-    [Fact]
-    public void Parse_NullOrEmpty_ReturnsNull()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Parse_NullOrEmptyOrWhitespace_ReturnsNull(string? input)
     {
-        CurlParser.Parse(null).Should().BeNull();
-        CurlParser.Parse(string.Empty).Should().BeNull();
-        CurlParser.Parse("   ").Should().BeNull();
+        CurlParser.Parse(input).Should().BeNull();
     }
 
     [Fact]
@@ -152,5 +153,72 @@ public sealed class CurlParserTests
         var parsed = CurlParser.Parse(builtCurl);
         parsed.Should().NotBeNull();
         parsed.Url.Should().Be("https://example.com/it's");
+    }
+
+    [Fact]
+    public void Parse_XmlContentType_ReturnsXmlBody()
+    {
+        var result = CurlParser.Parse(
+            "curl -X POST https://example.com -H 'Content-Type: application/xml' -d '<root><id>1</id></root>'");
+
+        result.Should().NotBeNull();
+        result.Body.Should().BeOfType<XmlBody>();
+        ((XmlBody)result.Body).Text.Should().Be("<root><id>1</id></root>");
+    }
+
+    [Fact]
+    public void Parse_ExplicitNonGetMethodWithBody_KeepsExplicitMethod()
+    {
+        // DELETE -d body: the method should stay DELETE, not be upgraded to POST
+        var result = CurlParser.Parse("curl -X DELETE https://example.com -d '{}'");
+
+        result.Should().NotBeNull();
+        result.Method.Should().Be(HttpMethod.Delete);
+    }
+
+    [Fact]
+    public void Parse_FormUrlencodedBody_UnescapesSpecialChars()
+    {
+        var result = CurlParser.Parse(
+            "curl -X POST https://example.com -H 'Content-Type: application/x-www-form-urlencoded' -d 'first%20name=John%20Doe&city=New%20York'");
+
+        result.Should().NotBeNull();
+        var form = result.Body.Should().BeOfType<FormBody>().Subject;
+        form.Fields.Should().HaveCount(2);
+        form.Fields[0].Name.Should().Be("first name");
+        form.Fields[0].Value.Should().Be("John Doe");
+        form.Fields[1].Name.Should().Be("city");
+        form.Fields[1].Value.Should().Be("New York");
+    }
+
+    [Fact]
+    public void Parse_MalformedHeaderNoColon_HeaderIsSilentlySkipped()
+    {
+        var result = CurlParser.Parse("curl https://example.com -H 'BadHeaderNoColon'");
+
+        result.Should().NotBeNull();
+        result.Headers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Parse_InvalidMethodName_DefaultsToGet()
+    {
+        // Enum.TryParse fails for unknown method; method stays at default Get
+        var result = CurlParser.Parse("curl -X INVALIDMETHOD https://example.com");
+
+        result.Should().NotBeNull();
+        result.Method.Should().Be(HttpMethod.Get);
+    }
+
+    [Fact]
+    public void Parse_DataUrlencodeWithoutEquals_CreatesFieldWithEmptyValue()
+    {
+        var result = CurlParser.Parse("curl https://example.com --data-urlencode 'justname'");
+
+        result.Should().NotBeNull();
+        var form = result.Body.Should().BeOfType<FormBody>().Subject;
+        form.Fields.Should().ContainSingle();
+        form.Fields[0].Name.Should().Be("justname");
+        form.Fields[0].Value.Should().BeEmpty();
     }
 }

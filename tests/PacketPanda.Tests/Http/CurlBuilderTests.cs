@@ -151,6 +151,20 @@ public sealed class CurlBuilderTests
     }
 
     [Fact]
+    public void Build_XmlBody_IncludesContentTypeAndData()
+    {
+        var request = new HttpRequest(
+            HttpMethod.Post,
+            "https://example.com",
+            new XmlBody("<root><id>1</id></root>"));
+
+        var result = CurlBuilder.Build(request);
+
+        result.Should().Contain("-H 'Content-Type: application/xml'");
+        result.Should().Contain("--data-raw '<root><id>1</id></root>'");
+    }
+
+    [Fact]
     public void Build_ApiKeyQueryParamAuth_AppendsToUrl()
     {
         var request = new HttpRequest(

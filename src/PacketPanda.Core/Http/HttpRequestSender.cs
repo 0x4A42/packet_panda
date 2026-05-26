@@ -158,9 +158,10 @@ public sealed class HttpRequestSender : IHttpRequestSender, IDisposable
                     var multipartContent = new MultipartFormDataContent();
                     // .NET quotes the boundary by default; strip quotes so servers that
                     // don't accept RFC 2046 quoted-string boundaries parse fields correctly.
-                    var boundaryParam = multipartContent.Headers.ContentType!.Parameters
-                        .First(p => p.Name == "boundary");
-                    boundaryParam.Value = boundaryParam.Value!.Trim('"');
+                    var contentType = multipartContent.Headers.ContentType
+                        ?? throw new InvalidOperationException("MultipartFormDataContent has no ContentType header");
+                    var boundaryParam = contentType.Parameters.First(p => p.Name == "boundary");
+                    boundaryParam.Value = boundaryParam.Value?.Trim('"');
                     foreach (var part in multipart.Parts.Where(p => p.Enabled))
                     {
                         if (part.Type == MultipartPartType.File)
