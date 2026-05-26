@@ -595,6 +595,115 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
+                    <!-- Multipart body grid -->
+                    <DataGrid Grid.Row="1"
+                              Margin="0,4"
+                              IsVisible="{Binding IsMultipartBodyMode}"
+                              ItemsSource="{Binding MultipartRows}"
+                              AutoGenerateColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              RowHeight="34"
+                              HeadersVisibility="Column"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="" Width="44" IsReadOnly="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:MultipartRowViewModel">
+                                        <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="NAME" Width="160" IsReadOnly="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:MultipartRowViewModel">
+                                        <TextBox Text="{Binding Name}"
+                                                 Watermark="Name"
+                                                 FontFamily="Consolas,Menlo,monospace"
+                                                 FontSize="12"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 Padding="6,0"
+                                                 VerticalContentAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="TYPE" Width="110" IsReadOnly="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:MultipartRowViewModel">
+                                        <ComboBox ItemsSource="{Binding AvailablePartTypes}"
+                                                  SelectedItem="{Binding PartType}"
+                                                  FontSize="12"
+                                                  Padding="4,2"
+                                                  Background="Transparent"
+                                                  BorderThickness="0" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="VALUE / FILE" Width="*" IsReadOnly="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:MultipartRowViewModel">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding Value}"
+                                                     IsVisible="{Binding IsTextPart}"
+                                                     Watermark="Value"
+                                                     FontFamily="Consolas,Menlo,monospace"
+                                                     FontSize="12"
+                                                     Background="Transparent"
+                                                     BorderThickness="0"
+                                                     Padding="6,0"
+                                                     VerticalContentAlignment="Center" />
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                                        IsVisible="{Binding IsFilePart}" Spacing="4"
+                                                        VerticalAlignment="Center" Margin="6,0">
+                                                <TextBlock Text="{Binding FilePath}"
+                                                           VerticalAlignment="Center"
+                                                           FontFamily="Consolas,Menlo,monospace"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextMuted}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1"
+                                                    Command="{Binding BrowseCommand}"
+                                                    IsVisible="{Binding IsFilePart}"
+                                                    Content="Browse"
+                                                    FontSize="11"
+                                                    Padding="6,2"
+                                                    Background="Transparent"
+                                                    BorderThickness="1"
+                                                    VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="" Width="32" IsReadOnly="True">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:MultipartRowViewModel">
+                                        <Button Command="{Binding RemoveCommand}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="4,0"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Cursor="Hand">
+                                          <Path Data="{StaticResource IconClose}"
+                                                Stretch="Uniform"
+                                                Width="10" Height="10"
+                                                Stroke="{DynamicResource TextMuted}"
+                                                StrokeThickness="2"
+                                                StrokeLineCap="Round"
+                                                Fill="Transparent" />
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
                     <!-- None placeholder -->
                     <Border Grid.Row="1"
                             IsVisible="{Binding IsNoneBodyMode}"
@@ -710,16 +819,36 @@
                 <Border Grid.Row="0"
                         BorderBrush="{DynamicResource BorderSubtle}"
                         BorderThickness="0,0,0,1">
-                    <StackPanel Orientation="Horizontal">
-                        <Button x:Name="RespTabBody" Classes="resp-tab selected"
-                                Content="Body" Click="OnResponseTabClick" />
-                        <Button x:Name="RespTabCookies" Classes="resp-tab"
-                                Content="Cookies" Click="OnResponseTabClick" />
-                        <Button x:Name="RespTabHeaders" Classes="resp-tab"
-                                Content="Headers" Click="OnResponseTabClick" />
-                        <Button x:Name="RespTabTests" Classes="resp-tab"
-                                Content="Tests" Click="OnResponseTabClick" />
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <Button x:Name="RespTabBody" Classes="resp-tab selected"
+                                    Content="Body" Click="OnResponseTabClick" />
+                            <Button x:Name="RespTabCookies" Classes="resp-tab"
+                                    Content="Cookies" Click="OnResponseTabClick" />
+                            <Button x:Name="RespTabHeaders" Classes="resp-tab"
+                                    Content="Headers" Click="OnResponseTabClick" />
+                            <Button x:Name="RespTabTests" Classes="resp-tab"
+                                    Content="Tests" Click="OnResponseTabClick" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Command="{Binding CopyResponseBodyCommand}"
+                                IsVisible="{Binding ResponseBody, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,7"
+                                ToolTip.Tip="Copy response body">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <Path Data="{StaticResource IconCode}"
+                                      Stretch="Uniform"
+                                      Width="13" Height="13"
+                                      Fill="{DynamicResource TextMuted}" />
+                                <TextBlock Text="Copy"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="12" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
                 </Border>
 
                 <!-- Response content -->

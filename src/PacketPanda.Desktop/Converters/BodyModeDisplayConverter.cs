@@ -11,12 +11,13 @@ public sealed class BodyModeDisplayConverter : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is BodyMode mode ? mode switch
         {
-            BodyMode.None => "None",
-            BodyMode.Json => "JSON",
-            BodyMode.Text => "Text",
-            BodyMode.Xml  => "XML",
-            BodyMode.Form => "Form",
-            _             => value.ToString()
+            BodyMode.None      => "None",
+            BodyMode.Json      => "JSON",
+            BodyMode.Text      => "Text",
+            BodyMode.Xml       => "XML",
+            BodyMode.Form      => "Form",
+            BodyMode.Multipart => "Multipart",
+            _                  => value.ToString()
         } : value;
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>

@@ -329,6 +329,40 @@ public class HttpRequestSenderTests : IDisposable
     }
 
     [Fact]
+    public async Task Send_MultipartBodyWithTextPart_SendsMultipartFormData()
+    {
+        _server
+            .Given(Request.Create().WithPath("/upload").UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("uploaded"));
+
+        var request = new HttpRequest(
+            HttpMethod.Post,
+            _server.Url + "/upload",
+            new MultipartBody([
+                new MultipartPart("field1", MultipartPartType.Text, "hello", true),
+                new MultipartPart("disabled", MultipartPartType.Text, "skip", false),
+            ]));
+
+        var result = await _sender.SendAsync(request);
+
+        result.Should().BeOfType<SendResult.Ok>();
+        _server.LogEntries.Should().ContainSingle(e =>
+            e.RequestMessage!.Path == "/upload" &&
+            e.RequestMessage!.Headers!.ContainsKey("Content-Type") &&
+            e.RequestMessage!.Headers!["Content-Type"].Any(v => v.Contains("multipart/form-data")));
+    }
+
+    [Fact]
+    public void MimeTypeFor_KnownExtensions_ReturnsCorrectType()
+    {
+        HttpRequestSender.MimeTypeFor("image.png").Should().Be("image/png");
+        HttpRequestSender.MimeTypeFor("data.json").Should().Be("application/json");
+        HttpRequestSender.MimeTypeFor("doc.pdf").Should().Be("application/pdf");
+        HttpRequestSender.MimeTypeFor("file.unknown").Should().Be("application/octet-stream");
+        HttpRequestSender.MimeTypeFor("noextension").Should().Be("application/octet-stream");
+    }
+
+    [Fact]
     public async Task Create_DefaultSettings_CanSendRequest()
     {
         _server

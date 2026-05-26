@@ -7,4 +7,5 @@ public interface IFilePickerService
     Task<IReadOnlyList<string>> PickOpenMultipleAsync();
     Task<string?> PickOpenFolderAsync();
     Task<string?> PickSaveCollectionAsync();
+    Task<string?> PickSingleFileAsync();
 }

@@ -154,9 +154,63 @@ public sealed class HttpRequestSender : IHttpRequestSender, IDisposable
                         .ToList();
                     message.Content = new FormUrlEncodedContent(encoded);
                     break;
+                case MultipartBody multipart:
+                    var multipartContent = new MultipartFormDataContent();
+                    // .NET quotes the boundary by default; strip quotes so servers that
+                    // don't accept RFC 2046 quoted-string boundaries parse fields correctly.
+                    var boundaryParam = multipartContent.Headers.ContentType!.Parameters
+                        .First(p => p.Name == "boundary");
+                    boundaryParam.Value = boundaryParam.Value!.Trim('"');
+                    foreach (var part in multipart.Parts.Where(p => p.Enabled))
+                    {
+                        if (part.Type == MultipartPartType.File)
+                        {
+                            if (!File.Exists(part.Value)) continue;
+                            var bytes = File.ReadAllBytes(part.Value);
+                            var fileContent = new ByteArrayContent(bytes);
+                            fileContent.Headers.ContentType =
+                                new System.Net.Http.Headers.MediaTypeHeaderValue(MimeTypeFor(part.Value));
+                            // Write Content-Disposition as a raw string to avoid .NET encoding
+                            // the name/filename with RFC 5987 (name*=UTF-8'') which many servers
+                            // don't recognise as the standard `name` parameter.
+                            fileContent.Headers.TryAddWithoutValidation(
+                                "Content-Disposition",
+                                $"form-data; name=\"{part.Name}\"; filename=\"{Path.GetFileName(part.Value)}\"");
+                            multipartContent.Add(fileContent);
+                        }
+                        else
+                        {
+                            var textContent = new StringContent(part.Value, Encoding.UTF8);
+                            textContent.Headers.TryAddWithoutValidation(
+                                "Content-Disposition",
+                                $"form-data; name=\"{part.Name}\"");
+                            multipartContent.Add(textContent);
+                        }
+                    }
+                    message.Content = multipartContent;
+                    break;
             }
         }
 
         return message;
+    }
+
+    public static string MimeTypeFor(string filePath)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return ext switch
+        {
+            ".json" => "application/json",
+            ".xml"  => "application/xml",
+            ".txt"  => "text/plain",
+            ".html" => "text/html",
+            ".csv"  => "text/csv",
+            ".png"  => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".gif"  => "image/gif",
+            ".pdf"  => "application/pdf",
+            ".zip"  => "application/zip",
+            _       => "application/octet-stream"
+        };
     }
 }

@@ -55,6 +55,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
 
     private bool _syncingParams;
     private IDisposable? _urlParamsSyncSub;
+    private IFilePickerService? _filePickerService;
 
     private string _preRequestScript = string.Empty;
     private string _postResponseScript = string.Empty;
@@ -66,6 +67,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         BodyMode BodyMode,
         string RawBodyText,
         string FormKey,
+        string MultipartKey,
         string HeadersKey,
         string AuthKey,
         string ParamsKey,
@@ -80,6 +82,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         Func<string, string, VariableTarget, Task>? updateVariable = null,
         Action? openEnvironmentEditor = null,
         IHistoryStore? historyStore = null,
+        IFilePickerService? filePickerService = null,
         IClipboardService? clipboardService = null)
     {
         _sender = sender;
@@ -88,6 +91,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         _updateVariable = updateVariable;
         _openEnvironmentEditor = openEnvironmentEditor;
         _historyStore = historyStore;
+        _filePickerService = filePickerService;
         _clipboard = clipboardService;
         _activeEnvSub = activeEnvironment.Subscribe(ctx =>
         {
@@ -107,6 +111,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SelectPreRequestCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PreRequest; });
         SelectPostResponseCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PostResponse; });
         CopyCurlCommand = ReactiveCommand.CreateFromTask(CopyCurlAsync);
+        CopyResponseBodyCommand = ReactiveCommand.CreateFromTask(CopyResponseBodyAsync);
 
         _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RawBodyText, vm => vm.SelectedBodyMode)
             .Subscribe(_ => RecomputeDirty());
@@ -181,6 +186,24 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         };
         EnsureTrailingEmptyFormRow();
 
+        MultipartRows = new ObservableCollection<MultipartRowViewModel>();
+        void OnMultipartRowChanged(object? s, PropertyChangedEventArgs e)
+        {
+            EnsureTrailingEmptyMultipartRow();
+            RecomputeDirty();
+        }
+        MultipartRows.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems is not null)
+                foreach (MultipartRowViewModel row in e.NewItems)
+                    row.PropertyChanged += OnMultipartRowChanged;
+            if (e.OldItems is not null)
+                foreach (MultipartRowViewModel row in e.OldItems)
+                    row.PropertyChanged -= OnMultipartRowChanged;
+            RecomputeDirty();
+        };
+        EnsureTrailingEmptyMultipartRow();
+
         CaptureSnapshot();
     }
 
@@ -222,6 +245,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
             this.RaiseAndSetIfChanged(ref _selectedBodyMode, value);
             this.RaisePropertyChanged(nameof(IsRawBodyMode));
             this.RaisePropertyChanged(nameof(IsFormBodyMode));
+            this.RaisePropertyChanged(nameof(IsMultipartBodyMode));
             this.RaisePropertyChanged(nameof(IsNoneBodyMode));
             RecomputeDirty();
         }
@@ -233,15 +257,17 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         set => this.RaiseAndSetIfChanged(ref _rawBodyText, value);
     }
 
-    public ObservableCollection<FormRowViewModel> FormRows { get; } = new();
+    public ObservableCollection<FormRowViewModel> FormRows { get; private set; } = new();
+    public ObservableCollection<MultipartRowViewModel> MultipartRows { get; private set; } = new();
 
-    public bool IsRawBodyMode  => SelectedBodyMode is BodyMode.Json or BodyMode.Text or BodyMode.Xml;
-    public bool IsFormBodyMode => SelectedBodyMode == BodyMode.Form;
-    public bool IsNoneBodyMode => SelectedBodyMode == BodyMode.None;
-    public bool IsBodyEnabled  => SelectedMethod != HttpMethod.Head;
+    public bool IsRawBodyMode       => SelectedBodyMode is BodyMode.Json or BodyMode.Text or BodyMode.Xml;
+    public bool IsFormBodyMode      => SelectedBodyMode == BodyMode.Form;
+    public bool IsMultipartBodyMode => SelectedBodyMode == BodyMode.Multipart;
+    public bool IsNoneBodyMode      => SelectedBodyMode == BodyMode.None;
+    public bool IsBodyEnabled       => SelectedMethod != HttpMethod.Head;
 
     public BodyMode[] AvailableBodyModes { get; } =
-        [BodyMode.None, BodyMode.Json, BodyMode.Text, BodyMode.Xml, BodyMode.Form];
+        [BodyMode.None, BodyMode.Json, BodyMode.Text, BodyMode.Xml, BodyMode.Form, BodyMode.Multipart];
 
     public int? StatusCode
     {
@@ -298,6 +324,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ReactiveCommand<Unit, Unit> SelectPreRequestCommand { get; }
     public ReactiveCommand<Unit, Unit> SelectPostResponseCommand { get; }
     public ReactiveCommand<Unit, Unit> CopyCurlCommand { get; }
+    public ReactiveCommand<Unit, Unit> CopyResponseBodyCommand { get; }
 
     public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
@@ -476,6 +503,15 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                 .Where(r => !string.IsNullOrEmpty(r.Name))
                 .Select(r => new FormField(r.Name, r.Value, r.Enabled))
                 .ToList()),
+        BodyMode.Multipart => new MultipartBody(
+            MultipartRows
+                .Where(r => !string.IsNullOrEmpty(r.Name))
+                .Select(r => new MultipartPart(
+                    r.Name,
+                    r.PartType,
+                    r.PartType == MultipartPartType.File ? r.FilePath : r.Value,
+                    r.Enabled))
+                .ToList()),
         _ => new NoBody()
     };
 
@@ -560,6 +596,23 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                     FormRows.Add(row);
                 }
                 EnsureTrailingEmptyFormRow();
+                break;
+            case MultipartBody multipart:
+                SelectedBodyMode = BodyMode.Multipart;
+                MultipartRows.Clear();
+                foreach (var p in multipart.Parts)
+                {
+                    var row = CreateMultipartRow();
+                    row.Enabled = p.Enabled;
+                    row.Name = p.Name;
+                    row.PartType = p.Type;
+                    if (p.Type == MultipartPartType.File)
+                        row.FilePath = p.Value;
+                    else
+                        row.Value = p.Value;
+                    MultipartRows.Add(row);
+                }
+                EnsureTrailingEmptyMultipartRow();
                 break;
             default:
                 SelectedBodyMode = BodyMode.None;
@@ -682,6 +735,19 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
                     fields.Add(new FormField(row.Name, r.Text, true));
                 }
                 resolvedBody = new FormBody(fields);
+                break;
+            }
+            case BodyMode.Multipart:
+            {
+                var parts = MultipartRows
+                    .Where(r => r.Enabled && !string.IsNullOrEmpty(r.Name))
+                    .Select(r => new MultipartPart(
+                        r.Name,
+                        r.PartType,
+                        r.PartType == MultipartPartType.File ? r.FilePath : r.Value,
+                        true))
+                    .ToList();
+                resolvedBody = new MultipartBody(parts);
                 break;
             }
             default:
@@ -816,6 +882,12 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         await _clipboard.SetTextAsync(curl);
     }
 
+    private async Task CopyResponseBodyAsync()
+    {
+        if (_clipboard is null || _responseBody is null) return;
+        await _clipboard.SetTextAsync(_responseBody);
+    }
+
     private HttpRequest BuildResolvedRequest()
     {
         var url = _resolver.Resolve(Url, _activeEnv).Text;
@@ -865,7 +937,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     {
         IsDirty = _savedSnapshot != new RequestSnapshot(
             SelectedMethod, Url, SelectedBodyMode, RawBodyText, ComputeFormKey(),
-            ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
+            ComputeMultipartKey(), ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
             PreRequestScript, PostResponseScript);
     }
 
@@ -974,7 +1046,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     {
         _savedSnapshot = new RequestSnapshot(
             SelectedMethod, Url, SelectedBodyMode, RawBodyText, ComputeFormKey(),
-            ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
+            ComputeMultipartKey(), ComputeHeadersKey(), ComputeAuthKey(), ComputeParamsKey(),
             PreRequestScript, PostResponseScript);
         IsDirty = false;
     }
@@ -993,6 +1065,23 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         if (last is null || !string.IsNullOrEmpty(last.Name) || !string.IsNullOrEmpty(last.Value))
             FormRows.Add(CreateFormRow());
     }
+
+    private MultipartRowViewModel CreateMultipartRow() =>
+        new MultipartRowViewModel(
+            row => { MultipartRows.Remove(row); EnsureTrailingEmptyMultipartRow(); },
+            _filePickerService);
+
+    private void EnsureTrailingEmptyMultipartRow()
+    {
+        var last = MultipartRows.LastOrDefault();
+        if (last is null || !string.IsNullOrEmpty(last.Name))
+            MultipartRows.Add(CreateMultipartRow());
+    }
+
+    private string ComputeMultipartKey() =>
+        string.Join("|", MultipartRows
+            .Where(r => !string.IsNullOrEmpty(r.Name))
+            .Select(r => $"{r.Enabled}:{r.Name}:{r.PartType}:{(r.PartType == MultipartPartType.File ? r.FilePath : r.Value)}"));
 
     public void MarkSaved() => CaptureSnapshot();
 

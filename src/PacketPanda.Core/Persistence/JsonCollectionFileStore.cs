@@ -137,6 +137,33 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                         }
                         body = new FormBody(fields);
                     }
+                    else if (mode == "formdata")
+                    {
+                        var parts = new List<MultipartPart>();
+                        if (bodyEl.TryGetProperty("formdata", out var fdArr))
+                        {
+                            foreach (var f in fdArr.EnumerateArray())
+                            {
+                                var fKey = f.TryGetProperty("key", out var fkEl) ? fkEl.GetString() ?? string.Empty : string.Empty;
+                                var fType = f.TryGetProperty("type", out var ftEl) ? ftEl.GetString() : "text";
+                                var fDis = f.TryGetProperty("disabled", out var fdEl) && fdEl.GetBoolean();
+                                string fVal;
+                                MultipartPartType partType;
+                                if (fType == "file")
+                                {
+                                    fVal = f.TryGetProperty("src", out var srcEl) ? srcEl.GetString() ?? string.Empty : string.Empty;
+                                    partType = MultipartPartType.File;
+                                }
+                                else
+                                {
+                                    fVal = f.TryGetProperty("value", out var fvEl) ? fvEl.GetString() ?? string.Empty : string.Empty;
+                                    partType = MultipartPartType.Text;
+                                }
+                                parts.Add(new MultipartPart(fKey, partType, fVal, !fDis));
+                            }
+                        }
+                        body = new MultipartBody(parts);
+                    }
                     else if (mode == "raw" && !string.IsNullOrEmpty(raw))
                     {
                         var language = string.Empty;
@@ -303,6 +330,30 @@ public sealed class JsonCollectionFileStore : ICollectionFileStore
                             writer.WriteString("key", f.Name);
                             writer.WriteString("value", f.Value);
                             if (!f.Enabled) writer.WriteBoolean("disabled", true);
+                            writer.WriteEndObject();
+                        }
+                        writer.WriteEndArray();
+                        writer.WriteEndObject();
+                        break;
+                    case MultipartBody multipart:
+                        writer.WriteStartObject("body");
+                        writer.WriteString("mode", "formdata");
+                        writer.WriteStartArray("formdata");
+                        foreach (var p in multipart.Parts)
+                        {
+                            writer.WriteStartObject();
+                            writer.WriteString("key", p.Name);
+                            if (p.Type == MultipartPartType.File)
+                            {
+                                writer.WriteString("type", "file");
+                                writer.WriteString("src", p.Value);
+                            }
+                            else
+                            {
+                                writer.WriteString("type", "text");
+                                writer.WriteString("value", p.Value);
+                            }
+                            if (!p.Enabled) writer.WriteBoolean("disabled", true);
                             writer.WriteEndObject();
                         }
                         writer.WriteEndArray();
