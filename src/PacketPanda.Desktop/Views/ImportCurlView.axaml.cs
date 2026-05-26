@@ -13,9 +13,15 @@ public partial class ImportCurlView : UserControl
     public ImportCurlView()
     {
         InitializeComponent();
-        _curlTextBox = this.FindControl<TextBox>("CurlTextBox")!;
-        this.FindControl<Button>("ImportButton")!.Click += (_, _) => { Result = _curlTextBox.Text; CloseParent(); };
-        this.FindControl<Button>("CancelButton")!.Click += (_, _) => CloseParent();
+        _curlTextBox = this.FindControl<TextBox>("CurlTextBox")
+            ?? throw new InvalidOperationException("CurlTextBox not found in ImportCurlView");
+        var importButton = this.FindControl<Button>("ImportButton")
+            ?? throw new InvalidOperationException("ImportButton not found in ImportCurlView");
+        var cancelButton = this.FindControl<Button>("CancelButton")
+            ?? throw new InvalidOperationException("CancelButton not found in ImportCurlView");
+
+        importButton.Click += (_, _) => { Result = _curlTextBox.Text; CloseParent(); };
+        cancelButton.Click += (_, _) => CloseParent();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
