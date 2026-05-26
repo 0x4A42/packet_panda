@@ -239,46 +239,21 @@ public class HttpRequestSenderTests : IDisposable
             h.Name.Equals("X-Request-Id", StringComparison.OrdinalIgnoreCase) && h.Value == "abc123");
     }
 
-    [Fact]
-    public async Task Patch_SendsWithPatchMethod()
+    [Theory]
+    [InlineData(HttpMethod.Patch, "PATCH", 200)]
+    [InlineData(HttpMethod.Head, "HEAD", 200)]
+    [InlineData(HttpMethod.Options, "OPTIONS", 204)]
+    public async Task Send_LesserUsedMethod_IsForwardedCorrectly(HttpMethod method, string wireMockMethod, int expectedStatus)
     {
+        var path = "/" + wireMockMethod.ToLower();
         _server
-            .Given(Request.Create().WithPath("/item/1").UsingMethod("PATCH"))
-            .RespondWith(Response.Create().WithStatusCode(200).WithBody("patched"));
+            .Given(Request.Create().WithPath(path).UsingMethod(wireMockMethod))
+            .RespondWith(Response.Create().WithStatusCode(expectedStatus));
 
-        var result = await _sender.SendAsync(
-            new HttpRequest(HttpMethod.Patch, _server.Url + "/item/1"));
+        var result = await _sender.SendAsync(new HttpRequest(method, _server.Url + path));
 
         result.Should().BeOfType<SendResult.Ok>()
-            .Which.Response.StatusCode.Should().Be(200);
-    }
-
-    [Fact]
-    public async Task Head_SendsWithHeadMethod_ReturnsOk()
-    {
-        _server
-            .Given(Request.Create().WithPath("/check").UsingMethod("HEAD"))
-            .RespondWith(Response.Create().WithStatusCode(200));
-
-        var result = await _sender.SendAsync(
-            new HttpRequest(HttpMethod.Head, _server.Url + "/check"));
-
-        result.Should().BeOfType<SendResult.Ok>()
-            .Which.Response.StatusCode.Should().Be(200);
-    }
-
-    [Fact]
-    public async Task Options_SendsWithOptionsMethod()
-    {
-        _server
-            .Given(Request.Create().WithPath("/resource").UsingMethod("OPTIONS"))
-            .RespondWith(Response.Create().WithStatusCode(204));
-
-        var result = await _sender.SendAsync(
-            new HttpRequest(HttpMethod.Options, _server.Url + "/resource"));
-
-        result.Should().BeOfType<SendResult.Ok>()
-            .Which.Response.StatusCode.Should().Be(204);
+            .Which.Response.StatusCode.Should().Be(expectedStatus);
     }
 
     [Fact]
@@ -352,14 +327,15 @@ public class HttpRequestSenderTests : IDisposable
             e.RequestMessage!.Headers!["Content-Type"].Any(v => v.Contains("multipart/form-data")));
     }
 
-    [Fact]
-    public void MimeTypeFor_KnownExtensions_ReturnsCorrectType()
+    [Theory]
+    [InlineData("image.png", "image/png")]
+    [InlineData("data.json", "application/json")]
+    [InlineData("doc.pdf", "application/pdf")]
+    [InlineData("file.unknown", "application/octet-stream")]
+    [InlineData("noextension", "application/octet-stream")]
+    public void MimeTypeFor_ReturnsCorrectMimeType(string filename, string expected)
     {
-        HttpRequestSender.MimeTypeFor("image.png").Should().Be("image/png");
-        HttpRequestSender.MimeTypeFor("data.json").Should().Be("application/json");
-        HttpRequestSender.MimeTypeFor("doc.pdf").Should().Be("application/pdf");
-        HttpRequestSender.MimeTypeFor("file.unknown").Should().Be("application/octet-stream");
-        HttpRequestSender.MimeTypeFor("noextension").Should().Be("application/octet-stream");
+        HttpRequestSender.MimeTypeFor(filename).Should().Be(expected);
     }
 
     [Fact]
