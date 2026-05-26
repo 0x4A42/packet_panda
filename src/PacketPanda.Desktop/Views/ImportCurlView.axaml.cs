@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 
 namespace PacketPanda.Desktop.Views;
 
+// ReSharper disable once PartialTypeWithSinglePart
 public partial class ImportCurlView : UserControl
 {
     private readonly TextBox _curlTextBox;
