@@ -819,16 +819,36 @@
                 <Border Grid.Row="0"
                         BorderBrush="{DynamicResource BorderSubtle}"
                         BorderThickness="0,0,0,1">
-                    <StackPanel Orientation="Horizontal">
-                        <Button x:Name="RespTabBody" Classes="resp-tab selected"
-                                Content="Body" Click="OnResponseTabClick" />
-                        <Button x:Name="RespTabCookies" Classes="resp-tab"
-                                Content="Cookies" Click="OnResponseTabClick" />
-                        <Button x:Name="RespTabHeaders" Classes="resp-tab"
-                                Content="Headers" Click="OnResponseTabClick" />
-                        <Button x:Name="RespTabTests" Classes="resp-tab"
-                                Content="Tests" Click="OnResponseTabClick" />
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <Button x:Name="RespTabBody" Classes="resp-tab selected"
+                                    Content="Body" Click="OnResponseTabClick" />
+                            <Button x:Name="RespTabCookies" Classes="resp-tab"
+                                    Content="Cookies" Click="OnResponseTabClick" />
+                            <Button x:Name="RespTabHeaders" Classes="resp-tab"
+                                    Content="Headers" Click="OnResponseTabClick" />
+                            <Button x:Name="RespTabTests" Classes="resp-tab"
+                                    Content="Tests" Click="OnResponseTabClick" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Command="{Binding CopyResponseBodyCommand}"
+                                IsVisible="{Binding ResponseBody, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="10,7"
+                                ToolTip.Tip="Copy response body">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <Path Data="{StaticResource IconCode}"
+                                      Stretch="Uniform"
+                                      Width="13" Height="13"
+                                      Fill="{DynamicResource TextMuted}" />
+                                <TextBlock Text="Copy"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="12" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
                 </Border>
 
                 <!-- Response content -->

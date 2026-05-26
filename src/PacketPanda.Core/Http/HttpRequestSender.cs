@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 using System.Text;
 using PacketPanda.Core.Persistence;
 using SystemHttpMethod = System.Net.Http.HttpMethod;
@@ -157,20 +156,35 @@ public sealed class HttpRequestSender : IHttpRequestSender, IDisposable
                     break;
                 case MultipartBody multipart:
                     var multipartContent = new MultipartFormDataContent();
+                    // .NET quotes the boundary by default; strip quotes so servers that
+                    // don't accept RFC 2046 quoted-string boundaries parse fields correctly.
+                    var boundaryParam = multipartContent.Headers.ContentType!.Parameters
+                        .First(p => p.Name == "boundary");
+                    boundaryParam.Value = boundaryParam.Value!.Trim('"');
                     foreach (var part in multipart.Parts.Where(p => p.Enabled))
                     {
                         if (part.Type == MultipartPartType.File)
                         {
                             if (!File.Exists(part.Value)) continue;
                             var bytes = File.ReadAllBytes(part.Value);
-                            var streamContent = new StreamContent(new MemoryStream(bytes));
-                            streamContent.Headers.ContentType =
+                            var fileContent = new ByteArrayContent(bytes);
+                            fileContent.Headers.ContentType =
                                 new System.Net.Http.Headers.MediaTypeHeaderValue(MimeTypeFor(part.Value));
-                            multipartContent.Add(streamContent, part.Name, Path.GetFileName(part.Value));
+                            // Write Content-Disposition as a raw string to avoid .NET encoding
+                            // the name/filename with RFC 5987 (name*=UTF-8'') which many servers
+                            // don't recognise as the standard `name` parameter.
+                            fileContent.Headers.TryAddWithoutValidation(
+                                "Content-Disposition",
+                                $"form-data; name=\"{part.Name}\"; filename=\"{Path.GetFileName(part.Value)}\"");
+                            multipartContent.Add(fileContent);
                         }
                         else
                         {
-                            multipartContent.Add(new StringContent(part.Value), part.Name);
+                            var textContent = new StringContent(part.Value, Encoding.UTF8);
+                            textContent.Headers.TryAddWithoutValidation(
+                                "Content-Disposition",
+                                $"form-data; name=\"{part.Name}\"");
+                            multipartContent.Add(textContent);
                         }
                     }
                     message.Content = multipartContent;

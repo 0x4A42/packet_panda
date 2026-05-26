@@ -111,6 +111,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         SelectPreRequestCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PreRequest; });
         SelectPostResponseCommand = ReactiveCommand.Create(() => { SelectedScriptSection = ScriptSection.PostResponse; });
         CopyCurlCommand = ReactiveCommand.CreateFromTask(CopyCurlAsync);
+        CopyResponseBodyCommand = ReactiveCommand.CreateFromTask(CopyResponseBodyAsync);
 
         _dirtySub = this.WhenAnyValue(vm => vm.SelectedMethod, vm => vm.Url, vm => vm.RawBodyText, vm => vm.SelectedBodyMode)
             .Subscribe(_ => RecomputeDirty());
@@ -323,6 +324,7 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
     public ReactiveCommand<Unit, Unit> SelectPreRequestCommand { get; }
     public ReactiveCommand<Unit, Unit> SelectPostResponseCommand { get; }
     public ReactiveCommand<Unit, Unit> CopyCurlCommand { get; }
+    public ReactiveCommand<Unit, Unit> CopyResponseBodyCommand { get; }
 
     public ObservableCollection<HeaderRowViewModel> Headers { get; } = new();
     public ReactiveCommand<Unit, Unit> AddHeaderCommand { get; }
@@ -878,6 +880,12 @@ public class RequestEditorViewModel : ViewModelBase, IDisposable, ITabContent
         if (_clipboard is null) return;
         var curl = CurlBuilder.Build(BuildResolvedRequest());
         await _clipboard.SetTextAsync(curl);
+    }
+
+    private async Task CopyResponseBodyAsync()
+    {
+        if (_clipboard is null || _responseBody is null) return;
+        await _clipboard.SetTextAsync(_responseBody);
     }
 
     private HttpRequest BuildResolvedRequest()

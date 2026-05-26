@@ -84,7 +84,8 @@ public partial class App : Application
                 // ReSharper disable once NullableWarningSuppressionIsUsed
                 openEnvironmentEditor: () => shell.SetEnvironmentsTabCommand.Execute().Subscribe(),
                 historyStore: historyStore,
-                clipboardService: clipboardService);
+                clipboardService: clipboardService,
+                filePickerService: filePicker);
 
             var variableResolver = new VariableResolver();
             shell = new ShellViewModel(sidebar, EditorFactory, dialog, environmentStore, filePicker, settingsStore, historyStore,
