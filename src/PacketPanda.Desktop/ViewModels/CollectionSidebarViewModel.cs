@@ -237,7 +237,7 @@ public class CollectionSidebarViewModel : ReactiveObject
 
     private async Task PasteCurlAsync()
     {
-        var text = await _dialog.PromptLargeTextAsync("Paste cURL command", "curl https://...");
+        var text = await _dialog.ShowImportCurlAsync();
         if (text is null) return;
         var parsed = CurlParser.Parse(text);
         if (parsed is null)
