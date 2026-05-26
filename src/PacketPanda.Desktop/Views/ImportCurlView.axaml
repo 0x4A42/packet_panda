@@ -7,7 +7,7 @@
   <StackPanel Spacing="12" Margin="24">
 
     <TextBlock Text="Paste a cURL command. It will open as a new unsaved request tab."
-               Foreground="{DynamicResource TextMuted}"
+               Foreground="{DynamicResource TextPrimary}"
                TextWrapping="Wrap" />
 
     <TextBox x:Name="CurlTextBox"
