@@ -61,4 +61,5 @@ publish/
 
 ## Claude / superpowers (working-tree only)
 .claude/
+.superpowers/
 docs/superpowers/
