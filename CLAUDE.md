@@ -35,6 +35,14 @@ dotnet test --watch   # run tests in watch mode
 
 **Scripting pipeline** runs per request execution in a sandboxed Jint JS engine: pre-request script → HTTP send → post-request script → tests. Scripts and tests share the same engine instance and context object, which exposes the request, response, and environment read/write API. Post-request scripts can write values back to the active environment (e.g., extract a token from a login response). In-client tests produce a pass/fail list displayed in the response panel, with sample snippets available in the UI.
 
+**Body types** are modelled as a discriminated union (`BodyConfig` in `PacketPanda.Core`): None, JsonBody, PlainTextBody, XmlBody, FormBody (key/value pairs), and MultipartBody (parts with Text or File type). The request editor switches its body sub-panel based on the active mode. File parts in multipart use `IFilePickerService` for the browse dialog.
+
+**Request history** is appended on every send and persisted to disk via `JsonHistoryStore`. Each entry stores the full request + response snapshot. History is capped (default 200, configurable in Settings) and displayed in the history sidebar; clicking an entry opens it as a new unsaved tab.
+
+**Settings** are stored in `AppSettings` (JSON via `JsonSettingsStore`) and cover: theme, SSL certificate verification, follow redirects, request timeout, and history limit. `HttpRequestSender` is rebuilt from `AppSettings` when the user saves settings. The settings modal is opened from the gear icon in the activity bar.
+
+**cURL** — `CurlBuilder` serialises the current in-memory request to a curl command string (Copy as cURL). `CurlParser` parses a curl command string into a `ParsedCurlRequest` record (Import from cURL), which the shell wires up as a new unsaved tab. Both live in `PacketPanda.Core.Http`.
+
 ## Testing Conventions
 
 - Tests use **FluentAssertions** for all assertions — `value.Should().Be(...)`, never `Assert.Equal(...)`.
