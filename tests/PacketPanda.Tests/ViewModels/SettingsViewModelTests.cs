@@ -53,7 +53,8 @@ public sealed class SettingsViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        saved!.TimeoutSeconds.Should().Be(expected);
+        saved.Should().NotBeNull();
+        saved.TimeoutSeconds.Should().Be(expected);
     }
 
     [Theory]
@@ -72,7 +73,8 @@ public sealed class SettingsViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        saved!.HistoryLimit.Should().Be(expected);
+        saved.Should().NotBeNull();
+        saved.HistoryLimit.Should().Be(expected);
     }
 
     [Fact]
@@ -87,7 +89,8 @@ public sealed class SettingsViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        saved!.TimeoutSeconds.Should().Be(1);
+        saved.Should().NotBeNull();
+        saved.TimeoutSeconds.Should().Be(1);
     }
 
     [Fact]
@@ -102,7 +105,8 @@ public sealed class SettingsViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        saved!.HistoryLimit.Should().Be(50);
+        saved.Should().NotBeNull();
+        saved.HistoryLimit.Should().Be(50);
     }
 
     [Fact]
@@ -119,7 +123,8 @@ public sealed class SettingsViewModelTests
 
         await vm.SaveCommand.Execute();
 
-        saved!.OpenCollectionPaths.Should().BeEquivalentTo(["/a.json"]);
+        saved.Should().NotBeNull();
+        saved.OpenCollectionPaths.Should().BeEquivalentTo(["/a.json"]);
         saved.ActiveEnvironmentName.Should().Be("Prod");
     }
 }
