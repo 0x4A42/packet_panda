@@ -226,4 +226,19 @@ public sealed class CollectionSidebarViewModelTests
 
         vm.ErrorMessage.Should().NotBeNullOrEmpty();
     }
+
+    [Fact]
+    public async Task PasteCurl_UserCancels_DoesNotFireEventOrSetError()
+    {
+        _dialogMock.Setup(d => d.ShowImportCurlAsync()).ReturnsAsync((string?)null);
+
+        var vm = Build();
+        ParsedCurlRequest? fired = null;
+        vm.PasteCurlRequested.Subscribe(r => fired = r);
+
+        await vm.PasteCurlCommand.Execute();
+
+        fired.Should().BeNull();
+        vm.ErrorMessage.Should().BeNull();
+    }
 }
