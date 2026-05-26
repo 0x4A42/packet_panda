@@ -209,6 +209,7 @@ public sealed class AvaloniaDialogService(Window owner) : IDialogService
         {
             Title = "Import from cURL",
             Content = view,
+            Width = 540,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             CanResize = false,
             SizeToContent = SizeToContent.Height,
